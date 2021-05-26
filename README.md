@@ -25,7 +25,6 @@
  - [repository](https://github.com/fortran-lang/fpm-registry)
  - [package listing](https://fortran-lang.org/packages).
 
-
 # Discussion
  - [Fortran Discourse](https://fortran-lang.discourse.group)
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
@@ -34,6 +33,12 @@
 # Date and Time
  - [datetime-fortran](https://github.com/wavebitscientific/datetime-fortran)
  - [M_time](https://urbanjost.github.io/M_time/)
+
+# Configuration files
+ - [Discussion](http://degenerateconic.com/fortran-configuration-file-formats)
+ - [TOML](https://github.com/toml-f/toml-f)
+ - [JSON](https://github.com/jacobwilliams/json-fortran)
+ - [LAFF](https://urbanjost.github.io/M_matrix)
 
 # Other Packages
  - [fortran curl]( https://github.com/interkosmos/fortran-curl)
