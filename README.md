@@ -14,7 +14,7 @@
 
 # Repositories
  - [netlib](http://www.netlib.org)
- - [GPF](https://urbanjost.github.io/general-purpose-fortran/man_1.html)
+ - [GPF](https://urbanjost.github)
  - [Fortran Standard Library project](https://github.com/fortran-lang/stdlib/issues/229)
 
 # Examples
