@@ -14,7 +14,7 @@
 
 # Repositories
  - [netlib](http://www.netlib.org)
- - [GPF](https://urbanjost.github)
+ - [GPF](https://github.com/urbanjost)
  - [Fortran Standard Library project](https://github.com/fortran-lang/stdlib/issues/229)
 
 # Examples
