@@ -5,6 +5,7 @@
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
  - [GNU gfortran intrinsic descriptions](https://gcc.gnu.org/onlinedocs/gfortran/Intrinsic-Procedures.html)
  - [Fortran 2018 Standard](https://j3-fortran.org/doc/year/18/18-007r1.pdf)
+ - [Intro to Fortran](https://www.nics.tennessee.edu/files/pdf/hpcss13_14/01_21_intro_to_fortran_pt2.pdf)
 
 # Standards
  - [J3](https://j3-fortran.org)
@@ -45,7 +46,88 @@
  - [fortran curl]( https://github.com/interkosmos/fortran-curl)
  - [spack](https://github.com/spack/spack.git)
 
-# Graphics
+# Presentations and Papers
+ -[fortrancon-2020](http://degenerateconic.com/fortrancon-2020/)
+ -[CiSE article](https://github.com/LKedward/fortran-lang-CiSE-article)
+ -[Fortran Forum article](git clone https://github.com/LKedward/fortran-forum-article-template)
+}
+
+#fpm packages
+iso_varying_string : null
+jsonff : null
+
+## Expression parsing
+ - M_matrix : matlab/octave-like Fortran interface
+ - M_calculator : basic numeric expression parser
+
+## Strings
+ - M_strings : string manipulation
+ - M_change : Basic Regular Expressions
+
+## System Interfaces
+ - M_system : (mostly)POSIX system routine interface
+ - M_process : ISO_C_BINDING interface to popen(3c) and related system procedures 
+
+## Date and Time
+ - M_time : date and time conversion, formatting and computation 
+ - datetime : null
+
+## Command line parsing
+ - M_kracken95 :  command line parsing using Fortran 95 (LICENSE:PD)
+ - M_CLI : Unix-style commandline parsing using a prototype command and NAMELIST (STD:f2008)
+ - M_CLI2 : Unix-style commandline parsing using a prototype command
+## Regular Expressions
+
+## Graphics
+ - M_draw : basic vector graphics package
+ - M_pixel : basic vector drawing into a pixel graphics format
+ - M_color : conversions between common color models 
+
+## Other
+ - blas : The BLAS (Basic Linear Algebra Subprograms) are routines that provide standard building blocks for performing basic vector and matrix operations.
+ - cairo-fortran : Fortran bindings for libcairo
+ - dftd4 : Generally Applicable Atomic-Charge Dependent London Dispersion Correction
+ - fftpack : FFTPACK is a package of Fortran subprograms for the fast Fourier transform of periodic and other symmetric sequences. It includes complex, real, sine, cosine, and quarter-wave transforms.
+ - fhash : Implements a hash table type with support for generic keys and values.
+ - finterp : Modern Fortran Multidimensional Linear Interpolation
+ - forlab : null
+ - fpm-dict : fpm plug-in to look up words and descriptions on WWW using fortran-curl(3f)/libcurl(3c)
+ - fpm-man : display Fortran intrinsics documentation
+ - fpm-search : null
+ - fpm-time : fpm plug-in to generate timing profiles using gprof(1)
+ - general-purpose-fortran : GPF (General Purpose Fortran)
+ - iso_varying_string : null
+ - jsonff : null
+ - lapack : LAPACK ("Linear Algebra Package") is a standard software library for numerical linear algebra. It provides routines for solving systems of linear equations and linear least squares, eigenvalue problems, and singular value decomposition. It also includes routines to implement the associated matrix factorizations such as LU, QR, Cholesky and Schur decomposition.
+ - linpack : Description
+ - M_calcomp : an old Calcomp look-alike graphics library. Not for new large code development
+ - mctc-gcp : Geometrical Counter-Poise correction
+ - mctc-lib : Modular computation tool chain library
+ - M_escape : ANSI control escape sequences using an XML-like syntax for attributes like color on video displays and emulators
+ - M_history : Input History Editor
+ - minpack : Minpack includes software for solving nonlinear equations and nonlinear least squares problems.
+ - M_intrinsics : module of text descriptions of Fortran intrinsics and features
+ - M_io : I/O-related tools
+ - M_list : string manipulation (STD:2008)
+ - M_match : Basic Regular Expressions
+ - M_msg : converts any standard scalar type to a string and support unit testing
+ - M_ncurses : Fortran-callable interfae to the C library ncurses(3c)
+ - M_path : basic numeric expression parser
+ - M_readline : Fortran-callable interfae to the C input history editor readline(3c)
+ - M_slices :  produce basic slice plot on POSIX systems with X11 Windows
+ - M_sort : null
+ - mstore : Molecular structure store for testing
+ - multicharge : null
+ - M_uuid : module to produce a UUID string
+ - pointsets : null
+ - quadpack : Quadpack is a Fortran 77 library for numerical integration of one-dimensional functions.
+ - quaff : null
+ - s-dftd3 : Simple reimplementation of the DFT-D3 method
+ - sqliteff : null
+ - stdlib-fpm : null
+ - strff : null
+ - toml-f : TOML parser implementation for data serialization and deserialization
+ - vegetables : null
 
 <!--
 * [ansi2html](https://github.com/ralphbean/ansi2html) ANSI escape codes to HTML from programs and as a bash shell
