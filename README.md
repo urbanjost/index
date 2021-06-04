@@ -1,4 +1,4 @@
-# Documenation
+# Documentation
  - [Modern Fortran](http://cyber.dabamos.de/programming/modernfortran)
  - [M_intrinsics](https://github.com/urbanjost/M_intrinsics)
     + [index of intrinsics](https://urbanjost.github.io/M_intrinsics/index3.html)
@@ -57,33 +57,51 @@ iso_varying_string : null
 jsonff : null
 
 ## Expression parsing
- - M_matrix : matlab/octave-like Fortran interface
- - M_calculator : basic numeric expression parser
+ - [M_matrix](https://urbanjost.github.io/M_matrix) : matlab/octave-like Fortran interface
+ - [M_calculator](https://urbanjost.github.io/M_calculator) : basic numeric expression parser
 
 ## Strings
- - M_strings : string manipulation
- - M_change : Basic Regular Expressions
+ - [M_strings](https://urbanjost.github.io/M_strings/) : string manipulation
+ - [M_change](https://urbanjost.github.io/M_change/) : Basic Regular Expressions
 
 ## System Interfaces
- - M_system : (mostly)POSIX system routine interface
- - M_process : ISO_C_BINDING interface to popen(3c) and related system procedures 
+ - [M_system](https://github.com/urbanjost/M_system) : (mostly)POSIX system routine interface
+ - [M_process](https://github.com/urbanjost/M_process) : ISO_C_BINDING interface to popen(3c) and related system procedures 
 
 ## Date and Time
- - M_time : date and time conversion, formatting and computation 
+ - [M_time](https://github.com/urbanjost/M_time) date and time conversion, formatting and computation 
  - datetime : null
 
 ## Command line parsing
- - M_kracken95 :  command line parsing using Fortran 95 (LICENSE:PD)
- - M_CLI : Unix-style commandline parsing using a prototype command and NAMELIST (STD:f2008)
- - M_CLI2 : Unix-style commandline parsing using a prototype command
+ - [M_kracken95](https://github.com/urbanjost/M_kracken95) :  command line parsing using Fortran 95 (LICENSE:PD)
+ - [M_CLI](https://github.com/urbanjost/M_CLI) : Unix-style commandline parsing using a prototype command and NAMELIST (STD:f2008)
+ - [M_CLI2](https://github.com/urbanjost/M_CLI2) : Unix-style commandline parsing using a prototype command
 ## Regular Expressions
 
 ## Graphics
- - M_draw : basic vector graphics package
- - M_pixel : basic vector drawing into a pixel graphics format
- - M_color : conversions between common color models 
+ - [M_draw](https://urbanjost.github.io/M_draw/) : basic vector graphics package
+ - [M_pixel](https://urbanjost.github.io/M_pixel/) : basic vector drawing into a pixel graphics format
+ - [M_color](https://urbanjost.github.io/M_color/) : conversions between common color models 
+ - [M_calcomp](https://urbanjost.github.io/M_calcomp/) : old Calcomp look-alike graphics library. Not for new large code development
+ - [M_slices](https://urbanjost.github.io/M_slices/) :  produce basic slice plot on POSIX systems with X11 Windows
+
+## Repositories
+ - [GPF](https://urbanjost.github.io/general-purpose-fortran/) : GPF (General Purpose Fortran)
 
 ## Other
+ - [M_escape](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+ - [M_history](https://urbanjost.github.io/M_history/) : Input History Editor
+ - [M_intrinsics](https://urbanjost.github.io/M_intrinsics/) : module of text descriptions of Fortran intrinsics and features
+ - [M_io](https://urbanjost.github.io/M_io/) : I/O-related tools
+ - [M_list](https://urbanjost.github.io/M_list/) : string manipulation (STD:2008)
+ - [M_match](https://urbanjost.github.io/M_match/) : Basic Regular Expressions
+ - [M_msg](https://urbanjost.github.io/M_msg/) : converts any standard scalar type to a string and support unit testing
+ - [M_ncurses](https://urbanjost.github.io/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
+ - [M_path](https://urbanjost.github.io/M_path/) : basic numeric expression parser
+ - [M_readline](https://urbanjost.github.io/M_readline/) : Fortran-callable interfae to the C input history editor readline(3c)
+ - [M_sort](https://urbanjost.github.io/M_sort/) : sorting
+ - [M_uuid](https://urbanjost.github.io/M_uuid/) : module to produce a UUID string
+
  - blas : The BLAS (Basic Linear Algebra Subprograms) are routines that provide standard building blocks for performing basic vector and matrix operations.
  - cairo-fortran : Fortran bindings for libcairo
  - dftd4 : Generally Applicable Atomic-Charge Dependent London Dispersion Correction
@@ -95,30 +113,15 @@ jsonff : null
  - fpm-man : display Fortran intrinsics documentation
  - fpm-search : null
  - fpm-time : fpm plug-in to generate timing profiles using gprof(1)
- - general-purpose-fortran : GPF (General Purpose Fortran)
  - iso_varying_string : null
  - jsonff : null
  - lapack : LAPACK ("Linear Algebra Package") is a standard software library for numerical linear algebra. It provides routines for solving systems of linear equations and linear least squares, eigenvalue problems, and singular value decomposition. It also includes routines to implement the associated matrix factorizations such as LU, QR, Cholesky and Schur decomposition.
  - linpack : Description
- - M_calcomp : an old Calcomp look-alike graphics library. Not for new large code development
  - mctc-gcp : Geometrical Counter-Poise correction
  - mctc-lib : Modular computation tool chain library
- - M_escape : ANSI control escape sequences using an XML-like syntax for attributes like color on video displays and emulators
- - M_history : Input History Editor
  - minpack : Minpack includes software for solving nonlinear equations and nonlinear least squares problems.
- - M_intrinsics : module of text descriptions of Fortran intrinsics and features
- - M_io : I/O-related tools
- - M_list : string manipulation (STD:2008)
- - M_match : Basic Regular Expressions
- - M_msg : converts any standard scalar type to a string and support unit testing
- - M_ncurses : Fortran-callable interfae to the C library ncurses(3c)
- - M_path : basic numeric expression parser
- - M_readline : Fortran-callable interfae to the C input history editor readline(3c)
- - M_slices :  produce basic slice plot on POSIX systems with X11 Windows
- - M_sort : null
  - mstore : Molecular structure store for testing
  - multicharge : null
- - M_uuid : module to produce a UUID string
  - pointsets : null
  - quadpack : Quadpack is a Fortran 77 library for numerical integration of one-dimensional functions.
  - quaff : null
