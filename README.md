@@ -5,18 +5,18 @@
 ---
 
 ## General Repository
- - [GPF](https://github.com/urbanjost) : GPF (General Purpose Fortran)
+ - [GPF](https://github.com/urbanjost/general-purpose-fortran) : GPF (General Purpose Fortran)
 
 ## Expression evaluation
- - [M_matrix](https://urbanjost.github.io/M_matrix) : matlab/octave-like Fortran interface
+ - [M_matrix](https://github.com/urbanjost/M_matrix) : matlab/octave-like Fortran interface
    Allows for transferring data in and out of the program for inspection, saving, loading, ...
- - [M_calculator](https://urbanjost.github.io/M_calculator) : basic numeric expression parser
+ - [M_calculator](https://github.com/urbanjost/M_calculator) : basic numeric expression parser
 
 ## Strings
- - [M_strings](https://urbanjost.github.io/M_strings/) : string manipulation
+ - [M_strings](https://github.com/urbanjost/M_strings/) : string manipulation
 
 ## Regular expressions
- - [M_change](https://urbanjost.github.io/M_change/) : Basic Regular Expressions
+ - [M_change](https://github.com/urbanjost/M_change/) : Basic Regular Expressions
 
 ## Posix and system interfaces
  - [M_system](https://github.com/urbanjost/M_system) : (mostly)POSIX system routine interface
@@ -31,11 +31,11 @@
  - [M_kracken95](https://github.com/urbanjost/M_kracken95) :  command line parsing using Fortran 95 (LICENSE:PD)
 
 ## Graphics
- - [M_draw](https://urbanjost.github.io/M_draw/) : basic vector graphics package
- - [M_pixel](https://urbanjost.github.io/M_pixel/) : basic vector drawing into a pixel graphics format
- - [M_color](https://urbanjost.github.io/M_color/) : conversions between common color models 
- - [M_calcomp](https://urbanjost.github.io/M_calcomp/) : old Calcomp look-alike graphics library. Not for new large code development
- - [M_slices](https://urbanjost.github.io/M_slices/) :  produce basic slice plot on POSIX systems with X11 Windows
+ - [M_draw](https://github.com/urbanjost/M_draw/) : basic vector graphics package
+ - [M_pixel](https://github.com/urbanjost/M_pixel/) : basic vector drawing into a pixel graphics format
+ - [M_color](https://github.com/urbanjost/M_color/) : conversions between common color models 
+ - [M_calcomp](https://github.com/urbanjost/M_calcomp/) : old Calcomp look-alike graphics library. Not for new large code development
+ - [M_slices](https://github.com/urbanjost/M_slices/) :  produce basic slice plot on POSIX systems with X11 Windows
 
 ## Preprocessing
  - [prep](https://github.com/urbanjost/prep) : A Fortran preprocessor written in Fortran
