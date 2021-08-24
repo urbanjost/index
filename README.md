@@ -44,15 +44,19 @@
  - [M_intrinsics](https://github.com/urbanjost/M_intrinsics)
     + [index of intrinsics](https://urbanjost.github.io/M_intrinsics/index3.html)
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
-## Miscellaneous
+
+## Screen text control
  - [M_escape](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+ - [M_attr](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+ - [M_ncurses](https://urbanjost.github.io/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
+
+## Miscellaneous
  - [M_history](https://urbanjost.github.io/M_history/) : Input History Editor
  - [M_intrinsics](https://urbanjost.github.io/M_intrinsics/) : module of text descriptions of Fortran intrinsics and features
  - [M_io](https://urbanjost.github.io/M_io/) : I/O-related tools
  - [M_list](https://urbanjost.github.io/M_list/) : string manipulation (STD:2008)
  - [M_match](https://urbanjost.github.io/M_match/) : Basic Regular Expressions
  - [M_msg](https://urbanjost.github.io/M_msg/) : converts any standard scalar type to a string and support unit testing
- - [M_ncurses](https://urbanjost.github.io/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
  - [M_path](https://urbanjost.github.io/M_path/) : basic numeric expression parser
  - [M_readline](https://urbanjost.github.io/M_readline/) : Fortran-callable interfae to the C input history editor readline(3c)
  - [M_sort](https://urbanjost.github.io/M_sort/) : sorting
@@ -101,6 +105,7 @@
  - [Fortran Discourse](https://fortran-lang.discourse.group)
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
  - [Fortran Wiki](http://fortranwiki.org)
+   [Libera Chat](https://libera.chat/)
 
 ## Date and Time
  - [datetime-fortran](https://github.com/wavebitscientific/datetime-fortran)
@@ -132,6 +137,9 @@
  - fhash : Implements a hash table type with support for generic keys and values.
 
 iso_varying_string : null
+
+## Examples
+ - [scivision examplles](https://github.com/scivision/fortran2018-examples)
 
 ## Expression parsing
 
