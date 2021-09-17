@@ -69,8 +69,8 @@
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
 
 ## Screen text control
- - [M_escape](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
- - [M_attr](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+ - [M_escape](https://github.com/urbanjost/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+ - [M_attr](https://github.com/urbanjost/M_attr/) : ANSI control escape sequences for attributes like color on video displays
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_attr/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_attr/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_intel_ubuntu.yml)
    + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_ubuntu.yml)
@@ -78,17 +78,17 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 ](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml)
- - [M_ncurses](https://urbanjost.github.io/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
+ - [M_ncurses](https://github.com/urbanjost/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
 
 ## Miscellaneous
- - [M_history](https://urbanjost.github.io/M_history/) : Input History Editor
- - [M_io](https://urbanjost.github.io/M_io/) : I/O-related tools
- - [M_list](https://urbanjost.github.io/M_list/) : string manipulation (STD:2008)
- - [M_match](https://urbanjost.github.io/M_match/) : Basic Regular Expressions
- - [M_msg](https://urbanjost.github.io/M_msg/) : converts any standard scalar type to a string and support unit testing
- - [M_path](https://urbanjost.github.io/M_path/) : basic numeric expression parser
- - [M_readline](https://urbanjost.github.io/M_readline/) : Fortran-callable interfae to the C input history editor readline(3c)
- - [M_sort](https://urbanjost.github.io/M_sort/) : sorting
+ - [M_history](https://github.com/urbanjost/M_history/) : Input History Editor
+ - [M_io](https://github.com/urbanjost/M_io/) : I/O-related tools
+ - [M_list](https://github.com/urbanjost/M_list/) : string manipulation (STD:2008)
+ - [M_match](https://github.com/urbanjost/M_match/) : Basic Regular Expressions
+ - [M_msg](https://github.com/urbanjost/M_msg/) : converts any standard scalar type to a string and support unit testing
+ - [M_path](https://github.com/urbanjost/M_path/) : basic numeric expression parser
+ - [M_readline](https://github.com/urbanjost/M_readline/) : Fortran-callable interfae to the C input history editor readline(3c)
+ - [M_sort](https://github.com/urbanjost/M_sort/) : sorting
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_sort/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_sort/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/test_intel_ubuntu.yml)
    + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_ubuntu.yml)
@@ -96,7 +96,7 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_sort/actions/workflows/test_gfortran_msys_windows.yml)
- - [M_uuid](https://urbanjost.github.io/M_uuid/) : module to produce a UUID string
+ - [M_uuid](https://github.com/urbanjost/M_uuid/) : module to produce a UUID string
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_uuid/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_uuid/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_intel_ubuntu.yml)
    + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_ubuntu.yml)
@@ -105,7 +105,7 @@
    + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_msys_windows.yml)
 ## Templates
- - [easy](https://urbanjost.github.io/easy/) : template for a github fpm package
+ - [easy](https://github.com/urbanjost/easy/) : template for a github fpm package
    + [![Build FORD(1) docs](https://github.com/urbanjost/easy/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/easy/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/easy/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/easy/actions/workflows/test_intel_ubuntu.yml)
    + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/easy/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/easy/actions/workflows/test_gfortran_ubuntu.yml)
