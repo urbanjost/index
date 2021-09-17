@@ -162,6 +162,8 @@
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
  - [Fortran Wiki](http://fortranwiki.org)
    [Libera Chat](https://libera.chat/)
+## Publications
+ - [CISE](https://www.computer.org/csdl/magazine/cs)
 
 ## Date and Time
  - [datetime-fortran](https://github.com/wavebitscientific/datetime-fortran)
