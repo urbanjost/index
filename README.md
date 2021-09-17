@@ -11,7 +11,12 @@
  - [M_matrix](https://github.com/urbanjost/M_matrix) : matlab/octave-like Fortran interface
    Allows for transferring data in and out of the program for inspection, saving, loading, ...
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml)
-   + [![fpm test](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml)
+   + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_matrix/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_intel_ubuntu.yml)
+   + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_ubuntu.yml)
+   + [![run fpm test on macos with gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_macos.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_macos.yml)
+   + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_windows.yml)
+   + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_mingw64_windows.yml)
+   + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_msys_windows.yml)
  - [M_calculator](https://github.com/urbanjost/M_calculator) : basic numeric expression parser
 
 ## Strings
