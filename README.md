@@ -10,6 +10,8 @@
 ## Expression evaluation
  - [M_matrix](https://github.com/urbanjost/M_matrix) : matlab/octave-like Fortran interface
    Allows for transferring data in and out of the program for inspection, saving, loading, ...
+   +[![Build FORD(1) docs](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml)
+   +[![fpm test](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml)
  - [M_calculator](https://github.com/urbanjost/M_calculator) : basic numeric expression parser
 
 ## Strings
@@ -24,6 +26,13 @@
 
 ## Date and time
  - [M_time](https://github.com/urbanjost/M_time) date and time conversion, formatting and computation 
+   + [![Build FORD(1) docs](https://github.com/urbanjost/M_time/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/deploy_api_docs.yml)
+   + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_time/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_intel_ubuntu.yml)
+   + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_ubuntu.yml)
+   + [![run fpm test on macos with gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_macos.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_macos.yml)
+   + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_windows.yml)
+   + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_mingw64_windows.yml)
+   + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_msys_windows.yml)
 
 ## Command Line parsing
  - [M_CLI2](https://github.com/urbanjost/M_CLI2) : Unix-style commandline parsing using a prototype command
@@ -48,6 +57,13 @@
 ## Screen text control
  - [M_escape](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
  - [M_attr](https://urbanjost.github.io/M_escape/) : ANSI control escape sequences for attributes like color on video displays
+   + [![Build FORD(1) docs](https://github.com/urbanjost/M_attr/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/deploy_api_docs.yml)
+   + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_attr/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_intel_ubuntu.yml)
+   + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_ubuntu.yml)
+   + [![run fpm test on macos with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_macos.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_macos.yml)
+   + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml)
+   + [![run fpm test on windows with mingw64 ](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml)
+   + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml)
  - [M_ncurses](https://urbanjost.github.io/M_ncurses/) : Fortran-callable interfae to the C library ncurses(3c)
 
 ## Miscellaneous
@@ -71,6 +87,10 @@
  - [GNU gfortran intrinsic descriptions](https://gcc.gnu.org/onlinedocs/gfortran/Intrinsic-Procedures.html)
  - [Fortran 2018 Standard](https://j3-fortran.org/doc/year/18/18-007r1.pdf)
  - [Intro to Fortran](https://www.nics.tennessee.edu/files/pdf/hpcss13_14/01_21_intro_to_fortran_pt2.pdf)
+
+## Documentation generators
+ - [ford](https://politicalphysicist.github.io/ford-fortran-documentation.html)
+ - [doxygen](https://www.doxygen.nl/index.html)
 
 ## Lists
  - [Beliavsky's List](https://github.com/Beliavsky/Fortran-code-on-GitHub/blob/main/README.md)
