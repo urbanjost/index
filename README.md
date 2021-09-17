@@ -10,8 +10,8 @@
 ## Expression evaluation
  - [M_matrix](https://github.com/urbanjost/M_matrix) : matlab/octave-like Fortran interface
    Allows for transferring data in and out of the program for inspection, saving, loading, ...
-   +[![Build FORD(1) docs](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml)
-   +[![fpm test](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml)
+   + [![Build FORD(1) docs](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml)
+   + [![fpm test](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test.yml)
  - [M_calculator](https://github.com/urbanjost/M_calculator) : basic numeric expression parser
 
 ## Strings
