@@ -9,8 +9,9 @@
 
 ## Expression evaluation
 
- - [M_matrix](https://github.com/urbanjost/M_matrix) : matlab/octave-like Fortran interface
-   Allows for transferring data in and out of the program for inspection, saving, loading, ...
+ - [M_matrix](https://github.com/urbanjost/M_matrix) : embeddable matlab/octave-like interface
+   allows for a Fortran program to invoke a command line interface for
+   inspection, altering, saving, loading, ... data.
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_matrix/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_intel_ubuntu.yml)
    + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_matrix/actions/workflows/test_gfortran_ubuntu.yml)
@@ -57,7 +58,9 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_system/actions/workflows/test_gfortran_msys_windows.yml)
+
  - [M_process](https://github.com/urbanjost/M_process) : ISO_C_BINDING interface to popen(3c) and related system procedures 
+
  - [M_io](https://github.com/urbanjost/M_io/) : I/O-related tools
 
  - [M_path](https://github.com/urbanjost/M_path/) : basic system file pathname operations
@@ -86,7 +89,9 @@
 
 ## Graphics
  - [M_draw](https://github.com/urbanjost/M_draw/) : basic vector graphics package
+
  - [M_pixel](https://github.com/urbanjost/M_pixel/) : basic vector drawing into a pixel graphics format
+
  - [M_color](https://github.com/urbanjost/M_color/) : conversions between common color models 
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_color/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_color/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_color/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_color/actions/workflows/test_intel_ubuntu.yml)
@@ -95,6 +100,7 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_color/actions/workflows/test_gfortran_msys_windows.yml)
+
  - [M_calcomp](https://github.com/urbanjost/M_calcomp/) : old Calcomp look-alike graphics library. Not for new large code development
  - [M_slices](https://github.com/urbanjost/M_slices/) :  produce basic slice plot on POSIX systems with X11 Windows
 
@@ -102,11 +108,13 @@
  - [prep](https://github.com/urbanjost/prep) : A Fortran preprocessor written in Fortran
 
 ## Fortran documentation
+
  - [M_intrinsics](https://github.com/urbanjost/M_intrinsics) : module of text descriptions of Fortran intrinsics and features
     + [index of intrinsics](https://urbanjost.github.io/M_intrinsics/index3.html)
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
 
 ## Screen text control
+
  - [M_escape](https://github.com/urbanjost/M_escape/) : ANSI control escape sequences for attributes like color on video displays
 
  - [M_attr](https://github.com/urbanjost/M_attr/) : ANSI control escape sequences for attributes like color on video displays
@@ -117,13 +125,19 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 ](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_attr/actions/workflows/test_gfortran_msys_windows.yml)
+
  - [M_ncurses](https://github.com/urbanjost/M_ncurses/) : Fortran-callable interface to the C library ncurses(3c)
 
 ## Miscellaneous
+
  - [M_history](https://github.com/urbanjost/M_history/) : Input History Editor
+
  - [M_list](https://github.com/urbanjost/M_list/) : standard intrinsic type dictionary toolkit(STD:2008)
+
  - [M_match](https://github.com/urbanjost/M_match/) : Basic Regular Expressions
+
  - [M_msg](https://github.com/urbanjost/M_msg/) : converts any standard scalar type to a string and support unit testing
+
  - [M_readline](https://github.com/urbanjost/M_readline/) : Fortran-callable interface to the C input history editor readline(3c)
 
  - [M_sort](https://github.com/urbanjost/M_sort/) : sorting
@@ -143,7 +157,9 @@
    + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_windows.yml)
    + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_mingw64_windows.yml)
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_uuid/actions/workflows/test_gfortran_msys_windows.yml)
+
 ## Templates
+
  - [easy](https://github.com/urbanjost/easy/) : template for a github fpm package
    + [![Build FORD(1) docs](https://github.com/urbanjost/easy/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/easy/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/easy/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/easy/actions/workflows/test_intel_ubuntu.yml)
@@ -233,8 +249,6 @@
 ## hash tables, linked lists, ...
  - fhash : Implements a hash table type with support for generic keys and values.
 
-iso_varying_string : null
-
 ## Examples
  - [scivision examplles](https://github.com/scivision/fortran2018-examples)
 
@@ -249,6 +263,7 @@ iso_varying_string : null
 
 ## Regular Expressions
 
+<!--
  - blas : The BLAS (Basic Linear Algebra Subprograms) are routines that provide standard building blocks for performing basic vector and matrix operations.
  - fftpack : FFTPACK is a package of Fortran subprograms for the fast Fourier transform of periodic and other symmetric sequences. It includes complex, real, sine, cosine, and quarter-wave transforms.
  - lapack : LAPACK ("Linear Algebra Package") is a standard software library for numerical linear algebra. It provides routines for solving systems of linear equations and linear least squares, eigenvalue problems, and singular value decomposition. It also includes routines to implement the associated matrix factorizations such as LU, QR, Cholesky and Schur decomposition.
@@ -272,12 +287,9 @@ iso_varying_string : null
  - strff : null
  - vegetables : null
 
-<!--
 * [ansi2html](https://github.com/ralphbean/ansi2html) ANSI escape codes to HTML from programs and as a bash shell
    at https://gcc.gnu.org/onlinedocs/gfortran/Intrinsic-Procedures.html
 [Fortran Programming Language](https://fortran-lang.org).
- - [Fortran Wiki](http://fortranwiki.org)
-   [Fortran Wiki](http://fortranwiki.org) http://fortranwiki.org
 * [**foul**](http://foul.sourceforge.net/) A library for controlling the attributes of output text using Fortran
    * [FOX](http://fortranwiki.org/fortran/show/FoX)
 [general package criteria](https://github.com/fortran-lang/fortran-lang.org/blob/master/PACKAGES.md)
@@ -292,6 +304,4 @@ or from [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 [`tag`](https://docs.github.com/en/free-pro-team@latest/desktop/contributing-and-collaborating-using-github-desktop/managing-tags)
 * [terminal colors](http://www.pixelbeat.org/docs/terminal_colours/)
 The conda package manager can be installed from [miniforge](https://github.com/conda-forge/miniforge/releases)
-The Fortran Wiki [ fortranwiki.org ](http://fortranwiki.org) contains
-The Fortran Wiki [fortranwiki.org ](http://fortranwiki.org) contains information on many Fortran
 -->
