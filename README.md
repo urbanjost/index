@@ -83,9 +83,14 @@
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_time/actions/workflows/test_gfortran_msys_windows.yml)
 
 ## Command Line parsing
+
  - [M_CLI2](https://github.com/urbanjost/M_CLI2) : Unix-style commandline parsing using a prototype command
- - [M_CLI](https://github.com/urbanjost/M_CLI) : Unix-style commandline parsing using a prototype command and NAMELIST (STD:f2008)
- - [M_kracken95](https://github.com/urbanjost/M_kracken95) :  command line parsing using Fortran 95 (LICENSE:PD)
+
+ - [M_CLI](https://github.com/urbanjost/M_CLI) : Unix-style commandline parsing using a prototype command and NAMELIST
+
+ - [M_kracken](https://github.com/urbanjost/M_kracken95) :  command line parsing 
+
+ - [M_kracken95](https://github.com/urbanjost/M_kracken95) :  command line parsing using Fortran 95 
 
 ## Graphics
  - [M_draw](https://github.com/urbanjost/M_draw/) : basic vector graphics package
@@ -132,7 +137,7 @@
 
  - [M_history](https://github.com/urbanjost/M_history/) : Input History Editor
 
- - [M_list](https://github.com/urbanjost/M_list/) : standard intrinsic type dictionary toolkit(STD:2008)
+ - [M_list](https://github.com/urbanjost/M_list/) : standard intrinsic type dictionary toolkit
 
  - [M_match](https://github.com/urbanjost/M_match/) : Basic Regular Expressions
 
