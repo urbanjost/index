@@ -3,6 +3,24 @@
 # INDEX OF THIS GITHUB SITE
 ---
 ---
+## FEEDBACK REMINDER
+
+Please provide feedback via the github "Issues", "Wiki", and "Discussion"
+features on github.  If you use a module from this collection please
+"star" the repository. If you did not use a module we are interested as
+well as to why not, and what you did use.
+
+Additionally discussion is welcome as well as at
+
+ - [Fortran Discourse](https://fortran-lang.discourse.group)
+ - [Fortran Wiki](http://fortranwiki.org)
+ - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
+
+<!--
+Please provide feedback on the
+[wiki](https://github.com/urbanjost/M_escape/wiki) or in the
+[__issues__](https://github.com/urbanjost/M_escape/issues) section
+-->
 
 ## General Repository
  - [GPF](https://github.com/urbanjost/general-purpose-fortran) : GPF (General Purpose Fortran)
@@ -318,3 +336,9 @@ or from [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 * [terminal colors](http://www.pixelbeat.org/docs/terminal_colours/)
 The conda package manager can be installed from [miniforge](https://github.com/conda-forge/miniforge/releases)
 -->
+## RESPONSES
+
+Discussion is welcome here as well as at
+ - [Fortran Discourse](https://fortran-lang.discourse.group)
+ - [Fortran Wiki](http://fortranwiki.org)
+ - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
