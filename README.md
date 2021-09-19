@@ -10,7 +10,7 @@ features on github.  If you use a module from this collection please
 "star" the repository. If you did not use a module we are interested as
 well as to why not, and what you did use.
 
-Additionally discussion is welcome as well as at
+Additionally discussion is welcome as well at
 
  - [Fortran Discourse](https://fortran-lang.discourse.group)
  - [Fortran Wiki](http://fortranwiki.org)
