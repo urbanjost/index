@@ -1,6 +1,11 @@
 ---
 ---
 # INDEX OF THIS GITHUB SITE
+## GitHub Stats
+![Your Repository's Stats](https://github-readme-stats.vercel.app/api?username=urbanjost&show_icons=true)
+
+## Most Used Languages
+![Your Repository's Stats](https://github-readme-stats.vercel.app/api/top-langs/?username=urbanjost&theme=blue-green)
 ---
 ---
 ## FEEDBACK REMINDER
@@ -343,44 +348,38 @@ Discussion is welcome here as well as at
  - [Fortran Wiki](http://fortranwiki.org)
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
 
-# Top 5 Badges
 
-## 1. GitHub Stats
-![Your Repository's Stats](https://github-readme-stats.vercel.app/api?username=urbanjost&show_icons=true)
-
-## 2. Most Used Languages
-![Your Repository's Stats](https://github-readme-stats.vercel.app/api/top-langs/?username=urbanjost&theme=blue-green)
-
+<!--
 ### Repository View Counter - HITS
-
+ + easy ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/easy)
+ + fpm-tools ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/fpm-tools)
+ + general-purpose-fortran ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/general-purpose-fortran)
  + index ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost)
  + index ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/index)
- + M_strings ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_strings)
- + M_uuid ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_uuid)
- + M_sort ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_sort)
- + M_list ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_list)
- + M_path ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_path)
- + easy ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/easy)
+ + M_attr ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_attr)
+ + M_blas ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_blas)
+ + M_calcomp ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_calcomp)
+ + M_calculator ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_calculator)
+ + M_CLI2 ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_CLI2)
  + M_color ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_color)
+ + M_draw ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_draw)
+ + M_escape ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_escape)
+ + M_intrinsics ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_intrinsics)
+ + M_io ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_io)
+ + M_kracken95 ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_kracken95)
+ + M_LA ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_LA)
+ + M_list ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_list)
  + M_match ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_match)
  + M_matrix ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_matrix)
- + M_calculator ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_calculator)
- + M_time ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_time)
- + M_system ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_system)
- + M_attr ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_attr)
  + M_msg ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_msg)
- + general-purpose-fortran ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/general-purpose-fortran)
- + plugins ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/plugins)
- + fpm-tools ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/fpm-tools)
- + M_io ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_io)
+ + M_path ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_path)
  + M_process ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_process)
- + M_CLI2 ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_CLI2)
- + M_calcomp ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_calcomp)
- + M_blas ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_blas)
- + M_LA ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_LA)
- + M_intrinsics ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_intrinsics)
- + M_escape ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_escape)
- + prep ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/prep)
- + M_draw ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_draw)
- + M_kracken95 ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_kracken95)
  + M_slices ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_slices)
+ + M_sort ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_sort)
+ + M_strings ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_strings)
+ + M_system ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_system)
+ + M_time ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_time)
+ + M_uuid ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/M_uuid)
+ + plugins ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/plugins)
+ + prep ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/prep)
+--!>
