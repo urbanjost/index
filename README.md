@@ -342,3 +342,16 @@ Discussion is welcome here as well as at
  - [Fortran Discourse](https://fortran-lang.discourse.group)
  - [Fortran Wiki](http://fortranwiki.org)
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
+
+# Top 5 Badges
+
+## 1. GitHub Stats
+![Your Repository's Stats](https://github-readme-stats.vercel.app/api?username=urbanjost&show_icons=true)
+## 2. Most Used Languages
+![Your Repository's Stats](https://github-readme-stats.vercel.app/api/top-langs/?username=urbanjost&theme=blue-green)
+## 3. Contributors Badge
+![Your Repository's Stats](https://contrib.rocks/image?repo=urbanjost/general-purpose-fortran)
+## 5. Profile View Counter
+![Profile View Counter](https://komarev.com/ghpvc/?username=urbanjost)
+### Repository View Counter - HITS
+![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/general-purpose-fortran)
