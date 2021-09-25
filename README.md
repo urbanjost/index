@@ -301,6 +301,27 @@ Please provide feedback on the
 
 ## Command line parsing
 
+  - [FLAP] (https://github.com/szaghi/FLAP)
+  - [M_CLI2] (https://github.com/urbanjost/M_CLI2) Unix-style commandline parsing using a prototype. 
+  - [M_CLI](https://github.com/urbanjost/M_CLI) Unix-style commandline parsing using a prototype command and NAMELIST 
+  - [M_kracken](https://github.com/urbanjost/M_kracken95) command line parsing
+  - [M_kracken95](https://github.com/urbanjost/M_kracken95) command line parsing using Fortran 95 
+  - [cmdff] (https://gitlab.com/everythingfunctional/cmdff)
+  - [command_args] (http://flibs.sourceforge.net/command_args.html) from @arjenmarkus (https://github.com/arjenmarkus)
+  - [FTN_Getopt] (https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt/) by Reinhold Bader
+  - [libSUFR] (https://github.com/MarcvdSluys/libSUFR) by @MarcvdSluys (https://github.com/MarcvdSluys)
+  - [f90getopt](https://github.com/haniibrahim/f90getopt) based on Mark Gates routines
+  - [getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt)
+### Fortran wiki
+  - [getopt_long](http://fortranwiki.org/fortran/show/getopt_long_module) module by Joe Krahn.
+  - getopt.f90 by Mark Gates.
+  - CLAF90 is a f90-module for parsing command line arguments.
+### related ...
+  - many of the libraries in [popular Fortran projects] (https://github.com/fortran-lang/stdlib/wiki/List-of-popular-open-source-Fortran-projects) have their own argument parsers.
+  - f2kcli is an implementation of the Fortran 2003 command line interface for compilers which do not support Fortran 2003.
+  - [fortran-lang issue 135](https://github.com/fortran-lang/fpm/issues/135)
+  - [fortran-lang issue 230](https://github.com/fortran-lang/fpm/issues/230)
+
 ## Tools
  - [fixed2free](https://github.com/ylikx/fortran-legacy-tools/tree/master/fixed2free)
 
