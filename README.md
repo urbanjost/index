@@ -247,7 +247,8 @@ Please provide feedback on the
 ## Examples
  - [Rosetta Code](https://rosettacode.org)
 
-## Fortran Package Manager (fpm)
+---
+## Fortran Package Manager (fpm) ![https:\\github.com\fortran-lang\fpm](docs/images/fpm_wheel.gif)
  - [fpm](https://github.com/fortran-lang/fpm)
  - [repository](https://github.com/fortran-lang/fpm-registry)
  - [package listing](https://fortran-lang.org/packages).
@@ -258,6 +259,7 @@ Please provide feedback on the
     + fpm-man : display Fortran intrinsics documentation
     + fpm-dict : fpm plug-in to look up words and descriptions on WWW using fortran-curl(3f)/libcurl(3c)
     + fpm-time : fpm plug-in to generate timing profiles using gprof(1)
+---
 
 ## Discussion
  - [Fortran Discourse](https://fortran-lang.discourse.group)
