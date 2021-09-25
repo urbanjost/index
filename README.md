@@ -303,21 +303,18 @@ Please provide feedback on the
 
   | name and link                                                               | Description                                                            | build methods |
   | --------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------- |
-  | [FLAP](https://github.com/szaghi/FLAP)                                      |                                                                        |               |
-  | [M_CLI2](https://github.com/urbanjost/M_CLI2)                               | Unix-style commandline parsing using a prototype.                      | fpm,make      |
-  | [M_CLI](https://github.com/urbanjost/M_CLI)                                 | Unix-style commandline parsing using a prototype command and NAMELIST  | fpm,make      |
-  | [M_kracken](https://github.com/urbanjost/M_kracken95)                       | command line parsing                                                   | fpm,make      |
-  | [M_kracken95](https://github.com/urbanjost/M_kracken95)                     | command line parsing using Fortran 95                                  | fpm,make      |
   | [cmdff](https://gitlab.com/everythingfunctional/cmdff)                      |                                                                        |               |
   | [command_args](http://flibs.sourceforge.net/command_args.html)              | from @arjenmarkus (https://github.com/arjenmarkus)                     |               |
-  | [FTN_Getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt/)            | by Reinhold Bader                                                      |               |
-  | [libSUFR](https://github.com/MarcvdSluys/libSUFR)                           | by @MarcvdSluys (https://github.com/MarcvdSluys)                       |               |
   | [f90getopt](https://github.com/haniibrahim/f90getopt)                       | based on Mark Gates routines                                           |               |
+  | [FLAP](https://github.com/szaghi/FLAP)                                      |                                                                        |               |
+  | [FTN_Getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt/)            | by Reinhold Bader                                                      |               |
   | [getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt)                 |                                                                        |               |
-  | [Fortran wiki]( http://fortranwiki.org/fortran/show/Command-line+arguments) | including
-  + [getopt_long](http://fortranwiki.org/fortran/show/getopt_long_module) module by Joe Krahn.
-  + getopt.f90 by Mark Gates.
-  + CLAF90 is a f90-module for parsing command line arguments. |                |
+  | [libSUFR](https://github.com/MarcvdSluys/libSUFR)                           | by @MarcvdSluys (https://github.com/MarcvdSluys)                       |               |
+  | [M_CLI2](https://github.com/urbanjost/M_CLI2)                               | Unix-style commandline parsing using a prototype.                      | fpm,make      |
+  | [M_CLI](https://github.com/urbanjost/M_CLI)                                 | Unix-style commandline parsing using a prototype command and NAMELIST  | fpm,make      |
+  | [M_kracken95](https://github.com/urbanjost/M_kracken95)                     | command line parsing using Fortran 95                                  | fpm,make      |
+  | [M_kracken](https://github.com/urbanjost/M_kracken95)                       | command line parsing                                                   | fpm,make      |
+  | [Fortran wiki]( http://fortranwiki.org/fortran/show/Command-line+arguments) | including [getopt_long](http://fortranwiki.org/fortran/show/getopt_long_module) module by Joe Krahn, getopt.f90 by Mark Gates.  CLAF90 is a f90-module for parsing command line arguments. |                |
 
 ### related ...
   - many of the libraries in [popular Fortran projects] (https://github.com/fortran-lang/stdlib/wiki/List-of-popular-open-source-Fortran-projects) have their own argument parsers.
