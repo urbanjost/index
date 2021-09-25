@@ -301,15 +301,15 @@ Please provide feedback on the
 
 ## Command line parsing
 
-  - [FLAP] (https://github.com/szaghi/FLAP)
-  - [M_CLI2] (https://github.com/urbanjost/M_CLI2) Unix-style commandline parsing using a prototype. 
+  - [FLAP](https://github.com/szaghi/FLAP)
+  - [M_CLI2](https://github.com/urbanjost/M_CLI2) Unix-style commandline parsing using a prototype. 
   - [M_CLI](https://github.com/urbanjost/M_CLI) Unix-style commandline parsing using a prototype command and NAMELIST 
   - [M_kracken](https://github.com/urbanjost/M_kracken95) command line parsing
   - [M_kracken95](https://github.com/urbanjost/M_kracken95) command line parsing using Fortran 95 
-  - [cmdff] (https://gitlab.com/everythingfunctional/cmdff)
-  - [command_args] (http://flibs.sourceforge.net/command_args.html) from @arjenmarkus (https://github.com/arjenmarkus)
-  - [FTN_Getopt] (https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt/) by Reinhold Bader
-  - [libSUFR] (https://github.com/MarcvdSluys/libSUFR) by @MarcvdSluys (https://github.com/MarcvdSluys)
+  - [cmdff](https://gitlab.com/everythingfunctional/cmdff)
+  - [command_args](http://flibs.sourceforge.net/command_args.html) from @arjenmarkus (https://github.com/arjenmarkus)
+  - [FTN_Getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt/) by Reinhold Bader
+  - [libSUFR](https://github.com/MarcvdSluys/libSUFR) by @MarcvdSluys (https://github.com/MarcvdSluys)
   - [f90getopt](https://github.com/haniibrahim/f90getopt) based on Mark Gates routines
   - [getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt)
   - [Fortran wiki]( http://fortranwiki.org/fortran/show/Command-line+arguments) including
