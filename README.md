@@ -312,10 +312,10 @@ Please provide feedback on the
   - [libSUFR] (https://github.com/MarcvdSluys/libSUFR) by @MarcvdSluys (https://github.com/MarcvdSluys)
   - [f90getopt](https://github.com/haniibrahim/f90getopt) based on Mark Gates routines
   - [getopt](https://doku.lrz.de/dyn/Doku_Kurse/Fortran/getopt)
-### Fortran wiki
-  - [getopt_long](http://fortranwiki.org/fortran/show/getopt_long_module) module by Joe Krahn.
-  - getopt.f90 by Mark Gates.
-  - CLAF90 is a f90-module for parsing command line arguments.
+  - [Fortran wiki]( http://fortranwiki.org/fortran/show/Command-line+arguments) including
+     + [getopt_long](http://fortranwiki.org/fortran/show/getopt_long_module) module by Joe Krahn.
+     + getopt.f90 by Mark Gates.
+     + CLAF90 is a f90-module for parsing command line arguments.
 ### related ...
   - many of the libraries in [popular Fortran projects] (https://github.com/fortran-lang/stdlib/wiki/List-of-popular-open-source-Fortran-projects) have their own argument parsers.
   - f2kcli is an implementation of the Fortran 2003 command line interface for compilers which do not support Fortran 2003.
