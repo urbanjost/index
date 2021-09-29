@@ -115,6 +115,13 @@ Please provide feedback on the
 ---
 ## Command Line parsing
  - [M_CLI2](https://github.com/urbanjost/M_CLI2) : Unix-style commandline parsing using a prototype command ![https:\\github.com\fortran-lang\registry](docs/images/fpm-registry.gif)
+   + [![Build FORD(1) docs](https://github.com/urbanjost/M_CLI2/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/deploy_api_docs.yml)
+   + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_CLI2/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_intel_ubuntu.yml)
+   + [![run fpm test on ubuntu with gfortran](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_ubuntu.yml)
+   + [![run fpm test on macos with gfortran](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_macos.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_macos.yml)
+   + [![run fpm test on windows with gfortran](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_windows.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_windows.yml)
+   + [![run fpm test on windows with mingw64 gfortran](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_mingw64_windows.yml)
+   + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_CLI2/actions/workflows/test_gfortran_msys_windows.yml)
 ---
  - [M_CLI](https://github.com/urbanjost/M_CLI) : Unix-style commandline parsing using a prototype command and NAMELIST ![https:\\github.com\fortran-lang\registry](docs/images/fpm-registry.gif)
 ---
@@ -383,14 +390,6 @@ or from [miniconda](https://docs.conda.io/en/latest/miniconda.html).
 * [terminal colors](http://www.pixelbeat.org/docs/terminal_colours/)
 The conda package manager can be installed from [miniforge](https://github.com/conda-forge/miniforge/releases)
 -->
-## RESPONSES
-
-Discussion is welcome here as well as at
- - [Fortran Discourse](https://fortran-lang.discourse.group)
- - [Fortran Wiki](http://fortranwiki.org)
- - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
-
-
 <!--
 ### Repository View Counter - HITS
  + easy ![Hits](https://hitcounter.pythonanywhere.com/count/tag.svg?url=https://github.com/urbanjost/easy)
