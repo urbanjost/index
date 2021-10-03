@@ -103,14 +103,14 @@ Please provide feedback on the
 ---
 ## I/O
 
-  | name and link          | Description            | fpm support        | make support           | fpm registry  |
+  | name and link          | Description            | fpm support        | gmake support          | fpm registry  |
   | ---------------------- |----------------------- | ------------------ | ---------------------- | ------------- |
   | [M_io](https://github.com/urbanjost/M_io/) | I/O-related tools | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![fpm registry](docs/images/fpm-registry.gif) |
 
 
 
 ---
-  | name and link          | Description            | fpm support        | make support           | fpm registry  |
+  | name and link          | Description            | fpm support        | gmake support          | fpm registry  |
   | ---------------------- |----------------------- | ------------------ | ---------------------- | ------------- |
   | [M_display](https://github.com/urbanjost/M_display/) | display of small matrices in row-column order | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![no](docs/images/no.gif) |
 
