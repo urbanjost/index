@@ -112,7 +112,7 @@ Please provide feedback on the
 ---
   | name and link          | Description            | fpm support        | make support           |registry       |
   | ---------------------- |----------------------- | ------------------ | ---------------------- | ------------- |
-  | [M_display](https://github.com/urbanjost/M_display/) | display of small matrices in row-column order | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![fpm registry](docs/images/no.gif) |
+  | [M_display](https://github.com/urbanjost/M_display/) | display of small matrices in row-column order | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![no](docs/images/no_100.gif) |
 
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_display/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_display/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_display/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_display/actions/workflows/test_intel_ubuntu.yml)
