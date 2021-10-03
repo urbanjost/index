@@ -102,11 +102,17 @@ Please provide feedback on the
    + [![run fpm test on windows with msys gfortran](https://github.com/urbanjost/M_path/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)](https://github.com/urbanjost/M_path/actions/workflows/test_gfortran_msys_windows.yml)
 ---
 ## I/O
- - [M_io](https://github.com/urbanjost/M_io/) : I/O-related tools![https:\\github.com\fortran-lang\registry](docs/images/fpm-registry.gif)
+
+  | name and link          | Description            | fpm support        | make support           |registry       |
+  | ---------------------- |----------------------- | ------------------ | ---------------------- | ------------- |
+  | [M_io](https://github.com/urbanjost/M_io/) | I/O-related tools | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![fpm registry](docs/images/fpm-registry.gif) |
+
+
+
 ---
   | name and link          | Description            | fpm support        | make support           |registry       |
   | ---------------------- |----------------------- | ------------------ | ---------------------- | ------------- |
-  | [M_display](https://github.com/urbanjost/M_display/) | display of small matrices in row-column order | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![fpm registry](docs/images/fpm-registry.gif) |
+  | [M_display](https://github.com/urbanjost/M_display/) | display of small matrices in row-column order | ![fpm](docs/images/fpm_logo.gif) | ![make](docs/images/gnu.gif) | ![fpm registry](docs/images/no.gif) |
 
    + [![Build FORD(1) docs](https://github.com/urbanjost/M_display/actions/workflows/deploy_api_docs.yml/badge.svg)](https://github.com/urbanjost/M_display/actions/workflows/deploy_api_docs.yml)
    + [![run fpm test on ubuntu with intel](https://github.com/urbanjost/M_display/actions/workflows/test_intel_ubuntu.yml/badge.svg)](https://github.com/urbanjost/M_display/actions/workflows/test_intel_ubuntu.yml)
