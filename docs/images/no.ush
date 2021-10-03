@@ -1,0 +1,32 @@
+makeobj 1234
+circleprecision 200
+centertext TRUE
+textsize 11.4 14
+polyfill TRUE
+#font futura.b
+linewidth 130
+mapcolor  21  65   150   122 # base 41 96 7a -ibase 16 -obase 10
+mapcolor  22 163    78   156 # base a3 4e 9c -ibase 16 -obase 10
+mapcolor  23  78    82   163 # base 4e 52 a3 -ibase 16 -obase 10
+mapcolor  24 153    83   173 # base 99 53 ad -ibase 16 -obase 10
+mapcolor  25 104    83   173 # base 68 53 ad -ibase 16 -obase 10
+mapcolor  26 222   149    94 # base de 95 5e -ibase 16 -obase 10
+mapcolor  27 115    79   150 # base 73 4f 96 -ibase 16 -obase 10
+
+page -50 50 -50 50
+
+polyfill FALSE
+color 1
+linewidth 700
+set R=40 ANG=45
+circle 0 0 R
+move2 0 0 
+draw2 R*cosd(ANG)      R*sind(ANG)
+draw2 R*cosd(ANG)*(-1) R*sind(ANG)*(-1)
+
+closeobj 1234
+hcopy p6 -sz 100 -f no_100.p6 -obj 1234
+hcopy p6 -sz 200 -f no_200.p6 -obj 1234
+hcopy p6 -sz 700 -f no_700.p6 -obj 1234
+hcopy p6 -sz 2000 -f no_2000.p6 -obj 1234
+#callobj 1234
