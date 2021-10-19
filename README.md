@@ -26,6 +26,12 @@ Please provide feedback on the
 [wiki](https://github.com/urbanjost/M_escape/wiki) or in the
 [__issues__](https://github.com/urbanjost/M_escape/issues) section
 -->
+<!--
+|name                    | description | repository |  pages |
+|general-purpose-fortran | Collection of many generic modules into a single library| [X](https://github.com/urbanjost/general-purpose-fortran)| [X](https://urbanjost.github.io/general-purpose-fortran)|
+|M_matrix | embeddable interpreted matrix-oriented language| [X](https://github.com/urbanjost/M_matrix)| [X](https://urbanjost.github.io/M_matrix)|
+-->
+
 ---
 ## General Repository
  - [GPF](https://github.com/urbanjost/general-purpose-fortran) : GPF (General Purpose Fortran)
