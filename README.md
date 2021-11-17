@@ -280,17 +280,19 @@ Please provide feedback on the
 
 ---
 ## Fortran Package Manager (fpm) ![https:\\github.com\fortran-lang\fpm](docs/images/fpm_wheel.gif)
- - [fpm](https://github.com/fortran-lang/fpm)
+ - [fpm developer documentation](https://fortran-lang.github.io/fpm)
+ - [fpm github site](https://github.com/fortran-lang/fpm)
  - [repository](https://github.com/fortran-lang/fpm-registry)
  - [package listing](https://fortran-lang.org/packages).
-## Packaging
- - [packing-con](http://packaging-con.org/)
+
 ###fpm packages
     + fpm-search : null
     + fpm-man : display Fortran intrinsics documentation
     + fpm-dict : fpm plug-in to look up words and descriptions on WWW using fortran-curl(3f)/libcurl(3c)
     + fpm-time : fpm plug-in to generate timing profiles using gprof(1)
 ---
+## Packaging
+ - [packing-con](http://packaging-con.org/)
 
 ## Discussion
  - [Fortran Discourse](https://fortran-lang.discourse.group)
@@ -326,7 +328,7 @@ Please provide feedback on the
  - fhash : Implements a hash table type with support for generic keys and values.
 
 ## Examples
- - [scivision examplles](https://github.com/scivision/fortran2018-examples)
+ - [scivision examples](https://github.com/scivision/fortran2018-examples)
 
 ## Expression parsing
 
