@@ -285,7 +285,7 @@ Please provide feedback on the
  - [repository](https://github.com/fortran-lang/fpm-registry)
  - [package listing](https://fortran-lang.org/packages).
 
-###fpm packages
+### fpm packages
     + fpm-search : null
     + fpm-man : display Fortran intrinsics documentation
     + fpm-dict : fpm plug-in to look up words and descriptions on WWW using fortran-curl(3f)/libcurl(3c)
