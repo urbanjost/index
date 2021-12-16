@@ -285,11 +285,17 @@ Please provide feedback on the
  - [repository](https://github.com/fortran-lang/fpm-registry)
  - [package listing](https://fortran-lang.org/packages).
 
+ - [PackageCon]( https://www.youtube.com/watch?v=g7ECnr_Q7Ck)
+ - [fpm presentation](https://tcevents.chem.uzh.ch/event/12/contributions/39/attachments/35/104/Richardson-fpm-presentation.pdf)
+ - [youtube:getting started with fpm](https://www.youtube.com/watch?v=pg77uR792YU)
+ - [youtube:visual studio plugin](https://www.youtube.com/watch?v=pg77uR792YU)
+
 ### fpm packages
     + fpm-search : null
     + fpm-man : display Fortran intrinsics documentation
     + fpm-dict : fpm plug-in to look up words and descriptions on WWW using fortran-curl(3f)/libcurl(3c)
     + fpm-time : fpm plug-in to generate timing profiles using gprof(1)
+
 ---
 ## Packaging
  - [packing-con](http://packaging-con.org/)
@@ -320,6 +326,7 @@ Please provide feedback on the
 
 ## Presentations and Papers
  -[fortrancon-2020](http://degenerateconic.com/fortrancon-2020/)
+ -[fortrancon-2021](https://degenerateconic.com/fortrancon-2021.html)
  -[CiSE article](https://github.com/LKedward/fortran-lang-CiSE-article)
  -[Fortran Forum article](git clone https://github.com/LKedward/fortran-forum-article-template)
 }
