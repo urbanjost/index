@@ -304,8 +304,11 @@ Please provide feedback on the
  - [Fortran Discourse](https://fortran-lang.discourse.group)
  - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
  - [Fortran Wiki](http://fortranwiki.org)
- - [twitter:Fortran Tips](https://twitter.com/fortrantip)
-   [Libera Chat](https://libera.chat/)
+ - [twitter:Fortran Tips:Beliavsky](https://twitter.com/fortrantip)
+ - [twitter:Steve Lionel](https://twitter.com/doctorfortran)
+   [twitter:fortran-lang.org](https://twitter.com/fortranlang)
+ - [Libera Chat](https://libera.chat/)
+
 ## Publications
  - [CISE](https://www.computer.org/csdl/magazine/cs)
 
