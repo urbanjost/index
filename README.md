@@ -384,6 +384,7 @@ Please provide feedback on the
  - [fixed2free](https://github.com/ylikx/fortran-legacy-tools/tree/master/fixed2free)
 
 ## Regular Expressions
+ - We do these things not because they are easy, but because we thought they would be.
 
 <!--
  - blas : The BLAS (Basic Linear Algebra Subprograms) are routines that provide standard building blocks for performing basic vector and matrix operations.
