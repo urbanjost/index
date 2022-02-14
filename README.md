@@ -275,9 +275,9 @@ Please provide feedback on the
  - [Fortran Standard Library project](https://github.com/fortran-lang/stdlib/issues/229)
  - [index to Burkardt repository](https://github.com/Beliavsky/Burkardt-Fortran-90)
 
-## Examples
+## Algorithms and Examples
  - [Rosetta Code](https://rosettacode.org)
-
+ - [Algorithm Dictionary](https://xlinux.nist.gov/dads/)
 ---
 ## Fortran Package Manager (fpm) ![https:\\github.com\fortran-lang\fpm](docs/images/fpm_wheel.gif)
  - [fpm developer documentation](https://fortran-lang.github.io/fpm)
@@ -289,6 +289,7 @@ Please provide feedback on the
  - [fpm presentation](https://tcevents.chem.uzh.ch/event/12/contributions/39/attachments/35/104/Richardson-fpm-presentation.pdf)
  - [youtube:getting started with fpm](https://www.youtube.com/watch?v=pg77uR792YU)
  - [youtube:visual studio plugin](https://www.youtube.com/watch?v=pg77uR792YU)
+ - [search github for fpm projects](https://github.com/search?o=desc&amp;q=path%3A%2F+filename%3Afpm.toml&amp;s=indexed&amp;type=Code)
 
 ### fpm packages
     + fpm-search : null
