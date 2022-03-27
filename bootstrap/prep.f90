@@ -5711,7 +5711,6 @@ class(*),intent(in) :: generic
       type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
       type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
       type is (real(kind=real64));      write(line(istart:),'(1pg0)') generic
-      type is (real(kind=real128));     write(line(istart:),'(1pg0)') generic
       type is (logical);                write(line(istart:),'(l1)') generic
       type is (character(len=*));       write(line(istart:),'(a)') trim(generic)
       type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
@@ -5768,8 +5767,6 @@ integer :: i
       type is (integer(kind=int64));    write(line(istart:),'("[",*(i0,1x))') generic
       type is (real(kind=real32));      write(line(istart:),'("[",*(1pg0,1x))') generic
       type is (real(kind=real64));      write(line(istart:),'("[",*(1pg0,1x))') generic
-      type is (real(kind=real128));     write(line(istart:),'("[",*(1pg0,1x))') generic
-      !type is (real(kind=real256));     write(error_unit,'(1pg0)',advance='no') generic
       type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
       type is (character(len=*));       write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
       type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
@@ -14762,7 +14759,6 @@ class(*),intent(in) :: generic
       type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
       type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
       type is (real(kind=real64));      write(line(istart:),'(1pg0)') generic
-      !*!type is (real(kind=real128));     write(line(istart:),'(1pg0)') generic
       type is (logical);                write(line(istart:),'(l1)') generic
       type is (character(len=*));       write(line(istart:),'(a)') trim(generic)
       type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
@@ -14823,7 +14819,6 @@ integer :: i
       type is (integer(kind=int64));    write(line(istart:),'("[",*(i0,1x))') generic
       type is (real(kind=real32));      write(line(istart:),'("[",*(1pg0,1x))') generic
       type is (real(kind=real64));      write(line(istart:),'("[",*(1pg0,1x))') generic
-      !*!type is (real(kind=real128));     write(line(istart:),'("[",*(1pg0,1x))') generic
       type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
       type is (character(len=*));       write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
       type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
@@ -15393,7 +15388,6 @@ class(*),intent(in) :: generic
       type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
       type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
       type is (real(kind=real64));      write(line(istart:),'(1pg0)') generic
-      type is (real(kind=real128));     write(line(istart:),'(1pg0)') generic
       type is (logical);                write(line(istart:),'(l1)') generic
       type is (character(len=*));       write(line(istart:),'(a)') trim(generic)
       type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
@@ -15450,8 +15444,6 @@ integer :: i
       type is (integer(kind=int64));    write(line(istart:),'("[",*(i0,1x))') generic
       type is (real(kind=real32));      write(line(istart:),'("[",*(1pg0,1x))') generic
       type is (real(kind=real64));      write(line(istart:),'("[",*(1pg0,1x))') generic
-      type is (real(kind=real128));     write(line(istart:),'("[",*(1pg0,1x))') generic
-      !type is (real(kind=real256));     write(error_unit,'(1pg0)',advance='no') generic
       type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
       type is (character(len=*));       write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
       type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
@@ -17137,106 +17129,114 @@ end module M_list
 !  Extensively rewritten since under a MIT License.
 !     2013-10-03,2020-12-19,2021-06-12 : John S. Urban
 
-module M_fpp                                                                 !@(#)M_fpp(3f): module used by prep program
-USE ISO_FORTRAN_ENV, ONLY : ERROR_UNIT, OUTPUT_UNIT                          ! access computing environment ; Standard: Fortran 2003
-use M_io,        only : get_tmp, dirname, uniq, fileopen, filedelete         ! Fortran file I/O routines
-use M_kracken95, only : sget, dissect, lget                                  ! load command argument parsing module
+module M_fpp                                                              !@(#)M_fpp(3f): module used by prep program
+USE ISO_FORTRAN_ENV, ONLY : STDERR=>ERROR_UNIT, STDOUT=>OUTPUT_UNIT,STDIN=>INPUT_UNIT
+use M_io,        only : get_tmp, dirname, uniq, fileopen, filedelete      ! Fortran file I/O routines
+use M_kracken95, only : sget, dissect, lget                               ! load command argument parsing module
 use M_strings,   only : nospace, v2s, substitute, upper, lower, isalpha, split, delim, str_replace=>replace, sep, atleast
-use M_list,      only : insert, locate, replace, remove                      ! Basic list lookup and maintenance
-   implicit none
+use M_list,      only : insert, locate, replace, remove                   ! Basic list lookup and maintenance
+implicit none
 
-   logical,save                         :: debug=.false.
+logical,save                         :: debug=.false.
 
-   integer,parameter                    :: num=2048                       ! number of named values allowed
-   integer,public,parameter             :: G_line_length=4096             ! allowed length of input lines
-   integer,public,parameter             :: G_var_len=63                   ! allowed length of variable names
+integer,parameter                    :: num=2048                       ! number of named values allowed
+integer,public,parameter             :: G_line_length=4096             ! allowed length of input lines
+integer,public,parameter             :: G_var_len=63                   ! allowed length of variable names
 
-   integer,public                       :: G_numdef=0                     ! number of defined variables in dictionary
-   logical,public                       :: G_ident=.false.                ! whether to write IDENT as a comment or CHARACTER
+integer,public                       :: G_numdef=0                     ! number of defined variables in dictionary
+logical,public                       :: G_ident=.false.                ! whether to write IDENT as a comment or CHARACTER
 
-   character(len=G_line_length),public  :: G_source                       ! original source file line
-   character(len=G_line_length),public  :: G_outline                      ! message to build for writing to output
+character(len=G_line_length),public  :: G_source                       ! original source file line
+character(len=G_line_length),public  :: G_outline                      ! message to build for writing to output
 
-   character(len=G_var_len),public      :: G_defval(num)                  ! variable values in variable dictionary
-   character(len=G_var_len),public      :: G_defvar(num)                  ! variables in variable dictionary
+character(len=G_var_len),public      :: G_defval(num)                  ! variable values in variable dictionary
+character(len=G_var_len),public      :: G_defvar(num)                  ! variables in variable dictionary
 
-   type file_stack
-      integer                           ::  unit_number
-      integer                           ::  line_number=0
-      character(len=G_line_length)      ::  filename
-   end type
-   type(file_stack),public              ::  G_file_dictionary(50)
+type file_stack
+   integer                           ::  unit_number
+   integer                           ::  line_number=0
+   character(len=G_line_length)      ::  filename
+end type
+type(file_stack),public              ::  G_file_dictionary(50)
 
-   type parcel_stack
-      integer                           ::  unit_number
-      integer                           ::  line_number=0
-      character(len=G_line_length)      ::  name
-   end type
-   type(parcel_stack),public            :: G_parcel_dictionary(500)
+type parcel_stack
+   integer                           ::  unit_number
+   integer                           ::  line_number=0
+   character(len=G_line_length)      ::  name
+end type
+type(parcel_stack),public            :: G_parcel_dictionary(500)
 
-   integer,save                         :: G_line_number=0
-   logical,save,public                  :: G_inparcel=.false.
-   integer,public                       :: G_iocount=0
-   integer,public                       :: G_parcelcount=0
-   integer,public                       :: G_io_total_lines=0
-   integer,public                       :: G_iwidth                       ! maximum width of line to write on output unit
-   logical,public                       :: G_noenv=.false.                ! ignore environment variables in $IFDEF and $IFNDEF
+integer,save                         :: G_line_number=0
+logical,save,public                  :: G_inparcel=.false.
+integer,public                       :: G_iocount=0
+integer,public                       :: G_parcelcount=0
+integer,public                       :: G_io_total_lines=0
+integer,public                       :: G_iwidth                       ! maximum width of line to write on output unit
+logical,public                       :: G_noenv=.false.                ! ignore environment variables in $IFDEF and $IFNDEF
 
-   integer,public                       :: G_iout                         ! output unit
-   integer,save,public                  :: G_iout_init                    ! initial output unit
-  !integer,public                       :: G_ihelp=ERROR_UNIT             ! output unit for help text
-   integer,public                       :: G_ihelp=OUTPUT_UNIT            ! output unit for help text
-   character(len=10),public             :: G_outtype='asis'
+integer,public                       :: G_iout                         ! output unit
+integer,save,public                  :: G_iout_init                    ! initial output unit
+!integer,public                       :: G_ihelp=stderr                 ! output unit for help text
+integer,public                       :: G_ihelp=stdout                 ! output unit for help text
+character(len=10),public             :: G_outtype='asis'
 
-   integer,public                       :: G_inc_count=0
-   character(len=G_line_length),public  :: G_inc_files(50)
-   character(len=:),allocatable,save    :: G_MAN
-   logical,save                         :: G_MAN_COLLECT=.false.
-   logical,save                         :: G_MAN_PRINT=.false.
-   character(len=:),allocatable         :: G_MAN_FILE
-   character(len=10)                    :: G_MAN_FILE_POSITION='ASIS      '
+integer,public                       :: G_inc_count=0
+character(len=G_line_length),public  :: G_inc_files(50)
+character(len=:),allocatable,save    :: G_MAN
+logical,save                         :: G_MAN_COLLECT=.false.
+logical,save                         :: G_MAN_PRINT=.false.
+character(len=:),allocatable         :: G_MAN_FILE
+character(len=10)                    :: G_MAN_FILE_POSITION='ASIS      '
 
-   integer,public                       :: G_nestl=0                      ! count of if/elseif/else/endif nesting level
-   integer,public,parameter             :: G_nestl_max=20                 ! maximum nesting level of conditionals
+integer,public                       :: G_nestl=0                      ! count of if/elseif/else/endif nesting level
+integer,public,parameter             :: G_nestl_max=20                 ! maximum nesting level of conditionals
 
-   logical,save,public                  :: G_write_what=.false.           ! write strings after @(#) similar to what(1).
-   logical,save,public                  :: G_system_on=.false.            ! allow system commands or not on $SYSTEM
+logical,save,public                  :: G_verbose=.false.           ! verbose, including write strings after @(#) like what(1).
+logical,save,public                  :: G_system_on=.false.            ! allow system commands or not on $SYSTEM
 
-   logical,public,save                  :: G_condop(0:G_nestl_max)        ! storage to keep track of previous write flags
-   data G_condop(0:G_nestl_max) /.true.,G_nestl_max*.false./
-   logical,public                       :: G_dc                           ! flag to determine write flag
+logical,public,save                  :: G_condop(0:G_nestl_max)        ! storage to keep track of previous write flags
+data G_condop(0:G_nestl_max) /.true.,G_nestl_max*.false./
+logical,public                       :: G_dc                           ! flag to determine write flag
 
-   logical,public                       :: G_write=.true.                 ! whether non-if/else/endif directives should be processed
-   logical,public                       :: G_llwrite=.true.               ! whether to write current line or skip it
+logical,public                       :: G_write=.true.                 ! whether non-if/else/endif directives should be processed
+logical,public                       :: G_llwrite=.true.               ! whether to write current line or skip it
 
-   integer,public                       :: G_comment_count=0
-   character(len=10),public             :: G_comment_style=' '
-   character(len=:),allocatable,save    :: G_scratch_file
-   integer,save                         :: G_scratch_lun=-1
+integer,public                       :: G_comment_count=0
+character(len=10),public             :: G_comment_style=' '
+character(len=:),allocatable,public  :: G_comment
+character(len=:),allocatable,save    :: G_scratch_file
+integer,save                         :: G_scratch_lun=-1
 
-   character(len=:),allocatable         :: keywords(:)
-   character(len=:),allocatable         :: values(:)
-   integer,allocatable                  :: counts(:)
+character(len=:),allocatable,save    :: G_extract_start
+character(len=:),allocatable,save    :: G_extract_stop
+logical,save                         :: G_extract=.false.
+logical,save                         :: G_extract_auto=.false.
+logical,save                         :: G_extract_flag=.false.
 
-   contains
+character(len=:),allocatable         :: keywords(:)
+character(len=:),allocatable         :: values(:)
+integer,allocatable                  :: counts(:)
+
+contains
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine cond()       !@(#)cond(3f): process conditional directive assumed to be in SOURCE '$verb...'
-   character(len=G_line_length) :: line                    ! directive line with leading prefix character (default is $) removed
-   character(len=G_line_length) :: verb                    ! first word of command converted to uppercase
-   character(len=G_line_length) :: options                 ! everything after first word of command till end of line or !
-   character(len=G_line_length) :: upopts                  ! directive line with leading prefix removed; uppercase; no spaces
-   logical,save                 :: eb=.false.
-   integer,save                 :: noelse=0
-   integer                      :: verblen
+character(len=G_line_length) :: line                       ! directive line with leading prefix character (default is $) removed
+character(len=G_line_length) :: verb                       ! first word of command converted to uppercase
+character(len=G_line_length) :: options                    ! everything after first word of command till end of line or !
+character(len=G_line_length) :: upopts                     ! directive line with leading prefix removed; uppercase; no spaces
+logical,save                 :: eb=.false.
+integer,save                 :: noelse=0
+integer                      :: verblen
 
    line=adjustl(G_source(2:))                              ! remove leading prefix and spaces from directive line
 
-   if (index(line,'!').ne.0) then                          ! if directive contains an exclamation a comment is present
+   if (index(line//' ',G_comment).ne.0) then               ! assume if directive contains G_comment comment is present
                                                            ! LIMITATION: EVEN MESSAGES CANNOT CONTAIN COMMENTS
-      line=line(:index(line,'!')-1)                        ! trim trailing comment from directive
+      line=line(:index(line//' ',G_comment)-1)             ! trim trailing comment from directive
    endif
+   if (line(1:1).eq.G_comment)line=''
 
    verblen=index(line,' ')
    if(verblen.eq.0)then
@@ -17258,7 +17258,7 @@ subroutine cond()       !@(#)cond(3f): process conditional directive assumed to 
 
    if(G_write)then                                                    ! if processing lines in a logically selected region
       if(G_inparcel.and.VERB.ne.'PARCEL')then
-         call write_out(trim(G_source))                                  ! write data line
+         call write_out(trim(G_source))                               ! write data line
          return
       endif
                                                                       ! process the directive
@@ -17266,7 +17266,7 @@ subroutine cond()       !@(#)cond(3f): process conditional directive assumed to 
       case('  ')                                                      ! entire line is a comment
       case('DEFINE');           call define(upopts,1)                 ! only process DEFINE if not skipping data lines
       case('REDEFINE');         call define(upopts,0)                 ! only process DEFINE if not skipping data lines
-      case('UNDEF','UNDEFINE'); call undef(upopts)                    ! only process UNDEF if not skipping data lines
+      case('UNDEF','UNDEFINE','DELETE'); call undef(upper(options))   ! only process UNDEF if not skipping data lines
       case('INCLUDE');          call include(options,50+G_iocount)    ! Filenames can be case sensitive
       case('OUTPUT');           call output_case(options)             ! Filenames can be case sensitive
       case('PARCEL');           call parcel_case(upopts)
@@ -17275,19 +17275,21 @@ subroutine cond()       !@(#)cond(3f): process conditional directive assumed to 
       case('SET');              call set(options)
       case('IMPORT');           call import(options)
       case('IDENT','@(#)');     call ident(options)
-      case('SHOW') ;            call debug_state(options)
+      case('SHOW') ;            call debug_state(options,msg='')
       case('SYSTEM');           call exe()
-      case('MESSAGE');          call stderr(G_source(2:))             ! trustingly trim MESSAGE from directive
+      case('MESSAGE');          call write_err(G_source(2:))          ! trustingly trim MESSAGE from directive
       case('STOP');             call stop(upopts)
       case('QUIT');             call stop('0')
+      CASE('GET_ARGUMENTS');    call write_get_arguments()
+      CASE('HELP');             call short_help()
       end select
    endif
    select case(VERB)                                                  ! process logical flow control even if G_write is false
 
-   case('DEFINE','INCLUDE','SHOW','STOP','QUIT')
-   case('SYSTEM','UNDEF','UNDEFINE','MESSAGE','REDEFINE')
+   case('DEFINE','INCLUDE','SHOW','STOP','QUIT','HELP')
+   case('SYSTEM','UNDEF','UNDEFINE','DELETE','MESSAGE','REDEFINE')
    case('OUTPUT','IDENT','@(#)','BLOCK','IMPORT')
-   case('PARCEL','POST','SET')
+   case('PARCEL','POST','SET','GET_ARGUMENTS')
    case(' ')
 
    case('ELSE','ELSEIF','ELIF');  call else(verb,upopts,noelse,eb)
@@ -17302,18 +17304,18 @@ end subroutine cond
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine exe()                                 ! @(#)exe(3f): Execute the command line specified by the string COMMAND.
-   character(len=G_line_length)  :: command      ! directive line with leading prefix and directive name removed
-   character(len=G_line_length)  :: defineme     ! scratch string for writing a DEFINE directive in to return command status
-   integer                       :: icmd=0
-   integer                       :: cstat
-   character(len=256)            :: sstat
+subroutine exe()                              ! @(#)exe(3f): Execute the command line specified by the string COMMAND.
+character(len=G_line_length)  :: command      ! directive line with leading prefix and directive name removed
+character(len=G_line_length)  :: defineme     ! scratch string for writing a DEFINE directive in to return command status
+integer                       :: icmd=0
+integer                       :: cstat
+character(len=256)            :: sstat
 
    if(G_system_on)then
       command=adjustl(G_source(2:))                                                 ! remove $ from directive
       command=command(7:)                                                           ! trim SYSTEM from directive
-      if(G_write_what)then
-         call stderr('+'//command)
+      if(G_verbose)then
+         call write_err('+ '//command)
       endif
 
       ! not returning command status on all platforms
@@ -17334,11 +17336,42 @@ end subroutine exe
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
+subroutine write_get_arguments()                ! @(#)write_get_arguments(3f): write block for processing M_CLI command line parsing
+integer :: i
+character(len=132),parameter :: text(*)=[character(len=132) :: &
+"function get_arguments()"                                                                              ,&
+"character(len=255)           :: message ! use for I/O error messages"                                  ,&
+"character(len=:),allocatable :: string  ! stores command line argument"                                ,&
+"integer                      :: get_arguments"                                                         ,&
+"integer :: command_line_length"                                                                        ,&
+"   call get_command(length=command_line_length)   ! get length needed to hold command"                 ,&
+"   allocate(character(len=command_line_length) :: string)"                                             ,&
+"   call get_command(string)"                                                                           ,&
+"   ! trim off command name and get command line arguments"                                             ,&
+"   string=adjustl(string)//' '                    ! assuming command verb does not have spaces in it"  ,&
+"   string=string(index(string,' '):)"                                                                  ,&
+"   string='&cmd '//string//' /'                   ! add namelist prefix and terminator"                ,&
+"   read(string,nml=cmd,iostat=get_arguments,iomsg=message) ! internal read of namelist"                ,&
+"   if(get_arguments.ne.0)then"                                                                         ,&
+"      write(*,'(''ERROR:'',i0,1x,a)')get_arguments, trim(message)"                                       ,&
+"      write(*,*)'COMMAND OPTIONS ARE'"                                                                 ,&
+"      write(*,nml=cmd)"                                                                                ,&
+"      stop 1"                                                                                          ,&
+"   endif"                                                                                              ,&
+"end function get_arguments"                                                                            ,&
+"" ]
+do i=1,size(text)
+   write(G_iout,'(a)')trim(text(i))
+enddo
+end subroutine write_get_arguments
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
 subroutine output_case(opts)                             !@(#)output_case(3f): process $OUTPUT directive
-   character(len=*)              :: opts
-   character(len=G_line_length)  :: filename             ! filename on $OUTPUT command
-   character(len=20)             :: position
-   integer                       :: ios
+character(len=*)              :: opts
+character(len=G_line_length)  :: filename                ! filename on $OUTPUT command
+character(len=20)             :: position
+integer                       :: ios
       call dissect2('output','-oo --append .false.',opts)  ! parse options and inline comment on input line
       filename=sget('output_oo')
       select case(filename)
@@ -17358,8 +17391,8 @@ subroutine output_case(opts)                             !@(#)output_case(3f): p
             call stop_prep('*perf:output_case* ERROR(004) - FAILED TO OPEN OUTPUT FILE:'//trim(filename))
          endif
       end select
-   if(G_write_what)then
-      write(ERROR_UNIT,'(a)')'*perf:output_case*: OUTPUT FILE CHANGED TO:'//trim(filename)
+   if(G_verbose)then
+      call write_err( '+ OUTPUT FILE CHANGED TO: '//trim(filename) )
    endif
 end subroutine output_case
 !===================================================================================================================================
@@ -17393,10 +17426,10 @@ end subroutine parcel_case
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine ident(opts)                                 !@(#)ident(3f): process $IDENT directive
-   character(len=*)              :: opts
-   character(len=G_line_length)  :: lang               ! language on $IDENT command
-   character(len=:),allocatable  :: text
-   integer,save                  :: ident_count=1
+character(len=*)              :: opts
+character(len=G_line_length)  :: lang               ! language on $IDENT command
+character(len=:),allocatable  :: text
+integer,save                  :: ident_count=1
 
    call dissect2('ident','-oo --language fortran',opts)  ! parse options and inline comment on input line
    text=trim(sget('ident_oo'))
@@ -17437,11 +17470,11 @@ subroutine define(opts,ireset)                              !@(#)define(3f): pro
 character(len=*),intent(in)    :: opts                      ! packed uppercase working copy of input line with leading $verb removed
 integer,intent(in)             :: ireset                    ! 0= can redefine variable, anything else fail on redefine
 
-   character(len=G_line_length):: temp                      ! scratch
-   integer                     :: iequ                      ! location of "=" in the directive, if any
-   integer                     :: j                         ! index thru variable dictionary to see if variable is already defined
-   integer                     :: iname                     ! length of variable name
-   integer                     :: istore                    ! location of variable name in dictionary
+character(len=G_line_length):: temp                         ! scratch
+integer                     :: iequ                         ! location of "=" in the directive, if any
+integer                     :: j                            ! index thru variable dictionary to see if variable is already defined
+integer                     :: iname                        ! length of variable name
+integer                     :: istore                       ! location of variable name in dictionary
 
 ! CHECK COMMAND SYNTAX
    iequ=index(opts,'=')                                     ! find "=" in "variable_name=expression" if any
@@ -17466,7 +17499,8 @@ integer,intent(in)             :: ireset                    ! 0= can redefine va
          if (opts(:iname).eq.G_defvar(j)) then
             istore=j
             if(ireset.ne.0)then                             ! fail if redefinitions are not allowed on this call
-               call stop_prep('*prep:define* ERROR(010) - REDEFINITION OF DEFINED NAME INVALID:'//trim(opts))
+               call warn_prep('*prep:define* WARNING(010) - REDEFINITION OF DEFINED NAME :' &
+               & //trim(G_defvar(j))//'='//trim(adjustl(G_defval(j)))//' with '//trim(opts))
             endif
          endif
       enddo
@@ -17494,6 +17528,8 @@ integer,intent(in)             :: ireset                    ! 0= can redefine va
    temp=str_replace(temp,'<','.LT.')
    temp=str_replace(temp,'&&','.AND.')
    temp=str_replace(temp,'||','.OR.')
+   temp=str_replace(temp,'!','.NOT.')
+   temp=str_replace(temp,'.XOR.','.NEQV.')
    call parens(temp)                                        !
    if (iequ.ne.0) then
       temp=opts(:iequ)//temp
@@ -17544,21 +17580,21 @@ end function getdate
 !===================================================================================================================================
 subroutine name(line)                                                 !@(#)name(3f): test for legal variable name
 character(len=*)          :: line
-   integer                :: i
+integer                   :: i
 
    if (line(1:1).lt.'A'.or.line(1:1).gt.'Z'.and.line(1:1).ne.'_')then                         ! variable names start with a-z
-     call stop_prep("*prepname* ERROR(016) -VARIABLE NAME DOES NOT START WITH ALPHAMERIC(OR GENERAL SYNTAX ERROR):"//trim(G_source))
+    call stop_prep("*prep:name* ERROR(016) -VARIABLE NAME DOES NOT START WITH ALPHAMERIC(OR GENERAL SYNTAX ERROR):"//trim(G_source))
    endif
 
    if(len_trim(line).gt.G_var_len)then
-      call stop_prep('*prepname* ERROR(017) - VARIABLE NAME EXCEEDS '//v2s(G_var_len)//' CHARACTERS:'//trim(G_source))
+     call stop_prep('*prep:name* ERROR(017) - VARIABLE NAME EXCEEDS '//v2s(G_var_len)//' CHARACTERS:'//trim(G_source))
    endif
 
    do i=2,len_trim(line)                                                 ! name uses $  _ and letters (A-Z) digits (0-9)
       if(line(i:i).ne.'$'.and.line(i:i).ne.'_'.and.     &
       & (line(i:i).lt.'A'.or.line(i:i).gt.'Z').and.     &
       & (line(i:i).lt.'0'.or.line(i:i).gt.'9')) then
-       call stop_prep('*prepname* ERROR(018) -VARIABLE NAME CONTAINS UNALLOWED CHARACTER(OR GENERAL SYNTAX ERROR):'//trim(G_source))
+      call stop_prep('*prep:name* ERROR(018) -VARIABLE NAME CONTAINS UNALLOWED CHARACTER(OR GENERAL SYNTAX ERROR):'//trim(G_source))
       endif
    enddo
 
@@ -17572,14 +17608,14 @@ integer,intent(in)                        :: ipos1                          ! be
 integer,intent(in)                        :: ipos2                          ! ending position of variable name in LINE
 character(len=G_var_len),intent(out)      :: value                          ! returned variable value
 
-   character(len=G_line_length)           :: temp                           ! copy of substring being examined
-   integer                                :: i
-   integer                                :: ivalue
+character(len=G_line_length)           :: temp                              ! copy of substring being examined
+integer                                :: i
+integer                                :: ivalue
 
    temp=line(ipos1:ipos2)                                                   ! place variable name/value substring into TEMP
 
    if (temp(1:1).eq.' ')then                                                ! did not find expected variable name or value
-      call stop_prep('*prepgetvalue* ERROR(019) - INCOMPLETE STATEMENT.'//trim(G_SOURCE))
+      call stop_prep('*prep* ERROR(019) - INCOMPLETE STATEMENT.'//trim(G_SOURCE))
    endif
 
    if (temp(1:1).ge.'A'.and.temp(1:1).le.'Z') then                          ! appears to be a variable name (not number or logical)
@@ -17616,32 +17652,38 @@ end subroutine getval
 !===================================================================================================================================
 subroutine undef(opts)                                     !@(#)undef(3f): process UNDEFINE directive
 character(len=*)     :: opts                               ! directive with no spaces, leading prefix removed, and all uppercase
-   integer                     :: ifound                   ! subscript for location of variable to delete
-   integer                     :: i,j
+character(len=:),allocatable :: names(:)              
+integer                     :: ifound                      ! subscript for location of variable to delete
+integer                     :: i,j,k
 
 ! REMOVE VARIABLE IF FOUND IN VARIABLE NAME DICTIONARY
    if (len_trim(opts).eq.0) then                           ! if no variable name
-      call stop_prep('*prepundef* ERROR(023) - INCOMPLETE STATEMENT:'//trim(G_source))
+      call stop_prep('*prep* ERROR(023) - $UNDEFINE MISSING TARGETS:'//trim(G_source))
    endif
+   call split(opts,names)
 
-   ifound=-1                                               ! initialize subscript for variable name to be searched for to bad value
-   do i=1,G_numdef                                         ! find defined variable to be undefined by searching dictionary
-      if (G_defvar(i).eq.opts)then                         ! found the requested variable name
-         ifound=i                                          ! record the subscript that the name was located at
-         exit                                              ! found the variable so no longer any need to search remaining names
+   do k=1,size(names)
+      if(G_verbose)then
+         call write_err('+ $UNDEFINE '//names(k))
+      endif
+      ifound=-1                                            ! initialize subscript for variable name to be searched for to bad value
+      do i=1,G_numdef                                      ! find defined variable to be undefined by searching dictionary
+         if (G_defvar(i).eq.names(k))then                  ! found the requested variable name
+            ifound=i                                       ! record the subscript that the name was located at
+            exit                                           ! found the variable so no longer any need to search remaining names
+         endif
+      enddo
+   
+      if (ifound.lt.1) then                                ! variable name not found
+         cycle
+      else
+         do j=ifound,G_numdef-1                            ! remove variable name and value from list of variable names and values
+           G_defvar(j)=G_defvar(j+1)                       ! replace the value to be removed with the one above it and then repeat
+           G_defval(j)=G_defval(j+1)
+         enddo
+         G_numdef=G_numdef-1                               ! decrement number of defined variables
       endif
    enddo
-
-   if (ifound.lt.1) then                                   ! variable name not found
-      return                                               ! quietly ignore unknown name (or syntax error!)
-   endif
-
-   do j=ifound,G_numdef-1                                  ! remove variable name and value from list of variable names and values
-     G_defvar(j)=G_defvar(j+1)                             ! replace the value to be removed with the one above it and then repeat
-     G_defval(j)=G_defval(j+1)
-   enddo
-
-   G_numdef=G_numdef-1                                     ! decrement number of defined variables
 
 end subroutine undef
 !===================================================================================================================================
@@ -17651,10 +17693,10 @@ subroutine if(opts,noelse,eb)                              !@(#)if(3f): process 
 character(len=*),intent(in)     :: opts
 integer,intent(out)             :: noelse
 logical                         :: eb
-   character(len=G_var_len)     :: value
-   integer                      :: ios
-   integer                      :: i
-   character(len=G_line_length) :: expression       ! line        -
+character(len=G_var_len)     :: value
+integer                      :: ios
+integer                      :: i
+character(len=G_line_length) :: expression       ! line        -
 
    noelse=0
    G_write=.false.
@@ -17665,13 +17707,13 @@ logical                         :: eb
    endif
    expression=opts
 
-   FIND_DEFINED: do                                        ! find and reduce all DEFINED() functions to ".TRUE." or ".FALSE."
-      if (index(expression,'DEFINED(').ne.0) then                ! find a DEFINED() function
-         call ifdef(expression,index(expression,'DEFINED('))           ! reduce DEFINED() function that was found
-         expression=nospace(expression)                          ! remove any spaces from rewritten expression
-         cycle                                             ! look for another DEFINED() function
+   FIND_DEFINED: do                                           ! find and reduce all DEFINED() functions to ".TRUE." or ".FALSE."
+      if (index(expression,'DEFINED(').ne.0) then             ! find a DEFINED() function
+         call ifdef(expression,index(expression,'DEFINED('))  ! reduce DEFINED() function that was found
+         expression=nospace(expression)                       ! remove any spaces from rewritten expression
+         cycle                                                ! look for another DEFINED() function
       endif
-      exit                                                 ! no remaining DEFINED() functions so exit loop
+      exit                                                    ! no remaining DEFINED() functions so exit loop
    enddo FIND_DEFINED
 
    expression=str_replace(expression,'==','.EQ.')
@@ -17683,7 +17725,8 @@ logical                         :: eb
    expression=str_replace(expression,'<','.LT.')
    expression=str_replace(expression,'&&','.AND.')
    expression=str_replace(expression,'||','.OR.')
-
+   expression=str_replace(expression,'!','.NOT.')
+   expression=str_replace(expression,'.XOR.','.NEQV.')
    call parens(expression)
    if (index(expression,'.').eq.0) then                            ! if line should be a variable only
       if (expression(1:1).ge.'A'.and.expression(1:1).le.'Z') then  ! check that variable name starts with a valid character
@@ -17714,14 +17757,14 @@ end subroutine if
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine def(verb,opts,noelse,eb)                           !@(#)def(3f): process IFDEF and IFNDEF directives
-character(len=*),intent(in)     :: verb
-character(len=*),intent(in)     :: opts
-integer,intent(out)             :: noelse
-logical                         :: eb
-   character(len=G_var_len)     :: value
-   integer                      :: i
-   integer                      :: istatus
+subroutine def(verb,opts,noelse,eb)                  !@(#)def(3f): process IFDEF and IFNDEF directives
+character(len=*),intent(in)  :: verb
+character(len=*),intent(in)  :: opts
+integer,intent(out)          :: noelse
+logical                      :: eb
+character(len=G_var_len)     :: value
+integer                      :: i
+integer                      :: istatus
 
    noelse=0
    G_write=.false.
@@ -17756,30 +17799,30 @@ end subroutine def
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine ifdef(line,ipos1)                            !@(#)ifdef(3f): process and reduce DEFINED() function that was found
-   character(len=G_line_length)   :: line
-   character(len=G_line_length)   :: newl
-   integer                        :: ipos1
-   character(len=G_var_len)       :: ifvar
-   integer                        :: i
+subroutine ifdef(line,ipos1)                         !@(#)ifdef(3f): process and reduce DEFINED() function that was found
+character(len=G_line_length)   :: line
+character(len=G_line_length)   :: newl
+integer                        :: ipos1
+character(len=G_var_len)       :: ifvar
+integer                        :: i
 
    newl=line(ipos1+7:)
 
    if (len_trim(newl).eq.1.or.index(newl,')').eq.0.or. index(newl,')').eq.2)then
-      call stop_prep("*prepifdef* ERROR(027) - INCOMPLETE STATEMENT."//trim(G_SOURCE))
+      call stop_prep("*prep:ifdef* ERROR(027) - INCOMPLETE STATEMENT."//trim(G_SOURCE))
    endif
    if (index(newl,')').gt.33)then
-      call stop_prep("*prepifdef* ERROR(028) - MISSPELLING OR NAME LENGTH EXCEEDS "//v2s(G_var_len)//" CHARACTERS."//trim(G_source))
+     call stop_prep("*prep:ifdef* ERROR(028) - MISSPELLING OR NAME LENGTH EXCEEDS "//v2s(G_var_len)//" CHARACTERS."//trim(G_source))
    endif
    ifvar= newl(2:index(newl,')')-1)
    if (newl(2:2).lt.'A'.or.newl(2:2).gt.'Z')then
-      call stop_prep("*prepifdef* ERROR(029) - CONSTANT LOGICAL EXPRESSION REQUIRED."//trim(G_source))
+      call stop_prep("*prep:ifdef* ERROR(029) - CONSTANT LOGICAL EXPRESSION REQUIRED."//trim(G_source))
    endif
    do i=3,index(newl,')')-1
       IF (NEWL(I:I).NE.'$'.AND.NEWL(I:I).NE.'_'.AND.(NEWL(I:I).LT.'A' &
        &  .OR.NEWL(I:I).GT.'Z').AND.(NEWL(I:I).LT.'0'                 &
        &  .or.newl(i:i).gt.'9')) then
-         call stop_prep("*prepifdef* ERROR(030) - CONSTANT LOGICAL EXPRESSION REQUIRED."//trim(G_source))
+         call stop_prep("*prep:ifdef* ERROR(030) - CONSTANT LOGICAL EXPRESSION REQUIRED."//trim(G_source))
       endif
    enddo
 
@@ -17814,7 +17857,7 @@ if(debug)then
 endif
 
    if(noelse.eq.1.or.G_nestl.eq.0) then                    ! test for else instead of elseif
-      call stop_prep("*prepelse* ERROR(031) - MISPLACED $ELSE OR $ELSEIF DIRECTIVE:"//trim(G_SOURCE))
+      call stop_prep("*prep:else* ERROR(031) - MISPLACED $ELSE OR $ELSEIF DIRECTIVE:"//trim(G_SOURCE))
    endif
    if(verb.eq.'ELSE')then
       noelse=1
@@ -17865,7 +17908,7 @@ logical,intent(out)           :: eb
    G_nestl=G_nestl-1                                           ! decrease if level
 
    if(G_nestl.lt.0)then
-      call stop_prep("*prependif* ERROR(032) - MISPLACED $ENDIF DIRECTIVE:"//trim(G_source))
+      call stop_prep("*prep:endif* ERROR(032) - MISPLACED $ENDIF DIRECTIVE:"//trim(G_source))
    endif
 
    noelse=0                                                    ! reset else level
@@ -17893,8 +17936,8 @@ end subroutine endif
 !===================================================================================================================================
 subroutine parens(line)                       !@(#)parens(3f): find subexpressions in parenthesis and process them
 character(len=G_line_length)    :: line       ! line        -
-   integer                      :: i
-   integer                      :: j
+integer                         :: i
+integer                         :: j
 
    TILLDONE: do
       if (index(line,')').ne.0) then          ! closing parens found
@@ -17917,9 +17960,9 @@ character(len=G_line_length)    :: line       ! line        -
                do j=i-2,1,-1
                   if (index('*/+-',line(j:j)).ne.0) exit
                enddo
-               if (j.eq.i-2) then
-                  call stop_prep("*prep* 1**(-1) NOT IMPLEMENTED YET")
-               endif
+               !if (j.eq.i-2) then
+               !   call stop_prep("*prep* 1**(-1) NOT IMPLEMENTED YET")
+               !endif
 
                select case (index('*/+-',line(i-1:i-1)))
                case(1,2)
@@ -17941,9 +17984,9 @@ character(len=G_line_length)    :: line       ! line        -
             do j=i-2,1,-1
                if (index('*/+-',line(j:j)).ne.0) exit
             enddo
-            if (j.eq.i-2) then
-               call stop_prep("*prep* 1**(-1) NOT IMPLEMENTED YET")
-            endif
+            !if (j.eq.i-2) then
+            !   !call stop_prep("*prep* 1**(-1) Not Implemented Yet")
+            !endif
 
             select case (index('*/+-',line(i-1:i-1)))
             case(1,2)
@@ -17973,11 +18016,11 @@ end subroutine parens
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine math(line,ipos1,ipos2)                             !@(#)math(3f):
-   integer                               :: ipos1
-   integer                               :: ipos2
-   integer                               :: i,j
-   character(len=G_line_length)            :: line
-   character(len=G_line_length)            :: newl
+integer                               :: ipos1
+integer                               :: ipos2
+integer                               :: i,j
+character(len=G_line_length)          :: line
+character(len=G_line_length)          :: newl
 
    newl=line(ipos1:ipos2)
    i=1
@@ -18003,161 +18046,161 @@ end subroutine math
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine domath(line,ipos2)            !@(#)domath(3f): reduce integer expression containing  +-/* and ** operators
-character(len=*)                             :: line
-integer                                      :: ipos2
+character(len=*)                :: line
+integer                         :: ipos2
 
-   character(len=11)                         :: temp
-   character(len=G_line_length)                :: newl
-   character(len=2),save                     :: ops(3)= (/'**','*/','+-'/)
-   integer                                   :: i
-   integer                                   :: j
-   integer                                   :: loc
-   integer                                   :: minus1
-   integer                                   :: i1
-   integer                                   :: i2
-   integer                                   :: l
-   integer                                   :: len
-   integer                                   :: numop
+character(len=11)               :: temp
+character(len=G_line_length)    :: newl
+character(len=2),save           :: ops(3)= (/'**','*/','+-'/)
+integer                         :: i
+integer                         :: j
+integer                         :: loc
+integer                         :: minus1
+integer                         :: i1
+integer                         :: i2
+integer                         :: l
+integer                         :: len
+integer                         :: numop
 
-   if (ipos2.eq.0) return
-   loc=0
-   j=0
-   minus1=1
-   newl=line(:ipos2)
-   OVERALL: do numop=1,3                         ! check **, then */, then +-
-      TILLDONE: do                               ! keep doing reduction of current operators
-        i=index(newl,ops(numop))                 ! find location in input string where operator string was found
-        if (numop.ne.1) then                     ! if not the two-character operator ** check for either operator of current group
-          i=index(newl,ops(numop)(1:1))          ! find  first operator of group, if present
-          j=index(newl,ops(numop)(2:2))          ! find second operator of group, if present
-          i=max(i,j)                             ! find right-most operator, if any
-          if (i*j.ne.0) i=min(i,j)               ! if at least one operator is present find left-most
-        endif
-        IF (I.EQ.0) cycle OVERALL                ! did not find these operators
+  if (ipos2.eq.0) return
+  loc=0
+  j=0
+  minus1=1
+  newl=line(:ipos2)
+  OVERALL: do numop=1,3                         ! check **, then */, then +-
+     TILLDONE: do                               ! keep doing reduction of current operators
+       i=index(newl,ops(numop))                 ! find location in input string where operator string was found
+       if (numop.ne.1) then                     ! if not the two-character operator ** check for either operator of current group
+         i=index(newl,ops(numop)(1:1))          ! find  first operator of group, if present
+         j=index(newl,ops(numop)(2:2))          ! find second operator of group, if present
+         i=max(i,j)                             ! find right-most operator, if any
+         if (i*j.ne.0) i=min(i,j)               ! if at least one operator is present find left-most
+       endif
+       IF (I.EQ.0) cycle OVERALL                ! did not find these operators
 
-        LEN=1                                    ! operator length
-        IF (NUMOP.EQ.1) LEN=2
-        IF (I.EQ.len_trim(NEWL)) then            ! if operator is at end of string
-           call stop_prep("*prepdomath* ERROR(035) - INCOMPLETE STATEMENT. OPERATOR (**,/,*,+,-) AT STRING END:"//trim(G_SOURCE))
-        endif
-        IF (I.EQ.1.AND.NUMOP.NE.3) then          ! if operator at beginning of string and not +-
-         call stop_prep("*prepdomath* ERROR(036)-SYNTAX ERROR. OPERATOR (**,*,/) NOT ALLOWED TO PREFIX EXPRESSION:"//trim(G_SOURCE))
-        endif
-        if (.not.(i.eq.1.and.numop.eq.3)) then   ! if processing +- operators and sign at beginning of string skip this
-           if (index('*/+-',newl(i-1:i-1)).ne.0.or.index('*/+-',newl(i+len:i+len)).ne.0) then
-              call stop_prep('*prepdomath* ERROR(037) - SYNTAX ERROR IN DOMATH:'//trim(G_source))
-           endif
-        endif
-
-        i1=0
-        if (.not.(i.eq.1.and.numop.eq.3)) then
-           do j=i-1,1,-1
-             if (index('*/+-.',newl(j:j)).eq.0) cycle
-             exit
-           enddo
-           if (.not.(j.eq.i-1.and.j.ne.1))then
-              i1=get_integer_from_string(newl(j+1:i-1))
-           endif
-        endif
-        do l=i+len_trim(ops(numop)),len_trim(newl)
-          if (index('*/+-.',newl(l:l)).eq.0) cycle
-          exit
-        enddo
-
-        i2=get_integer_from_string(newl(i+len:l-1))
-
-        if (numop.eq.1) then
-          i1=i1**i2*minus1
-        else
-           select case (index('*/+-',newl(i:i)))
-           case(1)
-              i1=i1*i2*minus1
-           case(2)
-              if(i2.eq.0)then
-                 call stop_prep('*prepdomath* ERROR(038) - DIVIDE BY ZERO:'//trim(G_source))
-              endif
-              i1=i1/i2*minus1
-           case(3)
-           if (i1.ne.0) then
-             i1=i1*minus1+i2
-           else
-             i1=i1+i2*minus1
-           endif
-           case(4)
-              if (i1.ne.0) then
-                i1=i1*minus1-i2
-              else
-                i1=i1-i2*minus1
-              endif
-           case default
-              call stop_prep('*prepdomath* ERROR(039) - INTERNAL PROGRAM ERROR:'//trim(G_source))
-           end select
-        endif
-
-        if (i1.le.0) then
-          if (j.eq.i-1.and.j.ne.1) then
-            minus1=-1
-            i1=abs(i1)
-            loc=j+1
-            newl(j+1:j+1)=' '
-            l=l-1
-            newl=nospace(newl)
-          elseif (i.eq.1.and.numop.eq.3) then
-            minus1=-1
-            i1=abs(i1)
-            loc=i
-            newl(j:j)=' '
-            l=l-1
-            j=j-1
-            newl=nospace(newl)
-          else
-            minus1=1
+       LEN=1                                    ! operator length
+       IF (NUMOP.EQ.1) LEN=2
+       IF (I.EQ.len_trim(NEWL)) then            ! if operator is at end of string
+          call stop_prep("*prep:domath* ERROR(035) - INCOMPLETE STATEMENT. OPERATOR (**,/,*,+,-) AT STRING END:"//trim(G_SOURCE))
+       endif
+       IF (I.EQ.1.AND.NUMOP.NE.3) then          ! if operator at beginning of string and not +-
+        call stop_prep("*prep:domath* ERROR(036)-SYNTAX ERROR. OPERATOR (**,*,/) NOT ALLOWED TO PREFIX EXPRESSION:"//trim(G_SOURCE))
+       endif
+       if (.not.(i.eq.1.and.numop.eq.3)) then   ! if processing +- operators and sign at beginning of string skip this
+          if (index('*/+-',newl(i-1:i-1)).ne.0.or.index('*/+-',newl(i+len:i+len)).ne.0) then
+            call stop_prep('*prep:domath* ERROR(037) - SYNTAX ERROR IN DOMATH:'//trim(G_source))
           endif
-        else
-          minus1=1
-        endif
-        write(temp,'(i11)') i1
-        temp=nospace(temp)
-        if (j.eq.0.and.l.gt.len_trim(newl)) then
-          newl=temp(:len_trim(temp))
-          cycle overall
-        elseif (j.eq.0) then
-          newl=temp(:len_trim(temp))//newl(l:)
-        elseif (l.gt.len_trim(newl)) then
-          newl=newl(:j)//temp(:len_trim(temp))
-        else
-          newl=newl(:j)//temp(:len_trim(temp))//newl(l:)
-        endif
-        if(i1.lt.0)then  ! if i1 is negative, could produce +-
-           call substitute(newl,'+-','-')
-        endif
-      enddo TILLDONE
-   enddo OVERALL
+       endif
 
-   if (minus1.eq.-1.and.(loc.eq.0.or.loc.eq.1)) then
-      newl(:G_line_length)='-'//newl  !*! note potentially trimming a character off the end
-   elseif (minus1.eq.-1.and.loc.ne.1) then
-      newl=newl(:loc-1)//'-'//newl(loc:)
-   endif
+       i1=0
+       if (.not.(i.eq.1.and.numop.eq.3)) then
+          do j=i-1,1,-1
+            if (index('*/+-.',newl(j:j)).eq.0) cycle
+            exit
+          enddo
+          if (.not.(j.eq.i-1.and.j.ne.1))then
+             i1=get_integer_from_string(newl(j+1:i-1))
+          endif
+       endif
+       do l=i+len_trim(ops(numop)),len_trim(newl)
+         if (index('*/+-.',newl(l:l)).eq.0) cycle
+         exit
+       enddo
 
-   line(:ipos2)=newl(:len_trim(newl))
+       i2=get_integer_from_string(newl(i+len:l-1))
+
+       if (numop.eq.1) then
+         i1=i1**i2*minus1
+       else
+          select case (index('*/+-',newl(i:i)))
+          case(1)
+             i1=i1*i2*minus1
+          case(2)
+             if(i2.eq.0)then
+                call stop_prep('*prepdomath* ERROR(038) - DIVIDE BY ZERO:'//trim(G_source))
+             endif
+             i1=i1/i2*minus1
+          case(3)
+          if (i1.ne.0) then
+            i1=i1*minus1+i2
+          else
+            i1=i1+i2*minus1
+          endif
+          case(4)
+             if (i1.ne.0) then
+               i1=i1*minus1-i2
+             else
+               i1=i1-i2*minus1
+             endif
+          case default
+             call stop_prep('*prepdomath* ERROR(039) - INTERNAL PROGRAM ERROR:'//trim(G_source))
+          end select
+       endif
+
+       if (i1.le.0) then
+         if (j.eq.i-1.and.j.ne.1) then
+           minus1=-1
+           i1=abs(i1)
+           loc=j+1
+           newl(j+1:j+1)=' '
+           l=l-1
+           newl=nospace(newl)
+         elseif (i.eq.1.and.numop.eq.3) then
+           minus1=-1
+           i1=abs(i1)
+           loc=i
+           newl(j:j)=' '
+           l=l-1
+           j=j-1
+           newl=nospace(newl)
+         else
+           minus1=1
+         endif
+       else
+         minus1=1
+       endif
+       write(temp,'(i11)') i1
+       temp=nospace(temp)
+       if (j.eq.0.and.l.gt.len_trim(newl)) then
+         newl=temp(:len_trim(temp))
+         cycle overall
+       elseif (j.eq.0) then
+         newl=temp(:len_trim(temp))//newl(l:)
+       elseif (l.gt.len_trim(newl)) then
+         newl=newl(:j)//temp(:len_trim(temp))
+       else
+         newl=newl(:j)//temp(:len_trim(temp))//newl(l:)
+       endif
+       if(i1.lt.0)then  ! if i1 is negative, could produce +-
+          call substitute(newl,'+-','-')
+       endif
+     enddo TILLDONE
+  enddo OVERALL
+
+  if (minus1.eq.-1.and.(loc.eq.0.or.loc.eq.1)) then
+     newl(:G_line_length)='-'//newl  !*! note potentially trimming a character off the end
+  elseif (minus1.eq.-1.and.loc.ne.1) then
+     newl=newl(:loc-1)//'-'//newl(loc:)
+  endif
+
+  line(:ipos2)=newl(:len_trim(newl))
 
 end subroutine domath
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine doop(line,ipos1,ipos2)                       !@(#)doop(3f): find VAL.OP.VAL strings and reduce to .TRUE. or .FALSE.
-character(len=G_line_length)       :: line
-integer                            :: ipos1
-integer                            :: ipos2
+character(len=G_line_length)    :: line
+integer                         :: ipos1
+integer                         :: ipos2
 
-   character(len=4),parameter      :: ops(6) = ['.EQ.','.NE.','.GE.','.GT.','.LE.','.LT.']
-   character(len=G_var_len)        :: val1
-   character(len=G_var_len)        :: val2
-   character(len=7)                :: temp
+character(len=4),parameter      :: ops(6) = ['.EQ.','.NE.','.GE.','.GT.','.LE.','.LT.']
+character(len=G_var_len)        :: val1
+character(len=G_var_len)        :: val2
+character(len=7)                :: temp
 
-   character(len=G_line_length)    :: newl
-   integer                         :: i,j,k
+character(len=G_line_length)    :: newl
+integer                         :: i,j,k
 
    newl=line(ipos1:ipos2)
    CHECK_EACH_OP_TYPE: do i=1,6
@@ -18210,15 +18253,15 @@ end subroutine doop
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-   logical function trufal(line,ipos1,ipos2)       ! @(#)trufal(3f): convert variable name or .TRUE./.FALSE. to a logical value
-   character(len=G_line_length),intent(in) :: line           ! line containing string to interpret as a logical value
-   integer,intent(in)                    :: ipos1            ! starting column of substring in LINE
-   integer,intent(in)                    :: ipos2            ! ending column of substring in LINE
+logical function trufal(line,ipos1,ipos2)       ! @(#)trufal(3f): convert variable name or .TRUE./.FALSE. to a logical value
+character(len=G_line_length),intent(in) :: line              ! line containing string to interpret as a logical value
+integer,intent(in)                      :: ipos1             ! starting column of substring in LINE
+integer,intent(in)                      :: ipos2             ! ending column of substring in LINE
 
-   character(len=G_var_len)                :: value          ! substring to extract from LINE
-   integer                               :: i                ! loop counter
-   integer                               :: ios              ! error code returned by an internal READ
-   integer                               :: ifound           ! index in dictionary at which a variable name was found, or -1
+character(len=G_var_len)                :: value             ! substring to extract from LINE
+integer                                 :: i                 ! loop counter
+integer                                 :: ios               ! error code returned by an internal READ
+integer                                 :: ifound            ! index in dictionary at which a variable name was found, or -1
 
    trufal=.false.                                            ! initialize return value
    value=line(ipos1:ipos2)                                   ! extract substring from LINE to interpret
@@ -18255,26 +18298,26 @@ end subroutine doop
       call stop_prep('*preptrufal* ERROR(042) - CONSTANT LOGICAL EXPRESSION REQUIRED:'//trim(G_source))
    endif
 
-   end function trufal
+end function trufal
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine logic(line,ipos1,ipos2)           !@(#)logic(3f): process .OP. operator strings
-   character(len=*)             :: line
-   integer,intent(in)           :: ipos1, ipos2
+character(len=*)             :: line
+integer,intent(in)           :: ipos1, ipos2
 
-   logical                      :: one, two
-   character(len=7)             :: temp
-   character(len=G_line_length) :: newl
-   character(len=6),save        :: ops(5)= (/'.NOT. ','.AND. ','.OR.  ','.EQV. ','.NEQV.'/)
-   integer                      :: i,j,k,l
-   integer                      :: ieqv
-   integer                      :: ineqv
-   integer                      :: i1
-   integer                      :: iop
-   integer                      :: len
-   integer                      :: len1
-   integer                      :: len2
+logical                      :: one, two
+character(len=7)             :: temp
+character(len=G_line_length) :: newl
+character(len=6),save        :: ops(5)= (/'.NOT. ','.AND. ','.OR.  ','.EQV. ','.NEQV.'/)
+integer                      :: i,j,k,l
+integer                      :: ieqv
+integer                      :: ineqv
+integer                      :: i1
+integer                      :: iop
+integer                      :: len
+integer                      :: len1
+integer                      :: len2
 
    newl=line(ipos1:ipos2)
    len1=0
@@ -18282,8 +18325,7 @@ subroutine logic(line,ipos1,ipos2)           !@(#)logic(3f): process .OP. operat
    one=.false.
    LOOP: do i=1,3
       20 continue
-           LEN=5
-           IF (I.EQ.3) LEN=4
+           LEN=len_trim(ops(i))
            IF (INDEX(NEWL,OPS(I)(:len_trim(OPS(I)))).EQ.0) cycle
            I1=INDEX(NEWL,OPS(I)(:len_trim(OPS(I))))-1
            J=I1+1
@@ -18326,7 +18368,7 @@ subroutine logic(line,ipos1,ipos2)           !@(#)logic(3f): process .OP. operat
    enddo LOOP
    TILLDONE: do
       ieqv=index(newl,'.EQV.')
-      ineqv=index(newl,'.NEQV')
+      ineqv=index(newl,'.NEQV.')
       if (ieqv*ineqv.eq.0.and.ieqv.ne.ineqv) then
         iop=max(ieqv,ineqv)
       elseif (ieqv.ne.0) then
@@ -18361,8 +18403,8 @@ end subroutine logic
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine eval(line)                                   !@(#)eval(3f): evaluate math expression to .TRUE. or .FALSE.
-character(len=G_line_length)      :: line
-   character(len=7)               :: value
+character(len=G_line_length)   :: line
+character(len=7)               :: value
 
    call parens(line)
    call math(line,1,len_trim(line))
@@ -18381,14 +18423,14 @@ end subroutine eval
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 function get_integer_from_string(line) !@(#)get_integer_from_string(3f): read integer value from line(ipos1:ipos2)
-                                                         ! assume string is a variable name or an integer value
-   character(len=*),intent(in)  :: line                             ! string containing substring to read an integer value from
+                                                                    ! assume string is a variable name or an integer value
+character(len=*),intent(in)  :: line                                ! string containing substring to read an integer value from
 
-   character(len=G_var_len)     :: value                            ! the substring
-   integer                      :: i                                ! index of variable dictionary where variable name is stored
-   integer                      :: ios                              ! I/O error value to check to see if internal reads succeeded
-   integer                      :: get_integer_from_string          ! integer value to return if string is converted successfully
-   integer                      :: ipos1, ipos2
+character(len=G_var_len)     :: value                               ! the substring
+integer                      :: i                                   ! index of variable dictionary where variable name is stored
+integer                      :: ios                                 ! I/O error value to check to see if internal reads succeeded
+integer                      :: get_integer_from_string             ! integer value to return if string is converted successfully
+integer                      :: ipos1, ipos2
 
    ipos1=min(1,len(line))
    ipos2=len(line)
@@ -18453,7 +18495,7 @@ character(len=G_line_length) :: options                 ! everything after first
 ! CHECK COMMAND SYNTAX
    if(G_outtype.eq.'help')then  ! if in 'help' mode wrap up the routine
       write(G_iout,'(a)')"'']"
-      write(G_iout,'(a)')"   WRITE(*,'(a)')(trim(help_text(i)),i=1,size(help_text))"
+      write(G_iout,'(a)')"   WRITE(stdout,'(a)')(trim(help_text(i)),i=1,size(help_text))"
       write(G_iout,'(a)')"   stop ! if --help was specified, stop"
       write(G_iout,'(a)')"endif"
       write(G_iout,'(a)')"end subroutine help_usage"
@@ -18469,9 +18511,9 @@ character(len=G_line_length) :: options                 ! everything after first
    elseif(G_outtype.eq.'version')then  ! if in 'version' mode wrap up the routine
       write(G_iout,'("''@(#)COMPILED:       ",a,"'',&")') getdate('long')//'>'
       write(G_iout,'(a)')"'']"
-      write(G_iout,'(a)')"   WRITE(*,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))"
-      !*!write(G_iout,'(a)')'   write(*,*)"COMPILER VERSION=",COMPILER_VERSION()'
-      !*!write(G_iout,'(a)')'   write(*,*)"COMPILER OPTIONS=",COMPILER_OPTIONS()'
+      write(G_iout,'(a)')"   WRITE(stdout,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))"
+      !*!write(G_iout,'(a)')'   write(stdout,*)"COMPILER VERSION=",COMPILER_VERSION()'
+      !*!write(G_iout,'(a)')'   write(stdout,*)"COMPILER OPTIONS=",COMPILER_OPTIONS()'
       write(G_iout,'(a)')"   stop ! if --version was specified, stop"
       write(G_iout,'(a)')"endif"
       write(G_iout,'(a)')"end subroutine help_version"
@@ -18579,9 +18621,9 @@ character(len=G_line_length) :: options                 ! everything after first
    case('ASIS')
       G_outtype='asis'
    case default
-      write(*,*)'*prepstop* ERROR(047) - UNEXPECTED "BLOCK" OPTION. FOUND:'//trim(G_source)
-      write(*,*)'*prepstop* ERROR(048) - UNEXPECTED "BLOCK" OPTION. FOUND:'//trim(sget('block_oo'))
-      call stop_prep('*prepstop* ERROR(049) - UNEXPECTED "BLOCK" OPTION. FOUND:'//sget('block_man'))
+      write(stdout,*)'*prep* ERROR(047) - UNEXPECTED "BLOCK" OPTION. FOUND:'//trim(G_source)
+      write(stdout,*)'*prep* ERROR(048) - UNEXPECTED "BLOCK" OPTION. FOUND:'//trim(sget('block_oo'))
+      call stop_prep('*prep* ERROR(049) - UNEXPECTED "BLOCK" OPTION. FOUND:'//sget('block_man'))
    end select
 
    G_comment_count=0
@@ -18598,11 +18640,9 @@ integer                     :: ivalue
       ivalue=get_integer_from_string(opts)
       if(ivalue.eq.0)then
          stop
-      elseif(ivalue.ge.1.and.ivalue.le.20)then
-         !*!stop ivalue
-         stop 3
       else
-         call stop_prep('*prepstop* ERROR(050) - UNEXPECTED "STOP" VALUE='',i10,''. FOUND:'',a)'//trim(G_source))
+         call stop_prep('',stop_value=ivalue)
+         !call stop_prep('*prep* ERROR(050) - UNEXPECTED "STOP" VALUE='//trim(opts)//'. FROM:'//trim(G_source))
       endif
    else
       stop 1
@@ -18612,10 +18652,10 @@ end subroutine stop
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine print_comment_block() !@(#)print_comment_block(3f): format comment block to file in document directory and output
-   character(len=:),allocatable :: filename
-   character(len=1024)          :: varvalue
-   character(len=*),parameter   :: varname='PREP_DOCUMENT_DIR'
-   integer                      :: ios,iend,istatus,ilength
+character(len=:),allocatable :: filename
+character(len=1024)          :: varvalue
+character(len=*),parameter   :: varname='PREP_DOCUMENT_DIR'
+integer                      :: ios,iend,istatus,ilength
 
    if(.not.allocated(G_MAN))then
       return
@@ -18656,7 +18696,7 @@ subroutine print_comment_block() !@(#)print_comment_block(3f): format comment bl
             write(70,'(a)',iostat=ios) G_MAN
          endif
          if(ios.ne.0)then
-            call stderr('G_MAN='//G_MAN)
+            call write_err('G_MAN='//G_MAN)
             call stop_prep('ERROR(055) print_comment_block - FAILED TO WRITE OUTPUT FILE:'//trim(filename))
          endif
       endif
@@ -18675,10 +18715,12 @@ end subroutine print_comment_block
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine format_g_man()
-   character(len=:),allocatable   :: array1(:)   ! output array of tokens
-   character(len=:),allocatable   :: array(:) ! output array of tokens
-   integer                        :: ios
-   integer                        :: i
+character(len=:),allocatable   :: array1(:)   ! output array of tokens
+character(len=:),allocatable   :: array(:)    ! output array of tokens
+integer                        :: ios
+integer                        :: i
+integer                        :: ikludge
+
    ALL: block
       WRITEIT: block
 
@@ -18718,7 +18760,13 @@ subroutine format_g_man()
          case('ford')                    ! convert plain text to doxygen comment blocks with some automatic markdown highlights
             if(len(G_MAN).gt.1)then      ! the way the string is built it starts with a newline
                CALL split(G_MAN,array1,delimiters=new_line('N'),nulls='return') ! parse string to an array parsing on delimiters
-               array=[character(len=(len(array1)+6)) :: array1] !! pad with trailing spaces
+               !array=[character(len=(len(array1)+6)) :: array1] !! pad with trailing spaces
+               ikludge=len(array1)+6
+ 	       if(allocated(array))deallocate(array)
+	       allocate(character(len=ikludge) :: array(size(array1)))
+	       array(:)=array1
+
+
                deallocate(array1)
                do i=1,size(array)        ! lines starting with a letter and all uppercase letters is prefixed with "##"
                   if( upper(array(i)).eq.array(i) .and. isalpha(array(i)(1:1)).and.lower(array(i)).ne.array(i))then
@@ -18759,47 +18807,33 @@ subroutine format_g_man()
 
          exit ALL
       endblock WRITEIT
-      call stderr('G_MAN='//G_MAN)
+      call write_err('G_MAN='//G_MAN)
       call stop_prep('ERROR(056) print_comment_block - FAILED TO WRITE COMMENT BLOCK')
    endblock ALL
 end subroutine format_g_man
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine stops(iexit) !@(#)stops(3f): irritating that the value on STOP is scalar-char-initialization-expr. 1-20 OK this way
-integer,intent(in)   :: iexit
-   select case(iexit)
-   case  (1)      ;  stop  1
-   case  (2)      ;  stop  2
-   case  (3)      ;  stop  3
-   case  (4)      ;  stop  4
-   case  (5)      ;  stop  5
-   case  (6)      ;  stop  6
-   case  (7)      ;  stop  7
-   case  (8)      ;  stop  8
-   case  (9)      ;  stop  9
-   case  (10)     ;  stop  10
-   case  (11)     ;  stop  11
-   case  (12)     ;  stop  12
-   case  (13)     ;  stop  13
-   case  (14)     ;  stop  14
-   case  (15)     ;  stop  15
-   case  (16)     ;  stop  16
-   case  (17)     ;  stop  17
-   case  (18)     ;  stop  18
-   case  (19)     ;  stop  19
-   case  (20)     ;  stop  20
-   case  default  ;  stop
-   end   select
-end subroutine stops
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-subroutine debug_state(msg)                        !@(#)debug(3f): process $SHOW command or state output when errors occur
+subroutine debug_state(list,msg)                        !@(#)debug(3f): process $SHOW command or state output when errors occur
+character(len=*),intent(in),optional :: list
 character(len=*),intent(in) :: msg
-integer                     :: i
+integer                     :: i, j
+character(len=:),allocatable   :: array(:)    ! output array of tokens
 character(len=*),parameter  :: fmt='(*(g0,1x))'
-
+   if(present(list))then
+      if(list.ne.'')then
+         ! print variables:
+         CALL split(list,array) ! parse string to an array parsing on delimiters
+         do j=1,size(array)
+            do i=1,G_numdef                                                                 ! print variable dictionary
+               if(G_defvar(i).eq.array(j))then
+                  write(G_iout,fmt)"! ",trim(G_defvar(i)),' = ',adjustl(G_defval(i)) ! write variable and corresponding value
+               endif
+            enddo
+         enddo
+         return
+      endif
+   endif
    write(G_iout,'(a)')'!==============================================================================='
    write(G_iout,'(a)')'! '//trim(msg)
 
@@ -18848,11 +18882,11 @@ end subroutine debug_state
 !===================================================================================================================================
 subroutine write_arguments() ! @(#)write_arguments(3f): return all command arguments as a string
 
-   integer                      :: istatus          !  status (non-zero means error)
-   integer                      :: ilength          !  length of individual arguments
-   integer                      :: i                !  loop count
-   integer                      :: icount           !  count of number of arguments available
-   character(len=255)           :: value            !  store individual arguments one at a time
+integer                      :: istatus          !  status (non-zero means error)
+integer                      :: ilength          !  length of individual arguments
+integer                      :: i                !  loop count
+integer                      :: icount           !  count of number of arguments available
+character(len=255)           :: value            !  store individual arguments one at a time
 
    write(G_iout,'(a)',advance='no')'! Arguments ...................... '
    icount=command_argument_count()                  ! intrinsic gets number of arguments
@@ -18870,8 +18904,8 @@ subroutine include(line,iunit)  ! @(#)include(3f): add file to input file list
 implicit none
 character(len=G_line_length),intent(in)  :: line
 integer,intent(in)                       :: iunit
-   integer                               :: ios
-   character(len=4096)                   :: message
+integer                                  :: ios
+character(len=4096)                      :: message
 
    if(iunit.eq.5.or.line.eq.'@')then                   ! assume this is stdin
       G_iocount=G_iocount+1
@@ -18884,8 +18918,8 @@ integer,intent(in)                       :: iunit
 
    open(unit=iunit,file=trim(line),iostat=ios,status='old',action='read',iomsg=message)
    if(ios.ne.0)then
-      call debug_state('OPEN IN INCLUDE')
-      call stderr(message)
+      call debug_state(msg='OPEN IN INCLUDE')
+      call write_err(message)
       call stop_prep("*prep* ERROR(057) - FAILED OPEN OF INPUT FILE("//v2s(iunit)//"):"//trim(line))
    else
       rewind(unit=iunit)
@@ -18929,7 +18963,7 @@ integer                      :: i
          do
             read(ifound,'(a)',iostat=ios)message
             if(ios.ne.0)exit
-            write(*,*)'>>>'//trim(message)
+            write(stdout,*)'>>>'//trim(message)
          enddo
          rewind(unit=ifound,iostat=ios,iomsg=message)
       endif
@@ -18947,11 +18981,11 @@ end subroutine post
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine findit(line) !@(#)findit(3f): look for filename in search directories if name does not exist and return modified name
-character(len=G_line_length)             :: line
-   character(len=G_line_length)          :: filename
-   logical                               :: file_exist
-   integer                               :: i
-   integer                               :: iend_dir
+character(len=G_line_length)    :: line
+character(len=G_line_length)    :: filename
+logical                         :: file_exist
+integer                         :: i
+integer                         :: iend_dir
 
    inquire(file=trim(line), exist=file_exist)                    ! test if input filename exists
    if(file_exist)then                                            ! if file exits then return filename
@@ -18984,19 +19018,19 @@ end subroutine findit
 !===================================================================================================================================
 subroutine opens()                   !@(#)opens(3f): use expression on command line to  open input files
 
-   integer,parameter                     :: n=50                    ! maximum number of tokens to look for
-   character(len=G_line_length)          :: array(n)                ! the array to fill with tokens
-   character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
+integer,parameter                     :: n=50                       ! maximum number of tokens to look for
+character(len=G_line_length)          :: array(n)                   ! the array to fill with tokens
+character(len=1)                      :: dlim=' '                   ! string of single characters to use as delimiters
 
-   integer                               :: icount                  ! how many tokens are found
-   integer                               :: ibegin(n)               ! starting column numbers for the tokens in INLINE
-   integer                               :: iterm(n)                ! ending column numbers for the tokens in INLINE
-   integer                               :: ilen                    ! is the position of last non‐blank character in INLINE
-   character(len=G_line_length)          :: in_filename1=''         ! input filename, default is stdin
-   character(len=G_line_length)          :: in_filename2=''         ! input filename, default is stdin
-   integer                               :: i, ii
-   integer                               :: ivalue
-   character(len=G_line_length)          :: dir                     ! directory used by an input file
+integer                               :: icount                     ! how many tokens are found
+integer                               :: ibegin(n)                  ! starting column numbers for the tokens in INLINE
+integer                               :: iterm(n)                   ! ending column numbers for the tokens in INLINE
+integer                               :: ilen                       ! is the position of last non‐blank character in INLINE
+character(len=G_line_length)          :: in_filename1=''            ! input filename, default is stdin
+character(len=G_line_length)          :: in_filename2=''            ! input filename, default is stdin
+integer                               :: i, ii
+integer                               :: ivalue
+character(len=G_line_length)          :: dir                        ! directory used by an input file
 
    in_filename1(:G_line_length)  = sget('_prep_i')                  ! get values from command line
    in_filename2(:G_line_length)  = sget('prep_i')                   ! get values from command line
@@ -19037,11 +19071,11 @@ end subroutine opens
 !===================================================================================================================================
 subroutine includes()         !@(#)includes(3f): use expression on command line to  get include directories
 
-   integer,parameter                     :: n=50                    ! maximum number of tokens to look for
-   character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
-   integer                               :: ibegin(n)               ! starting column numbers for the tokens in G_inc_files
-   integer                               :: iterm(n)                ! ending column numbers for the tokens in G_inc_files
-   integer                               :: ilen                    ! is the position of last non‐blank character in G_inc_files
+integer,parameter                     :: n=50                    ! maximum number of tokens to look for
+character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
+integer                               :: ibegin(n)               ! starting column numbers for the tokens in G_inc_files
+integer                               :: iterm(n)                ! ending column numbers for the tokens in G_inc_files
+integer                               :: ilen                    ! is the position of last non‐blank character in G_inc_files
 
    ! G_inc_files is the array to fill with tokens
    ! G_inc_count is the number of tokens found
@@ -19053,17 +19087,17 @@ end subroutine includes
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine defines()       !@(#)defines(3f): use expressions on command line to define variables
-   integer,parameter                     :: n=300                   ! maximum number of tokens to look for
-   character(len=G_line_length)          :: array(n)                ! the array to fill with tokens
-   character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
+integer,parameter                     :: n=300                   ! maximum number of tokens to look for
+character(len=G_line_length)          :: array(n)                ! the array to fill with tokens
+character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
 
-   integer                               :: icount                  ! how many tokens are found
-   integer                               :: ibegin(n)               ! starting column numbers for the tokens in INLINE
-   integer                               :: iterm(n)                ! ending column numbers for the tokens in INLINE
-   integer                               :: ilen                    ! is the position of last non‐blank character in INLINE
-   character(len=G_line_length)          :: in_define1=''           ! variable definition from environment variable
-   character(len=G_line_length)          :: in_define2=''           ! variable definition from environment variable and command
-   integer                               :: i
+integer                               :: icount                  ! how many tokens are found
+integer                               :: ibegin(n)               ! starting column numbers for the tokens in INLINE
+integer                               :: iterm(n)                ! ending column numbers for the tokens in INLINE
+integer                               :: ilen                    ! is the position of last non‐blank character in INLINE
+character(len=G_line_length)          :: in_define1=''           ! variable definition from environment variable
+character(len=G_line_length)          :: in_define2=''           ! variable definition from environment variable and command
+integer                               :: i
 
    if(allocated(keywords))deallocate(keywords)
    if(allocated(values))deallocate(values)
@@ -19092,13 +19126,25 @@ end subroutine defines
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine stop_prep(message)                   !@(#)stop_prep(3f): write MESSAGE to stderr and exit program
+subroutine stop_prep(message,stop_value)                   !@(#)stop_prep(3f): write MESSAGE to stderr and exit program
 character(len=*),intent(in)  :: message
-   call stderr(message)
-   call stderr(trim(G_SOURCE))
-   call debug_state('message')
-   stop 1
+integer,optional :: stop_value
+integer :: stop_value_local
+   stop_value_local=1
+   if( present(stop_value) )stop_value_local=stop_value
+   !call write_err(message)
+   call write_err(trim(G_SOURCE))
+   call debug_state(msg=message)
+   stop stop_value_local
 end subroutine stop_prep
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+subroutine warn_prep(message)                   !@(#)warn_prep(3f): write MESSAGE to stderr and and continue program
+character(len=*),intent(in)  :: message
+   call write_err(message)
+   call write_err(trim(G_SOURCE))
+end subroutine warn_prep
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
@@ -19135,6 +19181,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '         [--width n]                                                            ',&
 '         [-d ignore|remove|blank]                                               ',&
 '         [--comment default|doxygen|ford|none]                                  ',&
+'         [--type FILE_TYPE | --start START_STRING --stop STOP_STRING]           ',&
 '         [--ident]                                                              ',&
 '         [--version]                                                            ',&
 '         [--help]                                                               ',&
@@ -19142,28 +19189,31 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   The pre-processor prep(1) will interpret lines with "$" (by default) in      ',&
 '   column one, and will output no such lines. Other input is conditionally      ',&
-'   written to the output file based on the directives encountered in the input. ',&
+'   written to the output file based on the case-insensitive directive names     ',&
+'   encountered in the input.                                                    ',&
 '                                                                                ',&
-'   It does not support parameterized macros but does support string substitution',&
-'   and the inclusion of free-format text blocks that may be converted to Fortran',&
-'   comments or CHARACTER variable definitions while simultaneously being used   ',&
-'   to generate documentation files.                                             ',&
+'   prep(1) does not support parameterized macros but does support string        ',&
+'   substitution and the inclusion of free-format text blocks that may be        ',&
+'   converted to Fortran comments or CHARACTER variable definitions (while       ',&
+'   optionally simultaneously being used to generate documentation files).       ',&
+'   Combined, these features allow for basic templating.                         ',&
 '                                                                                ',&
-'   An exclamation character on a valid directive begins an in-line comment      ',&
-'   that is terminated by an end-of-line.                                        ',&
+'   An exclamation character FOLLOWED BY A SPACE on a valid directive begins     ',&
+'   an in-line comment that is terminated by an end-of-line. This is particularly',&
+'   pertinent when using C-style logical tokens, which may contain exclamations. ',&
 '                                                                                ',&
 '   INTEGER or LOGICAL expressions may be used to select output lines.           ',&
 '   An expression is composed of INTEGER and LOGICAL constants, parameters       ',&
 '   and operators. Operators are                                                 ',&
 '                                                                                ',&
-'     .NOT.  .AND.  .OR.  .EQV.  .NEQV.                                          ',&
-'     .EQ.   .NE.   .GE.  .GT.   .LE.    .LT.                                    ',&
-'     ==     /=     >=    >      <=      <                                       ',&
-'     +      -       *     /     **                                              ',&
-'     (      )                                                                   ',&
-'    C-style:                                                                    ',&
-'     !=     &&     ||                                                           ',&
-!NOT SUPPORTED:   %,  <<,  >>, &,  ~, |
+'       #-----#-----#-----#-----#-----#-----#-----#                              ',&
+'       |  +  |  -  |  *  |  /  |  ** |  (  |  )  |                              ',&
+'       #-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#------#     ',&
+'       | .EQ.| .NE.| .GE.| .GT.| .LE.| .LT.|.NOT.|.AND.| .OR.|.EQV.|.NEQV.|     ',&
+'       |  == |  /= |  >= |  >  |  <= |  <  |  !  |  && |  || | ==  |  !=  |     ',&
+'       #-----#  != #-----#-----#-----#-----#-----#-----#-----#-----#------#     ',&
+'             #-----#                                                            ',&
+! C-STYLE NOT SUPPORTED:   %,  <<,  >>, &,  ~
 '                                                                                ',&
 '   The suggested suffix for Fortran input files is ".ff" for code files unless  ',&
 '   they contain $SYSTEM directives in which case ".FF" is preferred. $INCLUDE   ',&
@@ -19172,17 +19222,24 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   The syntax for the directive lines is as follows:                            ',&
 '                                                                                ',&
-'    :CONDITIONAL CODE SELECTION                                                 ',&
+'    :VARIABLE DEFINITION FOR CONDITIONALS                                       ',&
 '     $DEFINE   variable_name[=expression]                 [! comment ]          ',&
-'     $UNDEFINE variable_name                              [! comment ]          ',&
-'     $IF       expression| [$IFDEF|$IFNDEF variable_name] [! comment ]          ',&
-'               { sequence of source statements}                                 ',&
-'     [$ELSEIF|$ELIF  {LOGICAL or INTEGER expression}      [! comment ]          ',&
-'               { sequence of source statements}]                                ',&
+'     $REDEFINE variable_name[=expression]                 [! comment ]          ',&
+'     $UNDEFINE|$UNDEF variable_name(s)                    [! comment ]          ',&
+'                                                                                ',&
+'    :CONDITIONAL CODE SELECTION                                                 ',&
+'     $IF  logical integer-based expression |                                    ',&
+'     $IFDEF variable_name |                                                     ',&
+'     $IFNDEF variable_name                                [! comment ]          ',&
+'             { sequence of source statements}                                   ',&
+'     [$ELSEIF|$ELIF logical integer-based expression      [! comment ]          ',&
+'             { sequence of source statements}]                                  ',&
 '     [$ELSE                                               [! comment ]          ',&
-'               { sequence of source statements}]                                ',&
+'             { sequence of source statements}]                                  ',&
 '     $ENDIF                                               [! comment ]          ',&
+'                                                                                ',&
 '     $STOP     [stop_value]                               [! comment ]          ',&
+'     $QUIT                                                [! comment ]          ',&
 '                                                                                ',&
 '    :MACRO STRING EXPANSION AND TEXT REPLAY                                     ',&
 '     $SET      varname  string                                                  ',&
@@ -19190,12 +19247,14 @@ help_text=[ CHARACTER(LEN=128) :: &
 '     $PARCEL   blockname                                  [! comment ]          ',&
 '     $POST     blockname                                  [! comment ]          ',&
 '                                                                                ',&
-'    :FILE AND TEXT BLOCK USAGE                                                  ',&
+'    :EXTERNAL FILES (see $BLOCK ... --file also)                                ',&
 '     $OUTPUT   filename  [-append]                        [! comment ]          ',&
 '     $INCLUDE  filename                                   [! comment ]          ',&
+'                                                                                ',&
+'    :TEXT BLOCK FILTERS                                                         ',&
 ![=========
 !     consider to change so just $BLOCK name/$ENDBLOCK and
-!     $OUTPUT $BLOCK $POST all replaced by $POST if no options gulp file and process if any options so what $BLOCK does now
+!     $OUTPUT $BLOCK $POST all replaced by $POST if no options gulp file and process if any options do what $BLOCK does now
 !     $BLOCK
 !     $ENDBLOCK
 !=========]
@@ -19208,10 +19267,10 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '    :INFORMATION                                                                ',&
 '     $MESSAGE  message_to_stderr                                                ',&
-'     $SHOW                                                [! comment ]          ',&
+'     $SHOW [defined_variable_name(s)]                     [! comment ]          ',&
 '                                                                                ',&
 '    :SYSTEM COMMANDS                                                            ',&
-'     $SYSTEM   system_command                             [! comment ]          ',&
+'     $SYSTEM   system_command                                                   ',&
 '                                                                                ',&
 'OPTIONS                                                                         ',&
 '   define_list, -D define_list  An optional space-delimited list of expressions ',&
@@ -19231,19 +19290,39 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                        ASCII Decimal Equivalent (Common values are 37=%        ',&
 '                        42=* 35=# 36=$ 64=@). If the value is not numeric       ',&
 '                        it is assumed to be a literal character.                ',&
-'                                                                                ',&
-'   --help           Display documentation and exit.                             ',&
-'                                                                                ',&
-'   --verbose        All commands on a $SYSTEM directive are echoed              ',&
-'                    to stderr with a + prefix. Text following the               ',&
-'                    string "@(#)" is printed to stderr similar to               ',&
-'                    the Unix command what(1) but is otherwise                   ',&
-'                    treated as other text input.                                ',&
-'                                                                                ',&
 '   --noenv          The $IFDEF and $IFNDEF directives test for an               ',&
 '                    internal prep(1) variable and then an                       ',&
 '                    environment variable by default. This option                ',&
 '                    turns off testing for environment variables.                ',&
+'                                                                                ',&
+'   --type FILETYPE  this flag indicates to skip input lines until after a       ',&
+'                    specific start string is encountered and to stop once a     ',&
+'                    specific end string is found left-justified on lines by     ',&
+'                    themselves.                                                 ',&
+'                                                                                ',&
+'                        FileType  Start_String            Stop_String           ',&
+'                        --------  ------------            -----------           ',&
+'                        md        ```fortran              ```                   ',&
+'                        html      <xmp>                   </xmp>                ',&
+'                        tex       \begin{minted}{Fortran} \end{minted}          ',&
+'                        auto                                                    ',&
+'                        none                                                    ',&
+'                                                                                ',&
+'                    The special type "auto" may be specified, in which case     ',&
+'                    files will be processed according to their file suffix.     ',&
+'                    This allows for easily extracting code from common          ',&
+'                    document formats. This is particularly useful with extended ',&
+'                    markdown formats, allowing for code source to be easily     ',&
+'                    documented and for tests in documents to be able to be      ',&
+'                    extracted and tested. "auto" switches processing mode       ',&
+'                    depending on input file suffix, treating supported file     ',&
+'                    prefixes ("md","html") appropriately.                       ',&
+'                                                                                ',&
+'    --start STRING  Same as --type except along with --stop allows for custom   ',&
+'                    strings to be specified.                                    ',&
+'                                                                                ',&
+'    --stop STRING   Same as --type except along with --start allows for custom  ',&
+'                    strings to be specified.                                    ',&
 '                                                                                ',&
 '   --system         Allow system commands on $SYSTEM directives to              ',&
 '                    be executed.                                                ',&
@@ -19276,16 +19355,24 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                           "debug" code by many Fortran compilers when          ',&
 '                           compiling fixed-format Fortran source.               ',&
 '                                                                                ',&
-'   --version        Display version and exit                                    ',&
-'                                                                                ',&
 '   --width n        Maximum line length of the output file. The default is 1024.',&
 '                    Typically used to trim fixed-format FORTRAN code that       ',&
 '                    contains comments or "ident" labels past column 72          ',&
 '                    when compiling fixed-format Fortran code.                   ',&
 '                                                                                ',&
+'   --verbose        All commands on a $SYSTEM directive are echoed              ',&
+'                    to stderr with a + prefix. Text following the               ',&
+'                    string "@(#)" is printed to stderr similar to               ',&
+'                    the Unix command what(1) but is otherwise                   ',&
+'                    treated as other text input.                                ',&
+'                                                                                ',&
+'   --version        Display version and exit                                    ',&
+'                                                                                ',&
+'   --help           Display documentation and exit.                             ',&
+'                                                                                ',&
 '   DIRECTIVES                                                                   ',&
 '                                                                                ',&
-'   $DEFINE variable_name [=expression]                                          ',&
+'   $DEFINE|$REDEFINE variable_name [=expression]                                ',&
 '                                                                                ',&
 '   A $DEFINE may appear anywhere in a source file. If the value is ".TRUE."     ',&
 '   or ".FALSE." then the parameter is of type LOGICAL, otherwise the            ',&
@@ -19293,9 +19380,13 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   value is supplied, the parameter is of type INTEGER and is given the         ',&
 '   value 1.                                                                     ',&
 '                                                                                ',&
-'   Constant parameters are defined from the point they are encountered in a     ',&
-'   $DEFINE directive until program termination unless explicitly                ',&
+'   Variables are defined from the point they are encountered in a $DEFINE       ',&
+'   directive or the command line until program termination unless explicitly    ',&
 '   undefined with a $UNDEFINE directive.                                        ',&
+'                                                                                ',&
+'   If defined after first undefined a warning is generated on stderr.           ',&
+'   The $REDEFINE directive is identical to the $DEFINE directive accept no      ',&
+'   warning is produced if the variable is already defined.                      ',&
 '                                                                                ',&
 '   Example:                                                                     ',&
 '                                                                                ',&
@@ -19392,7 +19483,11 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   $IMPORT names(s)                                                             ',&
 '                                                                                ',&
 '   The values of environment variables may be imported such that their names    ',&
-'   and values will be set as if a $SET command had been done on them.           ',&
+'   and values will be set as if a $SET command had been done on them. The names ',&
+'   of the environment variables are case-sensitive in regards to obtaining the  ',&
+'   initial values, but the names because case-insensitive in prep(). That is    ',&
+'   "import home" gets the lowercase environment variable "home" and sets the    ',&
+'   prep(1) string "HOME" to the value; as prep(1) values are case-insensitive.  ',&
 '                                                                                ',&
 '   $BLOCK [comment|null|write|help|version  [-file NAME [-append]]              ',&
 '     or                                                                         ',&
@@ -19425,19 +19520,26 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   A blank value or "END" returns to normal output processing.                  ',&
 '                                                                                ',&
-'   $SHOW                                                                        ',&
+'   $SHOW [variable_name(s)]                                                     ',&
 '                                                                                ',&
 '   Shows current state of prep(1); including variable names and values; and     ',&
 '   the name of the current input files. All output is preceded by an            ',&
 '   exclamation character.                                                       ',&
 '                                                                                ',&
+'   If a list of defined variable names is present only those variables and      ',&
+'   their values are shown.                                                      ',&
+'                                                                                ',&
 '   Example:                                                                     ',&
 '                                                                                ',&
 '    prep A=10 B C D -o paper                                                    ',&
 '    $define z=22                                                                ',&
+'    $show B Z                                                                   ',&
 '    $show                                                                       ',&
 '    $stop 0                                                                     ',&
+!-------------------------------------------------------------------------------
 '                                                                                ',&
+'     > !  B  =  1                                                               ',&
+'     > !  Z  =  22                                                              ',&
 '     > !================================================================        ',&
 '     > !                                                                        ',&
 '     > ! Current state of prep(1):(18:39 20 Jun 2021)                           ',&
@@ -19466,16 +19568,18 @@ help_text=[ CHARACTER(LEN=128) :: &
 '     > !    $DEFINE C  =  1                                                     ',&
 '     > !    $DEFINE D  =  1                                                     ',&
 '     > !    $DEFINE Z  =  22                                                    ',&
+'     > ! Parcels:                                                               ',&
 '     > !================================================================        ',&
 '                                                                                ',&
 '   $STOP stop_value                                                             ',&
 '                                                                                ',&
-'   Stops input file processing. An optional integer value of 0 to 20            ',&
-'   will be returned as a status value to the system where supported. A          ',&
-'   value of two ("2") is returned if no value is specified. Any value           ',&
-'   from one ("1") to twenty ("20") also causes an implicit execution of         ',&
-'   the "$SHOW" directive before the program is stopped. A value of "0"          ',&
-'   causes normal program termination. "$QUIT" is an alias for "$STOP 0".        ',&
+'   Stops input file processing. An optional integer value will be returned      ',&
+'   as a status value to the system where supported. A value of one ("1")        ',&
+'   is returned if no value is specified. Any explicit value other than zero     ',&
+'   "(0)" also causes an implicit execution of the "$SHOW" directive before the  ',&
+'   program is stopped. A value of "0" causes normal program termination.        ',&
+'                                                                                ',&
+'   "$QUIT" is an alias for "$STOP 0".                                           ',&
 '                                                                                ',&
 '   $SYSTEM system_command                                                       ',&
 '                                                                                ',&
@@ -19498,10 +19602,9 @@ help_text=[ CHARACTER(LEN=128) :: &
 '    $INCLUDE _tmp.f90                                                           ',&
 '    $SYSTEM  rm _tmp.f90                                                        ',&
 '                                                                                ',&
-'   $UNDEFINE variable_name                                                      ',&
+'   $UNDEFINE variable_name(s)                                                   ',&
 '                                                                                ',&
-'   A symbol defined with $DEFINE can be removed with the $UNDEFINE              ',&
-'   directive.                                                                   ',&
+'   A symbol defined with $DEFINE can be removed with the $UNDEFINE directive.   ',&
 '                                                                                ',&
 '   DEFINED(variable_name)                                                       ',&
 '                                                                                ',&
@@ -19525,7 +19628,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '    > $ENDIF                                                                    ',&
 '    >        END                                                                ',&
 '                                                                                ',&
-'   The file, "comm.inc" will be INCLUDEd in the source if the parameter,        ',&
+'   The file, "comm.inc" will be included in the source if the parameter,        ',&
 '   "inc", has not been previously defined, while INCLUDE "comm2.inc" will       ',&
 '   be included in the source if "inc" has been previously defined. This is      ',&
 '   useful for setting up a default inclusion.                                   ',&
@@ -19540,7 +19643,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   Write message to stderr.                                                     ',&
 '                                                                                ',&
-'   Messages for $MESSAGE do not treat an exclamation as starting a comment      ',&
+'   Messages for $MESSAGE do not treat "! " as starting a comment                ',&
 '                                                                                ',&
 'LIMITATIONS                                                                     ',&
 '                                                                                ',&
@@ -19554,13 +19657,12 @@ help_text=[ CHARACTER(LEN=128) :: &
 '  Input files                                                                   ',&
 '                                                                                ',&
 '   o lines are limited to 1024 columns. Text past column 1024 is ignored.       ',&
-'   o files currently opened cannot be opened again.                             ',&
+'   o files currently open cannot be open.                                       ',&
 '   o a maximum of 50 files can be nested by $INCLUDE                            ',&
 '   o filenames cannot contain spaces on the command line.                       ',&
 '                                                                                ',&
 ' Variable names                                                                 ',&
 '                                                                                ',&
-'   o cannot be redefined unless first undefined.                                ',&
 '   o are limited to 31 characters.                                              ',&
 '   o must start with a letter (A-Z).                                            ',&
 '   o are composed of the letters A-Z, digits 0-9 and _ and $.                   ',&
@@ -19683,18 +19785,18 @@ help_text=[ CHARACTER(LEN=128) :: &
 'LICENSE                                                                         ',&
 '   MIT                                                                          ',&
 '']
-   WRITE(*,'(a)')(trim(help_text(i)),i=1,size(help_text))
+   WRITE(stdout,'(a)')(trim(help_text(i)),i=1,size(help_text))
    stop ! if --help was specified, stop
 endif
 end subroutine help_usage
 
 subroutine help_version(l_version)
-implicit none
 !@(#)help_version(3f): prints version information"
 logical,intent(in)             :: l_version
 character(len=:),allocatable   :: help_text(:)
 integer                        :: i
 logical                        :: stopit=.false.
+
 stopit=.false.
 if(l_version)then
 help_text=[ CHARACTER(LEN=128) :: &
@@ -19703,11 +19805,13 @@ help_text=[ CHARACTER(LEN=128) :: &
 '@(#)DESCRIPTION:    Fortran Pre-processor>',&
 !'@(#)VERSION:        4.0.0: 20170502>',&
 !'@(#)VERSION:        5.0.0: 20201219>',&
-'@(#)VERSION:        6.0.0: 20210613>',&
+!'@(#)VERSION:        6.0.0: 20210613>',&
+!'@(#)VERSION:        6.0.1: 20220311>',&
+'@(#)VERSION:        6.1.1: 20220326>',&
 '@(#)AUTHOR:         John S. Urban>',&
 '@(#)HOME PAGE       https://github.com/urbanjost/prep.git/>',&
 '']
-   WRITE(*,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))
+   WRITE(stdout,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))
    stop ! if --version was specified, stop
 endif
 end subroutine help_version
@@ -19716,12 +19820,12 @@ end subroutine help_version
 !===================================================================================================================================
 subroutine write_out(line)  ! @(#)writeout(3f):  write (most) source code lines to output file
 character(len=*),intent(in)    :: line
-   integer                     :: istart
+integer                        :: istart
 
-   if(G_write_what)then              ! echo "what" lines to stderr
+   if(G_verbose)then              ! echo "what" lines to stderr
       istart=index(line,'@(#)')
       if(istart.ne.0)then
-         write(ERROR_UNIT,'("-->>",a)')trim(line(istart+4:))
+         call write_err( '+ -->>'//trim(line(istart+4:)) )
       endif
    endif
 
@@ -19749,7 +19853,7 @@ character(len=256)             :: message
    case('shell')
       write(G_scratch_lun,'(a)',iostat=ios,iomsg=message)trim(line)
       if(ios.lt.0)then
-         call stop_prep('*prep:stop* ERROR(68) - FAILED TO WRITE TO PROCESS:'//trim(line)//':'//trim(message))
+         call stop_prep('*prep* ERROR(68) - FAILED TO WRITE TO PROCESS:'//trim(line)//':'//trim(message))
       endif
 
    case('variable')
@@ -19783,8 +19887,8 @@ character(len=256)             :: message
       write(G_iout,'(a)')trim(line(:min(len(line),G_iwidth)))
 
    case default
-      call stop_prep('*prepstop* ERROR(063) - UNEXPECTED "BLOCK" VALUE. FOUND:'//trim(G_source))
-      call stop_prep('*prepstop* ERROR(064) - UNEXPECTED "BLOCK" VALUE. FOUND:'//trim(G_outtype))
+      call stop_prep('*prep* ERROR(063) - UNEXPECTED "BLOCK" VALUE. FOUND:'//trim(G_source))
+      call stop_prep('*prep* ERROR(064) - UNEXPECTED "BLOCK" VALUE. FOUND:'//trim(G_outtype))
 
    end select
 
@@ -19802,29 +19906,28 @@ end subroutine www
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine stderr(msg)
-implicit none
+subroutine write_err(msg)
 character(len=*),intent(in) :: msg
-! ident_2="@(#)M_verify::stderr(3f): writes a message to standard error using a standard f2003 method"
-integer             :: ios
+integer                     :: ios
+! ident_2="@(#)M_verify::write_err(3f): writes a message to standard error using a standard f2003 method"
 
-   write(error_unit,'(a)',iostat=ios) trim(msg)
-   flush(unit=output_unit,iostat=ios)
-   flush(unit=error_unit,iostat=ios)
-end subroutine stderr
+   write(stderr,'(a)',iostat=ios) trim(msg)
+   flush(unit=stdout,iostat=ios)
+   flush(unit=stderr,iostat=ios)
+end subroutine write_err
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine dissect2(verb,init,pars,error_return)
 ! "@(#)dissect2(3f): convenient call to parse() -- define defaults, then process"
 !
-      character(len=*),intent(in)  :: verb            ! the name of the command to be reset/defined  and then set
-      character(len=*),intent(in)  :: init            ! used to define or reset command options; usually hard-set in the program.
-      character(len=*),intent(in)  :: pars            ! defines the command options to be set, usually from a user input file
-      integer                      :: ipars           ! length of the user-input string pars.
-      integer,intent(out),optional :: error_return
-      ipars=len(pars)
-      call dissect(verb,init,pars,ipars,error_return)
+character(len=*),intent(in)  :: verb            ! the name of the command to be reset/defined  and then set
+character(len=*),intent(in)  :: init            ! used to define or reset command options; usually hard-set in the program.
+character(len=*),intent(in)  :: pars            ! defines the command options to be set, usually from a user input file
+integer                      :: ipars           ! length of the user-input string pars.
+integer,intent(out),optional :: error_return
+   ipars=len(pars)
+   call dissect(verb,init,pars,ipars,error_return)
 end subroutine dissect2
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -20102,6 +20205,67 @@ end subroutine get_os_type
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
+pure function ends_in(string) result(ending)
+character(*), intent(in)  :: string
+character(:), allocatable :: ending
+integer                   :: n1
+   n1=index(string,'.',back=.true.)
+   if (n1 < 1 .or. n1.eq.len(string) ) then
+       ending=''
+   else
+       ending=string(n1+1:)
+   endif
+end function ends_in
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+subroutine short_help()
+implicit none
+!@(#)short_help(3f): prints help information"
+character(len=:),allocatable :: help_text(:)
+integer                        :: i
+help_text=[ CHARACTER(LEN=128) :: &
+"   > numeric operators are +,-,*,/,**, () are supported, logical operators are  ",&
+"   >  | .EQ.| .NE.| .GE.| .GT.| .LE.| .LT.|.NOT.|.AND.| .OR.| .EQV.|.NEQV.|     ",&
+"   >  |  == |  /= |  >= |  >  |  <= |  <  |  !  |  && |  || |  ==  |  !=  |     ",&
+"  $DEFINE|$REDEFINE variable_name[=expression]                                  ",&
+"   > Predefined values are                                                      ",&
+"   > UNKNOWN=0 LINUX=1 MACOS=2 WINDOWS=3 CYGWIN=4 SOLARIS=5 FREEBSD=6 OPENBSD=7 ",&
+"   > In addition OS is set to what the program guesses the system type is.      ",&
+"  $UNDEFINE|$UNDEF variable_name(s)                                             ",&
+"CONDITIONAL CODE SELECTION                                                      ",&
+"  $IF logical_integer-based_expression |                                        ",&
+"  $IFDEF variable_name | $IFNDEF variable_name                                  ",&
+"  $IF DEFINED(varname) | $IF .NOT. DEFINED(varname) |                           ",&
+"  $ELSEIF|$ELIF logical_integer-based_expression                                ",&
+"  $ELSE                                                                         ",&
+"  $ENDIF                                                                        ",&
+"MACRO STRING EXPANSION AND TEXT REPLAY                                          ",&
+"  $SET varname string                                                           ",&
+"  $IMPORT envname(s)                                                            ",&
+"   > Unless at least one variable name is defined no ${NAME} expansion occurs.  ",&
+"   > $set author  William Shakespeare                                           ",&
+"   > $import HOME                                                               ",&
+"   > write(*,*)'By ${AUTHOR} on ${DATE} ${TIME}'                                ",&
+"   > write(*,*)'File ${FILE} Line ${LINE} HOME ${HOME}'                         ",&
+"  $PARCEL blockname  ! create a reuseable parcel of text that can be expanded   ",&
+"  $POST   blockname  ! insert a defined parcel of text                          ",&
+"EXTERNAL FILES (see $BLOCK ... --file also)                                     ",&
+"  $OUTPUT filename [-append]                                                    ",&
+"  $INCLUDE filename                                                             ",&
+"TEXT BLOCK FILTERS                                                              ",&
+"  $BLOCK [comment|null|write|variable [-varname NAME]] [-file NAME [-append]]   ",&
+"INFORMATION                                                                     ",&
+"  $MESSAGE message_to_stderr                                                    ",&
+"  $SHOW [defined_variable_name(s)]                                              ",&
+"SYSTEM COMMANDS                                                                 ",&
+"  $SYSTEM command                                                               ",&
+"  $STOP [stop_value] | $QUIT                                                    "]
+   WRITE(stderr,'(a)')(trim(help_text(i)),i=1,size(help_text))
+end subroutine short_help
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
 end module M_fpp
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -20136,6 +20300,9 @@ character(len=1024)          :: cmd=' &
    & --comment          COMMENT  &
    & --ident            .false.  &
    & --width            1024     &
+   & --start            " "      &
+   & --stop             " "      &
+   & --type             " "      &
    & '
 logical                       :: isscratch
 
@@ -20144,8 +20311,8 @@ logical                       :: isscratch
    if(G_comment_style.eq.'')G_comment_style='default'                   ! if environment variable not set set default
    call substitute(cmd,'COMMENT',trim(G_comment_style))                 ! change command line to have correct default
                                                                         ! this would actually allow any parameter after number
-
-   kracken_comment='!'
+   G_comment='! ' 
+   kracken_comment=G_comment
    call kracken('prep',cmd)                                       ! define command arguments, default values and crack command line
 
    G_inc_files=' '
@@ -20181,17 +20348,61 @@ logical                       :: isscratch
    call help_usage(lget('prep_help'))                      ! if help switch is present display help and exit
 
    keeptabs=lget('prep_keeptabs')
-   G_write_what=lget('prep_verbose')                       ! set flag for special mode where lines with @(#) are written to stderr
+   G_verbose=lget('prep_verbose')                          ! set flag for special mode where lines with @(#) are written to stderr
+   if(G_verbose)then
+      call write_err('+ verbose mode on ')
+   endif
    G_comment_style=lower(sget('prep_comment'))             ! allow formatting comments for particular post-processors
    G_system_on = lget('prep_system')                       ! allow system commands on $SYSTEM directives
+
+   !TODO! have an auto mode where start and end are selected based on file suffix
+   select case(sget('prep_type'))
+   case('md','.md')
+      G_extract_start='```fortran'
+      G_extract_stop='```'
+   case('html','.html','htm','.htm')
+      ! flaw is HTML is not case sensitive
+      G_extract_start='<xmp>'
+      G_extract_stop='</xmp>'
+   case('tex')
+      G_extract_start='\begin{minted}{Fortran}'
+      G_extract_stop='\end{minted}'
+   case('auto')
+      G_extract_start=''
+      G_extract_stop=''
+      G_extract_auto=.true.
+      G_extract=.true.
+   case('none')
+      G_extract_start=''
+      G_extract_stop=''
+      G_extract_auto=.false.
+      G_extract=.false.
+   case default
+      G_extract_start=trim(sget('prep_start'))
+      G_extract_stop=trim(sget('prep_stop'))
+   end select
+   if(G_extract_start.ne.''.or.G_extract_stop.ne.'')G_extract=.true.
 
    call get_os_type()
    call defines()                                          ! define named variables declared on the command line
    call includes()                                         ! define include directories supplies on command line
    call opens()                                            ! convert input filenames into $include directives
+   call auto()
 
    READLINE: do                                            ! read loop to read input file
       read(G_file_dictionary(G_iocount)%unit_number,'(a)',end=7) line
+      if(G_extract)then                       ! in extract mode
+         if(line.eq.G_extract_start)then      ! start extracting
+            G_extract_flag=.true.
+            cycle READLINE
+         elseif(line.eq.G_extract_stop.and.G_extract_flag)then   ! stop extracting
+            G_extract_flag=.false.
+            cycle READLINE
+         elseif(.not.G_extract_flag)then      ! skip if not extracting
+            cycle READLINE
+         endif
+      endif
+      !TODO! should line count include skipped lines?
       G_io_total_lines=G_io_total_lines+1
       G_file_dictionary(G_iocount)%line_number=G_file_dictionary(G_iocount)%line_number+1
 
@@ -20243,854 +20454,38 @@ logical                       :: isscratch
       endif
 
       if(G_iocount.lt.1)exit
+      call auto() ! if in auto mode determine strings for new file
+
    enddo READLINE
 
    if (G_nestl.ne.0) then                                           ! check to make sure all if blocks are closed
       call stop_prep('*prep* ERROR(067) - $IF BLOCK NOT CLOSED.')
    endif
    call print_comment_block()
+
+   contains
+
+subroutine auto()
+   if(G_extract_auto)then
+      select case(ends_in(G_file_dictionary(G_iocount)%filename) )
+      case('md','.md')
+         G_extract_start='```fortran'
+         G_extract_stop='```'
+      case('tex')
+         G_extract_start='\begin{minted}{Fortran}'
+         G_extract_stop='\end{minted}'
+      case('html','.html','htm','.htm')
+         G_extract_start='<xmp>'
+         G_extract_stop='</xmp>'
+      case default
+         G_extract_start=trim(sget('prep_start'))
+         G_extract_stop=trim(sget('prep_stop'))
+      end select
+   endif
+end subroutine auto
+
+
 end program prep
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
- 
- 
-!>>>>> build/dependencies/M_strings/src/M_strings_oop.f90
-!>
-!!##NAME
-!!    M_strings_oop(3f) - [M_strings:INTRO] OOP Fortran string module
-!!
-!!##SYNOPSIS
-!!
-!!    use M_strings_oop
-!!
-!!##DESCRIPTION
-!!    The M_strings(3fm) module is a collection of Fortran procedures
-!!    that supplement the built-in intrinsic string routines. Routines
-!!    for parsing, tokenizing, changing case, substituting new strings for
-!!    substrings, locating strings with simple wildcard expressions, removing
-!!    tabs and line terminators and other string manipulations are included.
-!!
-!!    M_strings_oop(3fm) is a companion module that provides an OOP interface
-!!    to the M_strings module.
-!!
-!!
-!!##SEE ALSO
-!!    There are additional routines in other GPF modules for working with
-!!    expressions (M_calculator), time strings (M_time), random strings
-!!    (M_random, M_uuid), lists (M_list), and interfacing with the C regular
-!!    expression library (M_regex).
-!!
-!!##EXAMPLES
-!!
-!!    Each of the procedural functions in M_strings(3fm) includes an example
-!!    program in the corresponding man(1) page for the function. The
-!!    object-oriented interface does not have individual man(1) pages,
-!!    but is instead demonstrated using the following example program:
-!!
-!!     program demo_M_strings_oop
-!!     !
-!!     ! This is an example using the object-oriented class/type model
-!!     ! defined in M_strings_oop
-!!     ! This is essentially the same functionality as the procedures
-!!     ! combined with several Fortran intrinsics and overloaded operators
-!!     !
-!!     use M_strings_oop,only : string, p
-!!     implicit none
-!!     TYPE(string) :: str1
-!!     TYPE(string) :: str2
-!!     TYPE(string) :: str3
-!!     TYPE(string) :: str4
-!!     !==============================================================================
-!!       write(*,*)'exercise the M_STRING_OOP module interface'
-!!       ! draw a break line in the output
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'Call methods of type(STRING)'
-!!       ! define TYPE(STRING) with constructor
-!!       str2=string('   This  is  a  String!       ')
-!!       str4=string(' a  String ')
-!!       write(*,*)repeat('=',78)
-!!       ! print members of type
-!!       write(*,101)'str2%str is ................ ',str2%str
-!!       ! same as intrinsic LEN()
-!!       write(*,202)'len ........................ ',str2%len()
-!!       ! same as intrinsic INDEX()
-!!       write(*,202)'len_trim ................... ',str2%len_trim()
-!!       ! same as intrinsic INDEX()
-!!       write(*,202)'index("is")................. ',str2%index("is")
-!!       ! same as intrinsic INDEX()
-!!       write(*,202)'index("is",back=.T.) ....... ',str2%index("is",back=.TRUE.)
-!!       ! output TYPE(STRING) with %str all uppercase
-!!       write(*,101)'upper ...................... ',p(str2%upper())
-!!       ! output TYPE(STRING) with %str all miniscule
-!!       write(*,101)'lower ...................... ',p(str2%lower())
-!!       ! output TYPE(STRING) with %str reversed
-!!       write(*,101)'reverse .................... ',p(str2%reverse())
-!!       ! same as intrinsic ADJUSTL()
-!!       write(*,101)'adjustl .................... ',p(str2%adjustl())
-!!       ! same as intrinsic ADJUSTR()
-!!       write(*,101)'adjustr .................... ',p(str2%adjustr())
-!!       ! center string in current string length
-!!       write(*,101)'adjustc .................... ',p(str2%adjustc())
-!!       ! center string in string length of NN
-!!       write(*,101)'adjustc(49) ................ ',p(str2%adjustc(49))
-!!       ! force %str to be NN characters long
-!!       write(*,101)'lenset(49) ................. ',p(str2%lenset(49))
-!!       ! same as intrinsic TRIM()
-!!       write(*,101)'trim ....................... ',p(str2%trim())
-!!       ! trim leading and trailing spaces
-!!       write(*,101)'crop ....................... ',p(str2%crop())
-!!       ! calls M_strings procedure SUBSTITUTE()
-!!       write(*,101)'substitute("This","Here") .. ',p(str2%substitute("This","Here"))
-!!       ! calls M_strings procedure COMPACT()
-!!       write(*,101)'compact .................... ',p(str2%compact())
-!!       write(*,101)'compact("") ................ ',p(str2%compact(""))
-!!       write(*,101)'compact(":") ............... ',p(str2%compact(":"))
-!!       ! calls M_strings procedure TRANSLITERATE()
-!!       write(*,101)'transliterate("aei","VWX") . ',p(str2%transliterate("aei","VWX"))
-!!       write(*,101)'transliterate("aeiou"," ") . ',p(str2%transliterate("aeiou"," "))
-!!       write(*,101)'transliterate("aeiou","") .. ',p(str2%transliterate("aeiou",""))
-!!       write(*,101)'transliterate(" aeiou","") . ',p(str2%transliterate(" aeiou",""))
-!!       ! calls M_strings procedure SWITCH()
-!!       write(*,404)'chars .................... . ',str4%chars()
-!!
-!!       write(*,*)repeat('=',78)
-!!       str2%str='\t\tSome tabs\t   x\bX '
-!!       write(*,101)'str2%str ................... ',str2%str
-!!       write(*,101)'expand ..................... ',p(str2%expand())
-!!       str2=str2%expand()
-!!       ! calls M_strings procedure NOTABS()
-!!       write(*,101)'notabs ..................... ',p(str2%notabs())
-!!       ! calls M_strings procedure NOESC()
-!!       write(*,101)'noesc ...................... ',p(str2%noesc())
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'Casting to numeric variables'
-!!       str3=string('   12.345678901234567e1        ')
-!!       write(*,101)'str3%str ................... ',str3%str
-!!       ! calls M_strings procedure STRING_TO_VALUE()
-!!       write(*,*)'int  ....................... ', str3%int()
-!!       ! calls M_strings procedure STRING_TO_VALUE()
-!!       write(*,*)'real ....................... ', str3%real()
-!!       ! calls M_strings procedure STRING_TO_VALUE()
-!!       write(*,*)'dble ....................... ', str3%dble()
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'Matching simple globbing patterns'
-!!       str3=string('   12.345678901234567e1        ')
-!!       str3=string('Four score and seven years ago')
-!!       write(*,101)'str3%str ................... ',str3%str
-!!       ! calls M_strings procedure MATCHW
-!!       write(*,*)'match("Fo*") ............... ', str3%match("Fo*")
-!!       ! calls M_strings procedure MATCHW
-!!       write(*,*)'match("and") ............... ', str3%match("and")
-!!       ! calls M_strings procedure MATCHW
-!!       write(*,*)'match("*and*") ............. ', str3%match("*and*")
-!!
-!!       101 format(1x,a,"[",a,"]")
-!!       202 format(1x,a,i0)
-!!       303 format(1x,*(l3))
-!!       404 format(1x,a,*("[",a1,"]":))
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'OVERLOADED OPERATORS (add and subtract,return TYPE(STRING))'
-!!       str1%str='123.456'
-!!       str2%str='AaBbCcDdEeFfGgHhIiJj AaBbCcDdEeFfGgHhIiJj'
-!!       write(*,101)'str1%str ................... ',str1%str
-!!       write(*,101)'str2%str ................... ',str2%str
-!!       write(*,*)'str1 + str2 ................ ',p(str1 + str2)
-!!       ! a string that looks like a numeric value can have a value added
-!!       write(*,*)'str1 + 20000 ............... ',p(str1 +20000)
-!!       write(*,*)'str1 - 20.0 ................ ',p(str1 -20.0)
-!!       write(*,*)'str2 - "Aa" (removes ALL) .. ',p(str2 - 'Aa')
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'OVERLOADED OPERATORS (multiply,return TYPE(STRING))'
-!!       str1%str='AaBbCcDdEeFfGgHhIiJj'
-!!       write(*,101)'str1%str ................... ',str1%str
-!!       write(*,*)'str1 * 3 ................... ',p(str1 * 3)
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'OVERLOADED OPERATORS (//,return TYPE(STRING))'
-!!       str1%str='String one:'
-!!       str2%str='String two:'
-!!       write(*,101)'str1%str ................... ',str1%str
-!!       write(*,101)'str2%str ................... ',str2%str
-!!       write(*,*)'str1 // str2 ................ ',p(str1 // str2)
-!!       ! numeric values are converted to strings
-!!       write(*,*)'str1 // 20000 ............... ',p(str1 // 20000)
-!!       write(*,*)'str1 // 20.0 ................ ',p(str1 // 20.0)
-!!
-!!       write(*,*)repeat('=',78)
-!!       write(*,*)'OVERLOADED OPERATORS (logical comparisons,return logical)'
-!!       ! NOTE: comparisons are performed on the character variable members
-!!       !       of the type(string)
-!!       str1%str='abcdefghij'
-!!       str2%str='klmnopqrst'
-!!       write(*,101)'str1%str ................... ',str1%str
-!!       write(*,101)'str2%str ................... ',str2%str
-!!       write(*,*)': EQ LT GT LE GE NE'
-!!       write(*,*)'compare str1 to str1'
-!!       write(*,303)str1.eq.str1  ,str1.lt.str1  ,str1.gt.str1  ,str1.le.str1 &
-!!                  & ,str1.ge.str1  ,str1.ne.str1
-!!       write(*,*)'compare str1 to str2'
-!!       write(*,303)str1.eq.str2  ,str1.lt.str2  ,str1.gt.str2  ,str1.le.str2 &
-!!                  & ,str1.ge.str2  ,str1.ne.str2
-!!       write(*,*)'compare str2 to str1'
-!!       write(*,303)str2.eq.str1  ,str2.lt.str1  ,str2.gt.str1  ,str2.le.str1 &
-!!                  & ,str2.ge.str1  ,str2.ne.str1
-!!
-!!       write(*,*)repeat('=',78)
-!!
-!!     end program demo_M_strings_oop
-!!
-!! Expected output
-!!
-!!      exercise the M_STRING_OOP module interface
-!!      =============================================================================
-!!      Call methods of type(STRING)
-!!      =============================================================================
-!!      str2%str is ................ [   This  is  a  String!             ]
-!!      len ........................ 36
-!!      len_trim ................... 23
-!!      index("is")................. 6
-!!      index("is",back=.T.) ....... 10
-!!      upper ...................... [   THIS  IS  A  STRING!             ]
-!!      lower ...................... [   this  is  a  string!             ]
-!!      reverse .................... [             !gnirtS  a  si  sihT   ]
-!!      adjustl .................... [This  is  a  String!                ]
-!!      adjustr .................... [                This  is  a  String!]
-!!      adjustc .................... [        This  is  a  String!        ]
-!!      adjustc(49) ................ [              This  is  a  String!               ]
-!!      lenset(49) ................. [   This  is  a  String!                          ]
-!!      trim ....................... [   This  is  a  String!]
-!!      crop ....................... [This  is  a  String!]
-!!      substitute("This","Here") .. [   Here  is  a  String!             ]
-!!      compact .................... [This is a String!]
-!!      compact("") ................ [ThisisaString!]
-!!      compact(":") ............... [This:is:a:String!]
-!!      transliterate("aei","VWX") . [   ThXs  Xs  V  StrXng!             ]
-!!      transliterate("aeiou"," ") . [   Th s   s     Str ng!             ]
-!!      transliterate("aeiou","") .. [   Ths  s    Strng!                 ]
-!!      transliterate(" aeiou","") . [ThssStrng!                          ]
-!!      chars .................... . [ ][a][ ][s][t][r][i][n][g][ ]
-!!      =============================================================================
-!!      str2%str ................... [\t\tSome tabs\t   x\bX ]
-!!      expand ..................... [         Some tabs          x   X]
-!!      notabs ..................... [                Some tabs          x    X]
-!!      noesc ...................... [  Some tabs    x X]
-!!      =============================================================================
-!!      Casting to numeric variables
-!!      str3%str ................... [   12.345678901234567e1        ]
-!!      int  .......................          123
-!!      real .......................    123.456787
-!!      dble .......................    123.45678901234567
-!!      =============================================================================
-!!      Matching simple globbing patterns
-!!      str3%str ................... [Four score and seven years ago]
-!!      match("Fo*") ...............  T
-!!      match("and") ...............  F
-!!      match("*and*") .............  T
-!!      ==============================================================================
-!!      OVERLOADED OPERATORS (add and subtract, return TYPE(STRING))
-!!      str1%str ................... [123.456]
-!!      str2%str ................... [AaBbCcDdEeFfGgHhIiJj AaBbCcDdEeFfGgHhIiJj]
-!!      str1 + str2 ................ 123.456 AaBbCcDdEeFfGgHhIiJj AaBbCcDdEeFfGgHhIiJj
-!!      str1 + 20000 ............... 20123.455999999998
-!!      str1 - 20.0 ................ -103.456
-!!      str2 - "Aa" (removes ALL) .. BbCcDdEeFfGgHhIiJj BbCcDdEeFfGgHhIiJj
-!!      =============================================================================
-!!      OVERLOADED OPERATORS (multiply, return TYPE(STRING))
-!!      str1%str ................... [AaBbCcDdEeFfGgHhIiJj]
-!!      str1 * 3 ................... AaBbCcDdEeFfGgHhIiJjAaBbCcDdEeFfGgHhIiJjAaBbCcDdEeFfGgHhIiJj
-!!      =============================================================================
-!!      OVERLOADED OPERATORS (//, return TYPE(STRING))
-!!      str1%str ................... [String one:]
-!!      str2%str ................... [String two:]
-!!      str1 // str2 ................ String one:String two:
-!!      str1 // 20000 ............... String one:20000
-!!      str1 // 20.0 ................ String one:20.0
-!!      =============================================================================
-!!      OVERLOADED OPERATORS (logical comparisons, return logical)
-!!      str1%str ................... [abcdefghij]
-!!      str2%str ................... [klmnopqrst]
-!!      : EQ LT GT LE GE NE
-!!      compare str1 to str1
-!!      :  T  F  F  T  T  F
-!!      compare str1 to str2
-!!      :  F  T  F  T  F  T
-!!      compare str2 to str1
-!!      :  F  F  T  F  T  T
-!!      =============================================================================
-!!
-!!   Expected output
-!!
-!!##AUTHOR
-!!    John S. Urban
-!!
-!!##LICENSE
-!!    Public Domain
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-module M_strings_oop
-!
-! Define an OOP (Object-Oriented Programming) interface for the M_strings module.
-!
-! Leveraging the existing procedural functions in module M_strings to do the calculations allows
-! this to be a definition of a derived type ( TYPE(STRING) ) and the
-! methods it supports and overloading of operators to support the new data type.
-!
-use M_strings, only : upper, lower                       ! case
-use M_strings, only : lenset, atleast, adjustc, compact, crop     ! whitespace
-use M_strings, only : reverse
-use M_strings, only : notabs, noesc, expand
-use M_strings, only : substitute, transliterate
-use M_strings, only : string_to_value, switch, v2s, s2v
-use M_strings, only : switch, split, matchw
-implicit none
-private
-integer,parameter,private :: dp=kind(0.0d0)
-public p
-!-----------------------------------------------------------------------------------------------------------------------------------
-   public string
-!-----------------------------------------------------------------------------------------------------------------------------------
-!DERIVED TYPE STRING
-!
-type string
-   ! COMPONENTS:
-   character(len=:),allocatable :: str
-contains
-   ! METHODS:
-   procedure  ::  adjustc        =>  oop_adjustc
-   procedure  ::  adjustl        =>  oop_adjustl
-   procedure  ::  adjustr        =>  oop_adjustr
-   procedure  ::  compact        =>  oop_compact
-   procedure  ::  crop           =>  oop_crop
-   procedure  ::  dble           =>  oop_dble
-   procedure  ::  expand         =>  oop_expand
-   procedure  ::  index          =>  oop_index
-   procedure  ::  init           =>  init_string
-   procedure  ::  int            =>  oop_int
-   procedure  ::  len            =>  oop_len
-   procedure  ::  len_trim       =>  oop_len_trim
-   procedure  ::  lenset         =>  oop_lenset
-   procedure  ::  atleast        =>  oop_atleast
-   procedure  ::  match          =>  oop_matchw
-   procedure  ::  lower          =>  oop_lower
-   procedure  ::  noesc          =>  oop_noesc
-   procedure  ::  notabs         =>  oop_notabs
-   procedure  ::  real           =>  oop_real
-   procedure  ::  reverse        =>  oop_reverse
-   procedure  ::  substitute     =>  oop_substitute
-   procedure  ::  transliterate  =>  oop_transliterate
-   procedure  ::  trim           =>  oop_trim
-   procedure  ::  upper          =>  oop_upper
-   procedure  ::  chars          =>  oop_switch
-!-!   procedure  ::  split          =>  oop_split
-   !DECLARATION OF OVERLOADED OPERATORS FOR TYPE(STRING)
-   procedure,private :: eq
-   generic           :: operator(==) => eq
-   procedure,private :: lt
-   generic           :: operator(<)  => lt
-   procedure,private :: gt
-   generic           :: operator(>)  => gt
-   procedure,private :: ge
-   generic           :: operator(>=) => ge
-   procedure,private :: le
-   generic           :: operator(<=) => le
-   procedure,private :: ne
-   generic           :: operator(/=) => ne
-
-   procedure,private :: string_plus_value
-   generic           :: operator(+) => string_plus_value   ! string + integer|real|doubleprecision|string|character
-   procedure,private :: string_minus_value
-   generic           :: operator(-) => string_minus_value  ! string - integer|real|doubleprecision|string|character
-   procedure,private :: string_multiply_value
-   generic           :: operator(*) => string_multiply_value  ! string * integer|real|doubleprecision
-   procedure,private :: string_append_value
-   generic           :: operator(//) => string_append_value
-
-!-!   procedure,private :: minus_string
-!-!   generic           :: operator(-)  => minus_string
-end type
-!===================================================================================================================================
-! User-defined constructors are created by defining a generic interface
-! with the same name as the derived type they're supposed to construct.
-interface string
-   module procedure construct_from_fill
-end interface string
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-contains
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-! this function is used internally in the module, but is also declared to be a constructor for creating TYPE(DATE_TYPE) structures
-!
-function construct_from_fill(chars,len)
-
-! ident_1="@(#)M_strings::construct_from_fill(3f): construct TYPE(STRING)"
-
-character(len=*),intent(in),optional :: chars
-integer,intent(in),optional          :: len
-type(string)                         :: construct_from_fill
-   if(present(chars))then
-      construct_from_fill%str=chars
-   else
-      construct_from_fill%str=''
-   endif
-   if(present(len))then
-      construct_from_fill%str=lenset(construct_from_fill%str,len)
-   endif
-end function construct_from_fill
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-! DEFINE THE METHODS FOR THE TYPE
-! These functions are privately used to define the methods that TYPE(STRING) will support
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_len(self) result (length)
-
-! ident_2="@(#)M_strings::oop_len(3f): length of string"
-
-class(string),intent(in)    :: self
-integer                     :: length
-   length=len(self%str)
-end function oop_len
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_len_trim(self) result (length)
-
-! ident_3="@(#)M_strings::oop_len_trim(3f): trimmed length of string"
-
-class(string),intent(in)    :: self
-integer                     :: length
-   length=len_trim(self%str)
-end function oop_len_trim
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_switch(self) result (array)
-
-! ident_4="@(#)M_strings::oop_switch(3f): convert string to array of single characters"
-
-class(string),intent(in)    :: self
-character(len=1)            :: array(len(self%str))
-   array=switch(self%str)
-end function oop_switch
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_index(self,substring,back) result (location)
-
-! ident_5="@(#)M_strings::oop_index(3f): find starting position of a substring in a string"
-
-class(string),intent(in)    :: self
-character(len=*),intent(in) :: substring
-integer                     :: location
-logical,optional,intent(in) :: back
-   if(present(back))then
-      location=index(self%str,substring,back)
-   else
-      location=index(self%str,substring)
-   endif
-end function oop_index
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_upper(self) result (string_out)
-
-! ident_6="@(#)M_strings::oop_upper(3f): convert string to uppercase"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=upper(self%str)
-end function oop_upper
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_lower(self) result (string_out)
-
-! ident_7="@(#)M_strings::oop_lower(3f): convert string to miniscule"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=lower(self%str)
-end function oop_lower
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_expand(self,escape_char) result (string_out)
-
-! ident_8="@(#)M_strings::oop_expand(3f): expand common escape sequences by calling expand(3f)"
-
-class(string),intent(in)      :: self
-character,intent(in),optional :: escape_char
-type(string)                  :: string_out
-   if(present(escape_char))then
-      string_out%str=expand(self%str,escape_char)
-   else
-      string_out%str=expand(self%str)
-   endif
-end function oop_expand
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_trim(self) result (string_out)
-
-! ident_9="@(#)M_strings::oop_trim(3f): trim trailing spaces"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=trim(self%str)
-end function oop_trim
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_crop(self) result (string_out)
-
-! ident_10="@(#)M_strings::oop_crop(3f): crop leading and trailing spaces"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=crop(self%str)
-end function oop_crop
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_reverse(self) result (string_out)
-
-! ident_11="@(#)M_strings::oop_reverse(3f): reverse string"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=reverse(self%str)
-end function oop_reverse
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_adjustl(self) result (string_out)
-
-! ident_12="@(#)M_strings::oop_adjustl(3f): adjust string to left"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=adjustl(self%str)
-end function oop_adjustl
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_adjustr(self) result (string_out)
-
-! ident_13="@(#)M_strings::oop_adjustr(3f): adjust string to right"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=adjustr(self%str)
-end function oop_adjustr
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_adjustc(self,length) result (string_out)
-
-! ident_14="@(#)M_strings::oop_adjustc(3f): adjust string to center"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-integer,intent(in),optional  :: length
-   if(present(length))then
-      string_out%str=lenset(adjustc(self%str,length),length)
-   else
-      string_out%str=adjustc(self%str)
-   endif
-end function oop_adjustc
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_int(self) result (value)
-
-! ident_15="@(#)M_strings::oop_int(3f): string to integer"
-
-class(string),intent(in)     :: self
-integer                      :: value
-integer                      :: ierr
-   call string_to_value(self%str,value,ierr)
-end function oop_int
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_real(self) result (value)
-
-! ident_16="@(#)M_strings::oop_real(3f): string to real"
-
-class(string),intent(in)     :: self
-real                         :: value
-integer                      :: ierr
-   call string_to_value(self%str,value,ierr)
-end function oop_real
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_dble(self) result (value)
-
-! ident_17="@(#)M_strings::oop_dble(3f): string to double"
-
-class(string),intent(in)     :: self
-doubleprecision              :: value
-integer                      :: ierr
-   call string_to_value(self%str,value,ierr)
-end function oop_dble
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_compact(self,char) result (string_out)
-
-! ident_18="@(#)M_strings::oop_compact(3f): adjust string to center"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-character(len=*),optional    :: char
-   if(present(char))then
-      string_out%str=compact(self%str,char)
-   else
-      string_out%str=compact(self%str)
-   endif
-   string_out%str=trim(string_out%str)
-end function oop_compact
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_substitute(self,old,new) result (string_out)
-
-! ident_19="@(#)M_strings::oop_substitute(3f): change all occurrences of oldstring to newstring non-recursively"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-character(len=*),intent(in)  :: old
-character(len=*),intent(in)  :: new
-   string_out%str=self%str
-   call substitute(string_out%str,old,new)
-end function oop_substitute
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_transliterate(self,old,new) result (string_out)
-
-! ident_20="@(#)M_strings::oop_transliterate(3f): change all occurrences of oldstring to newstring non-recursively"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-character(len=*),intent(in)  :: old
-character(len=*),intent(in)  :: new
-   string_out%str=transliterate(self%str,old,new)
-end function oop_transliterate
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_atleast(self,length) result (string_out)
-
-! ident_21="@(#)M_strings::oop_atleast(3f): set string to at least specified length"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-integer,intent(in)           :: length
-   string_out%str=atleast(self%str,length)
-end function oop_atleast
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_lenset(self,length) result (string_out)
-
-! ident_22="@(#)M_strings::oop_lenset(3f): set string to specific length"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-integer,intent(in)           :: length
-   string_out%str=lenset(self%str,length)
-end function oop_lenset
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_matchw(self,pattern) result (answer)
-
-! ident_23="@(#)M_strings::oop_matchw(3f): test if wildcard pattern matches string"
-
-class(string),intent(in)     :: self
-character(len=*),intent(in)  :: pattern
-logical                      :: answer
-   answer=matchw(self%str,pattern)
-end function oop_matchw
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_notabs(self) result (string_out)
-
-! ident_24="@(#)M_strings::oop_notabs(3f): expand tab characters assuming tab stops every eight(8) characters"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-integer                      :: length
-   string_out%str=lenset('',8*len(self%str)) ! make long enough assuming all tab characters
-   call notabs(self%str,string_out%str,length)
-   string_out%str=trim(string_out%str)
-end function oop_notabs
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function oop_noesc(self) result (string_out)
-
-! ident_25="@(#)M_strings::oop_noesc(3f): replace non-printable characters with spaces"
-
-class(string),intent(in)     :: self
-type(string)                 :: string_out
-   string_out%str=noesc(self%str)
-end function oop_noesc
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-function p(self) result (string_out)
-
-! ident_26="@(#)M_strings::oop_p(3f): return CHARACTER string from TYPE(STRING)"
-
-class(string),intent(in)     :: self
-character(len=len(self%str)) :: string_out
-   string_out=self%str
-end function p
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-subroutine init_string(self)
-!
-! allow for TYPE(STRING) object to be initialized.
-!
-
-! ident_27="@(#)M_strings::init_dt(3f): initialize TYPE(STRING)"
-
-class(string)                        :: self
-   self%str=''
-end subroutine init_string
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-! FUNCTIONS FOR DEFINING OVERLOADED OPERATORS
-!===================================================================================================================================
-function string_plus_value(self,value) result (other)
-
-! ident_28="@(#)M_strings::string_plus_value(3f): add value to TYPE(STRING)"
-
-class(string),intent(in)      :: self
-type(string)                  :: other
-class(*),intent(in)           :: value
-!  This function is primarily intended to provide behaviors for the "+" operator for TYPE(STRING) values
-!  Notice that the value can be any of several types ( INTEGER,REAL,DOUBLEPRECISION,CHARACTER,TYPE(STRING) )
-   select type(value)
-   type is (integer);          other%str=v2s(value+s2v(self%str))  ! convert string%str to integer, add to value
-   type is (real);             other%str=v2s(value+s2v(self%str))  ! convert string%str to real, add to value
-   type is (doubleprecision);  other%str=v2s(value+s2v(self%str))  ! convert string%str to doubleprecision, add to value
-   type is (character(len=*)); other%str=self%str//' '//value      ! append space and CHARACTER to string %str
-   type is (string);           other%str=self%str//' '//value%str  ! append string %str values with space between
-   end select
-end function string_plus_value
-!===================================================================================================================================
-function string_minus_value(self,value) result (other)
-
-! ident_29="@(#)M_strings::string_minus_value(3f): subtract value from TYPE(STRING)"
-
-class(string),intent(in)      :: self
-type(string)                  :: other
-class(*),intent(in)           :: value
-!  This function is primarily intended to provide behaviors for the "-" operator for TYPE(STRING) values
-!  Notice that the value can be any of several types ( INTEGER,REAL,DOUBLEPRECISION,CHARACTER,TYPE(STRING) )
-   select type(value)
-   type is (integer);         other%str=v2s(value-s2v(self%str))
-   type is (real);            other%str=v2s(value-s2v(self%str))
-   type is (doubleprecision); other%str=v2s(value-s2v(self%str))
-   type is (character(len=*))
-      other%str=self%str
-      call substitute(other%str,value,'')
-   type is (string)
-      other%str=self%str
-      call substitute(other%str,value%str,'')
-   end select
-end function string_minus_value
-!===================================================================================================================================
-function string_append_value(self,value) result (other)
-
-! ident_30="@(#)M_strings::string_append_value(3f): append value to TYPE(STRING)"
-
-class(string),intent(in)      :: self
-type(string)                  :: other
-class(*),intent(in)           :: value
-!  This function is primarily intended to provide behaviors for the "//" operator for TYPE(STRING) values
-!  Notice that the value can be any of several types ( INTEGER,REAL,DOUBLEPRECISION,CHARACTER,TYPE(STRING) )
-   select type(value)
-   type is (integer);          other%str=self%str//v2s(value)
-   type is (real);             other%str=self%str//v2s(value)
-   type is (doubleprecision);  other%str=self%str//v2s(value)
-   type is (character(len=*)); other%str=self%str//value
-   type is (string);           other%str=self%str//value%str
-   end select
-end function string_append_value
-!===================================================================================================================================
-function string_multiply_value(self,value) result (other)
-
-! ident_31="@(#)M_strings::string_multiply_value(3f): multiply TYPE(STRING) value times"
-
-class(string),intent(in)      :: self
-type(string)                  :: other
-class(*),intent(in)           :: value
-!  This function is primarily intended to provide behaviors for the "//" operator for TYPE(STRING) values
-!  Notice that the value can be any of several types ( INTEGER,REAL,DOUBLEPRECISION )
-   select type(value)
-   type is (integer);          other%str=repeat(self%str,value)
-   type is (real);             other%str=repeat(self%str,nint(value))
-   type is (doubleprecision);  other%str=repeat(self%str,nint(value))
-   end select
-end function string_multiply_value
-!===================================================================================================================================
-logical function eq(self,other)
-
-! ident_32="@(#)M_strings::eq(3f): compare derived type string objects (eq,lt,gt,le,ge,ne)"
-
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   eq= self%str .eq. other%str
-end function eq
-logical function lt(self,other)
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   lt= self%str .lt. other%str
-end function lt
-logical function gt(self,other)
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   gt= self%str .gt. other%str
-end function gt
-logical function le(self,other)
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   le= self%str .le. other%str
-end function le
-logical function ge(self,other)
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   ge= self%str .ge. other%str
-end function ge
-logical function ne(self,other)
-   class(string),intent(in) :: self
-   type(string),intent(in)  :: other
-   ne= self%str .ne. other%str
-end function ne
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-end module M_strings_oop
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
- 
