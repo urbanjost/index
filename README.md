@@ -334,6 +334,12 @@ Please provide feedback on the
  -[fortrancon-2021](https://degenerateconic.com/fortrancon-2021.html)
  -[CiSE article](https://github.com/LKedward/fortran-lang-CiSE-article)
  -[Fortran Forum article](git clone https://github.com/LKedward/fortran-forum-article-template)
+ -[Fortran Package Manager:]( https://fpm.fortran-lang.org/en/index.html)
+ -[Article:]( http://arxiv.org/abs/2203.15110)
+
+
+
+
 }
 
 ## hash tables, linked lists, ...
@@ -484,3 +490,4 @@ repository
 #[M_system]
 [M_time]
 --!>
+ -[OpenSource:]( https://github.com/urbanjost)
