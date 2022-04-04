@@ -1043,23 +1043,23 @@ end subroutine menu
 ! From: "Felix Becker" <felix.becker@zih.tu-dresden.de>
 ! Subject: Variable-length string interface for "retrev".
 ! Date: Tuesday, May 28, 2013 11:51 AM
-!
+! 
 ! Hello John Urban,
-!
+! 
 ! using your Fortran "M_kracken95" module, I wrote a small wrapper that
 ! allows for "val" to be of unknown length, and that allows just getting
 ! the length of val without getting val and vice versa.
-!
+! 
 ! (using allocatable strings, and optional arguments).
-!
+! 
 ! Tested with gfortran version '4.8.0 20130502 (prerelease)'.
-!
+! 
 ! I am aware that M_kracken95 itself uses fixed length strings, and I did
 ! not fiddle with that; just providing a more flexible user interface on
 ! top of that.
-!
+! 
 ! Find my quick hack attached, use it if you want.
-!
+! 
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-!subroutine retrev_string_variable_length(name,val,len,ier)
 !-!  !!! @(#)retrev_string_variable_length: A wrapper for "retrev" from the module "M_kracken95":
@@ -1075,13 +1075,13 @@ end subroutine menu
 !-!  character(len=:),intent(out),allocatable,OPTIONAL ::  val
 !-!  integer,intent(out),OPTIONAL                      ::  llen
 !-!  integer,intent(out),OPTIONAL                      ::  ier
-!-!
+!-!  
 !-!  integer                                           ::  len_internal
 !-!  integer                                           ::  ier_internal
 !-!  character(llen=0)                                 ::  dummystring
-!-!
+!-!  
 !-!  call retrev(name,dummystring,len_internal,ier_internal)
-!-!
+!-!  
 !-!  if (present(val)) then
 !-!    if (allocated(val)) then
 !-!      deallocate(val)
@@ -1089,11 +1089,11 @@ end subroutine menu
 !-!    call allocate_string(int(len_internal,kind=8),val)
 !-!    call retrev(name,val,len_internal,ier_internal)
 !-!  end if
-!-!
+!-!  
 !-!  if (present(llen)) then
 !-!    llen = len_internal
 !-!  end if
-!-!
+!-!  
 !-!  if (present(ier)) then
 !-!    ier = ier_internal
 !-!  end if
@@ -1105,7 +1105,7 @@ end subroutine menu
 !-!  !!! @(#)allocate_string: allocate string
 !-!  integer(kind=8),intent(in)                  :: stringlength
 !-!  character(len=:),allocatable,intent(out)    :: stringvariable
-!-!
+!-!  
 !-!  allocate(character(len=stringlength) :: stringvariable)
 !-!
 !-!end subroutine allocate_string
@@ -1140,7 +1140,8 @@ end module M_kracken95
 ! updated 20131029
 ! read environment variable DEFAULT_CMD
 !-----------------------------------------------------------------------------------------------------------------------------------
-
+ 
+ 
 !>>>>> build/dependencies/M_io/src/M_io.f90
 !===================================================================================================================================
 MODULE M_io
@@ -5780,7 +5781,8 @@ end module m_io
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-
+ 
+ 
 !>>>>> build/dependencies/M_strings/src/M_strings.f90
 !>
 !!##NAME
@@ -15602,7 +15604,8 @@ end subroutine matching_delimiter
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 end module M_strings
-
+ 
+ 
 !>>>>> build/dependencies/M_list/src/M_list.f90
 !>
 !!##NAME
@@ -17111,7 +17114,8 @@ end module M_list
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
-
+ 
+ 
 !>>>>> app/prep.f90
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -17121,23 +17125,58 @@ end module M_list
 !     http://www.lahey.com/code.htm
 !  Extensively rewritten since under a MIT License.
 !     2013-10-03,2020-12-19,2021-06-12 : John S. Urban
+!
 ! CONSIDER
 ! make $OUTPUT file nestable
-! allow multiple files on $INCLUDE
+! allow multiple files on $INCLUDE?
 ! undocument $BLOCK HELP|VERSION?
 ! %,>>,<< operators
 ! replace math parsing with M_calculator (but add logical operators to M_calculator)
 ! cpp-like procedure macros
 ! cpp or fpp compatibility mode
 ! line control  # linenumber "file"
+! modularize and modernize calculator expression, if/else/endif
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+module M_expression
+use M_strings,   only : str_replace=>replace
+private
+public normalize_logical_operators
+contains
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+subroutine normalize_logical_operators(string)
+character(len=*) :: string
 
+   string=str_replace(string,'==','.EQ.')
+   string=str_replace(string,'/=','.NE.')
+   string=str_replace(string,'!=','.NE.')
+   string=str_replace(string,'>=','.GE.')
+   string=str_replace(string,'<=','.LE.')
+   string=str_replace(string,'>','.GT.')
+   string=str_replace(string,'<','.LT.')
+   string=str_replace(string,'&&','.AND.')
+   string=str_replace(string,'||','.OR.')
+   string=str_replace(string,'!','.NOT.')
+   string=str_replace(string,'.XOR.','.NEQV.')
+
+end subroutine normalize_logical_operators
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+end module M_expression
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
 module M_fpp                                                              !@(#)M_fpp(3f): module used by prep program
 USE ISO_FORTRAN_ENV, ONLY : STDERR=>ERROR_UNIT, STDOUT=>OUTPUT_UNIT,STDIN=>INPUT_UNIT
-use M_io,        only : get_tmp, dirname, uniq, fileopen, filedelete      ! Fortran file I/O routines
-use M_kracken95, only : sget, dissect, lget                               ! load command argument parsing module
+use M_io,        only : get_tmp, dirname, uniq, fileopen, filedelete, get_env  ! Fortran file I/O routines
+use M_kracken95, only : sget, dissect, lget                                    ! load command argument parsing module
 use M_strings,   only : nospace, v2s, substitute, upper, lower, isalpha, split, delim, str_replace=>replace, sep, atleast, unquote
 use M_strings,   only : glob
-use M_list,      only : insert, locate, replace, remove                   ! Basic list lookup and maintenance
+use M_expression
 implicit none
 
 logical,save                         :: G_debug=.false.
@@ -17232,6 +17271,7 @@ character(len=G_line_length) :: upopts                     ! directive line with
 logical,save                 :: eb=.false.
 integer,save                 :: noelse=0
 integer                      :: verblen
+logical                      :: ifound
 
    line=adjustl(G_source(2:))                              ! remove leading prefix and spaces from directive line
 
@@ -17259,24 +17299,29 @@ integer                      :: verblen
       write(stderr,*)'VERB='//trim(verb)
       write(stderr,*)'OPTIONS='//trim(options)
       write(stderr,*)'UPOPTS='//trim(upopts)
+      call flushit()
    endif
 
+   ifound=.true.
    if(G_write)then                                                    ! if processing lines in a logically selected region
-      if(G_inparcel.and.VERB.ne.'PARCEL')then
+
+      if(G_inparcel.and.(VERB.ne.'PARCEL'.and.VERB.ne.'ENDPARCEL') )then
          call write_out(trim(G_source))                               ! write data line
          return
       endif
                                                                       ! process the directive
       select case(VERB)
       case('  ')                                                      ! entire line is a comment
-      case('DEFINE','DEF');     call define(upopts,1)                 ! only process DEFINE if not skipping data lines
+      case('DEFINE','DEF','LET');     call define(upopts,1)                 ! only process DEFINE if not skipping data lines
       case('REDEFINE','REDEF'); call define(upopts,0)                 ! only process DEFINE if not skipping data lines
       case('UNDEF','UNDEFINE','DELETE'); call undef(upper(options))   ! only process UNDEF if not skipping data lines
       case('INCLUDE','READ');   call include(options,50+G_iocount)    ! Filenames can be case sensitive
       case('OUTPUT');           call output_case(options)             ! Filenames can be case sensitive
       case('PARCEL');           call parcel_case(upopts)
+      case('ENDPARCEL');        call parcel_case(' ')
       case('POST');             call post(upopts)
       case('BLOCK');            call document(options)
+      case('ENDBLOCK');         call document(' ')
       case('SET');              call set(options)
       case('IMPORT');           call import(options)
       case('IDENT','@(#)');     call ident(options)
@@ -17288,29 +17333,40 @@ integer                      :: verblen
       case('ERROR');            call stop('1 '//options)
       CASE('GET_ARGUMENTS');    call write_get_arguments()
       CASE('HELP');             call short_help()
+      case default
+         ifound=.false.
       end select
    endif
+
    select case(VERB)                                                  ! process logical flow control even if G_write is false
-
-   case('DEFINE','INCLUDE','SHOW','STOP','QUIT','HELP')
-   case('SYSTEM','UNDEF','UNDEFINE','DELETE','MESSAGE','REDEFINE')
-   case('OUTPUT','IDENT','@(#)','BLOCK','IMPORT','DEF','REDEF')
-   case('PARCEL','POST','SET','GET_ARGUMENTS','READ','ERROR')
-   case(' ')
-
    case('ELSE','ELSEIF','ELIF');  call else(verb,upopts,noelse,eb)
    case('ENDIF');          call endif(noelse,eb)
    case('IF');       call if(upopts,noelse,eb)
    case('IFDEF','IFNDEF'); call def(verb,upopts,noelse,eb)
-
    case default
-      call stop_prep('*prep* ERROR(001) - UNKNOWN COMPILER DIRECTIVE ['//trim(verb)//']: '//trim(G_SOURCE))
+      if(.not.ifound)then
+         !==========================================================================================================================
+         !PROPOSAL>!==================== allow assignments  name=expression by default 
+         !upopts=nospace(upper(line))     ! remove spaces from directive
+         !if(index(upopts,'=').gt.1.and.G_write)then  ! maybe try it as a simple expression instead; but should do it earlier
+         !                                ! to behave like fortran and not have reserved words, and only if LHS is
+         !                                ! an acceptable variable name
+         !   call define(upopts,0)        ! only process DEFINE if not skipping data lines
+         !else
+         !   call stop_prep('*prep* ERROR(001) - UNKNOWN COMPILER DIRECTIVE ['//trim(verb)//']: '//trim(G_SOURCE))
+         !endif
+         !PROPOSAL<!====================
+            call stop_prep('*prep* ERROR(001) - UNKNOWN COMPILER DIRECTIVE ['//trim(verb)//']: '//trim(G_SOURCE))
+         !PROPOSAL!====================
+         !==========================================================================================================================
+      endif
    end select
+
 end subroutine cond
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine exe()                              ! @(#)exe(3f): Execute the command line specified by the string COMMAND.
+subroutine exe()                              !@(#)exe(3f): Execute the command line specified by the string COMMAND.
 character(len=G_line_length)  :: command      ! directive line with leading prefix and directive name removed
 character(len=G_line_length)  :: defineme     ! scratch string for writing a DEFINE directive in to return command status
 integer                       :: icmd=0
@@ -17342,7 +17398,7 @@ end subroutine exe
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine write_get_arguments()                ! @(#)write_get_arguments(3f): write block for processing M_CLI command line parsing
+subroutine write_get_arguments()                !@(#)write_get_arguments(3f): write block for processing M_CLI command line parsing
 integer :: i
 character(len=132),parameter :: text(*)=[character(len=132) :: &
 "function get_arguments()"                                                                              ,&
@@ -17485,7 +17541,12 @@ integer                     :: istore                       ! location of variab
 character(len=:),allocatable :: array(:)
 character(len=:),allocatable :: opts
 
-   CALL split(allopts,array,delimiters=';')                       ! parse string to an array parsing on delimiters
+   !x!if(allopts.eq.'')then                                    ! if no options show all variables.
+   !x!   call debug_state('*',msg='')
+   !x!   return
+   !x!endif
+
+   CALL split(allopts,array,delimiters=';')                 ! parse string to an array parsing on delimiters
 
    do i=1,size(array)
      opts=trim(array(i))
@@ -17530,20 +17591,9 @@ character(len=:),allocatable :: opts
          temp='1'                                              ! set string to default value
       else                                                     ! =value string trails name on directive
          G_defvar(istore)=opts(:iequ-1)                        ! store variable name from line with =value string
-         temp=opts(iequ+1:)                                       ! get expression
+         temp=opts(iequ+1:)                                    ! get expression
       endif
-
-      temp=str_replace(temp,'==','.EQ.')
-      temp=str_replace(temp,'/=','.NE.')
-      temp=str_replace(temp,'!=','.NE.')
-      temp=str_replace(temp,'>=','.GE.')
-      temp=str_replace(temp,'<=','.LE.')
-      temp=str_replace(temp,'>','.GT.')
-      temp=str_replace(temp,'<','.LT.')
-      temp=str_replace(temp,'&&','.AND.')
-      temp=str_replace(temp,'||','.OR.')
-      temp=str_replace(temp,'!','.NOT.')
-      temp=str_replace(temp,'.XOR.','.NEQV.')
+      call normalize_logical_operators(temp)
       call parens(temp)                                        !
       if (iequ.ne.0) then
          temp=opts(:iequ)//temp
@@ -17700,7 +17750,7 @@ end subroutine undef
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine if(opts,noelse,eb)                              !@(#)if(3f): process IF and ELSEIF directives
+subroutine if(opts,noelse,eb)                                 !@(#)if(3f): process IF and ELSEIF directives
 character(len=*),intent(in)     :: opts
 integer,intent(out)             :: noelse
 logical                         :: eb
@@ -17708,18 +17758,18 @@ character(len=G_var_len)     :: value
 integer                      :: ios
 integer                      :: i
 integer                      :: ithen
-character(len=G_line_length) :: expression       ! line        -
+character(len=G_line_length) :: expression                 
 
    noelse=0
    G_write=.false.
 
-   G_nestl=G_nestl+1                                       ! increment IF nest level
+   G_nestl=G_nestl+1                                          ! increment IF nest level
    if (G_nestl.gt.G_nestl_max) then
       call stop_prep('*prep* ABORT(bh) - "IF" BLOCK NESTING TOO DEEP, LIMITED TO '//v2s(G_nestl_max)//' LEVELS:'//trim(G_source))
    endif
 
    expression=opts
-   ithen=len_trim(opts)  ! trim off ")THEN"
+   ithen=len_trim(opts)                                       ! trim off ")THEN"
    if(ithen.gt.5)then
       if(expression(ithen-4:ithen).eq.')THEN'.and.expression(1:1).eq.'(')then
          expression=expression(2:ithen-5)
@@ -17735,17 +17785,7 @@ character(len=G_line_length) :: expression       ! line        -
       exit                                                    ! no remaining DEFINED() functions so exit loop
    enddo FIND_DEFINED
 
-   expression=str_replace(expression,'==','.EQ.')
-   expression=str_replace(expression,'/=','.NE.')
-   expression=str_replace(expression,'!=','.NE.')
-   expression=str_replace(expression,'>=','.GE.')
-   expression=str_replace(expression,'<=','.LE.')
-   expression=str_replace(expression,'>','.GT.')
-   expression=str_replace(expression,'<','.LT.')
-   expression=str_replace(expression,'&&','.AND.')
-   expression=str_replace(expression,'||','.OR.')
-   expression=str_replace(expression,'!','.NOT.')
-   expression=str_replace(expression,'.XOR.','.NEQV.')
+   call normalize_logical_operators(expression)
    call parens(expression)
    if (index(expression,'.').eq.0) then                            ! if line should be a variable only
       if (expression(1:1).ge.'A'.and.expression(1:1).le.'Z') then  ! check that variable name starts with a valid character
@@ -17801,7 +17841,7 @@ character(len=:),allocatable :: varvalue
       G_dc=.false.
    endif
    if((.not.G_noenv).and.(.not.G_dc))then            ! if not found in variable dictionary check environment variables if allowed
-      varvalue=system_getenv(value)
+      varvalue=get_env(value)
       if(len_trim(varvalue).ne.0)then
          G_dc=.true.
       endif
@@ -17868,14 +17908,15 @@ integer                       :: ithen
 logical                       :: eb
 character(len=G_line_length)  :: expression
 
-if(G_debug.and.G_verbose)then
-   write(stderr,*)'*ELSE* TOP'
-   write(stderr,*)'        G_NESTL =',g_nestl
-   write(stderr,*)'        EB      =',eb
-   write(stderr,*)'        NOELSE  =',noelse
-   write(stderr,*)'        G_WRITE =',g_write
-   write(stderr,*)'        G_CONDOP=',g_condop
-endif
+   if(G_debug.and.G_verbose)then
+      write(stderr,*)'*ELSE* TOP'
+      write(stderr,*)'        G_NESTL =',g_nestl
+      write(stderr,*)'        EB      =',eb
+      write(stderr,*)'        NOELSE  =',noelse
+      write(stderr,*)'        G_WRITE =',g_write
+      write(stderr,*)'        G_CONDOP=',g_condop
+      call flushit()
+   endif
 
    expression=opts
    ithen=len_trim(opts)  ! trim off ")THEN"
@@ -17904,14 +17945,15 @@ endif
      G_write=.true.
    endif
 
-if(G_debug.and.G_verbose)then
-   write(stderr,*)'*ELSE* BOTTOM'
-   write(stderr,*)'        G_NESTL =',g_nestl
-   write(stderr,*)'        EB      =',eb
-   write(stderr,*)'        NOELSE  =',noelse
-   write(stderr,*)'        G_WRITE =',g_write
-   write(stderr,*)'        G_CONDOP=',g_condop
-endif
+   if(G_debug.and.G_verbose)then
+      write(stderr,*)'*ELSE* BOTTOM'
+      write(stderr,*)'        G_NESTL =',g_nestl
+      write(stderr,*)'        EB      =',eb
+      write(stderr,*)'        NOELSE  =',noelse
+      write(stderr,*)'        G_WRITE =',g_write
+      write(stderr,*)'        G_CONDOP=',g_condop
+      call flushit()
+   endif
 end subroutine else
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -17927,6 +17969,7 @@ logical,intent(out)           :: eb
       write(stderr,*)'        NOELSE  =',noelse
       write(stderr,*)'        G_WRITE =',g_write
       write(stderr,*)'        G_CONDOP=',g_condop
+      call flushit()
    endif
 
    ! if no ELSE or ELSEIF present insert ELSE to simplify logic
@@ -17957,6 +18000,7 @@ logical,intent(out)           :: eb
       write(stderr,*)'        NOELSE  =',noelse
       write(stderr,*)'        G_WRITE =',g_write
       write(stderr,*)'        G_CONDOP=',g_condop
+      call flushit()
    endif
 
 end subroutine endif
@@ -18285,7 +18329,7 @@ end subroutine doop
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-logical function trufal(line,ipos1,ipos2)       ! @(#)trufal(3f): convert variable name or .TRUE./.FALSE. to a logical value
+logical function trufal(line,ipos1,ipos2)       !@(#)trufal(3f): convert variable name or .TRUE./.FALSE. to a logical value
 character(len=G_line_length),intent(in) :: line              ! line containing string to interpret as a logical value
 integer,intent(in)                      :: ipos1             ! starting column of substring in LINE
 integer,intent(in)                      :: ipos2             ! ending column of substring in LINE
@@ -18483,7 +18527,7 @@ integer                      :: ipos1, ipos2
         call stop_prep('*prep* ERROR(045) - MUST BE INTEGER:'//trim(G_source))
       endif
    else                                                             ! input is not a variable name, assume it represents an integer
-      read(line(ipos1:ipos2),'(i11)',iostat=ios) get_integer_from_string               ! try to read integer value from input string
+      read(line(ipos1:ipos2),'(i11)',iostat=ios) get_integer_from_string   ! try to read integer value from input string
       if(ios.ne.0)then                                              ! failed to convert the string to an integer, so stop
         call stop_prep('*prep* ERROR(046) - MUST BE INTEGER:'//trim(G_source))
       endif
@@ -18492,7 +18536,7 @@ end function get_integer_from_string
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine rewrit(line,temp,j,j1,l,l1)                           !@(#)rewrit(3f):
+subroutine rewrit(line,temp,j,j1,l,l1)           !@(#)rewrit(3f):
 character(len=G_line_length)  line
 character(len=*)           :: temp
 integer                    :: j
@@ -18517,7 +18561,7 @@ end subroutine rewrit
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine document(opts)                    ! @(#)document(3f): process BLOCK command to start or stop special processing
+subroutine document(opts)                    !@(#)document(3f): process BLOCK command to start or stop special processing
 character(len=*),intent(in)  :: opts
 integer                      :: ierr
 integer                      :: ios
@@ -18586,6 +18630,14 @@ character(len=G_line_length) :: options                 ! everything after first
 
    case('SET')
       G_outtype='set'
+      G_MAN_PRINT=.false.
+      G_MAN_COLLECT=.false.
+   case('DEFINE')
+      G_outtype='define'
+      G_MAN_PRINT=.false.
+      G_MAN_COLLECT=.false.
+   case('REDEFINE')
+      G_outtype='redefine'
       G_MAN_PRINT=.false.
       G_MAN_COLLECT=.false.
    case('MESSAGE')
@@ -18904,7 +18956,7 @@ end subroutine debug_state
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine write_arguments() ! @(#)write_arguments(3f): return all command arguments as a string
+subroutine write_arguments() !@(#)write_arguments(3f): return all command arguments as a string
 
 integer                      :: istatus          !  status (non-zero means error)
 integer                      :: ilength          !  length of individual arguments
@@ -18913,7 +18965,7 @@ integer                      :: icount           !  count of number of arguments
 character(len=255)           :: value            !  store individual arguments one at a time
 
    write(G_iout,'(a)',advance='no')'! Arguments ...................... '
-   icount=command_argument_count()                  ! intrinsic gets number of arguments
+   icount=command_argument_count()               ! intrinsic gets number of arguments
    do i=1,icount
       call get_command_argument(i,value,ilength,istatus)
       write(G_iout,'(a,1x)',advance='no')value(:ilength)
@@ -18923,7 +18975,7 @@ end subroutine write_arguments
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine include(line,iunit)  ! @(#)include(3f): add file to input file list
+subroutine include(line,iunit)  !@(#)include(3f): add file to input file list
 implicit none
 character(len=G_line_length),intent(in)  :: line
 integer,intent(in)                       :: iunit
@@ -18969,7 +19021,7 @@ end subroutine include
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine post(parcel_name)  ! @(#)post(3f): switch to scratch file defined by PARCEL
+subroutine post(parcel_name)  !@(#)post(3f): switch to scratch file defined by PARCEL
 implicit none
 character(len=*),intent(in)  :: parcel_name
 integer                      :: ifound
@@ -19158,7 +19210,7 @@ end subroutine defines
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine stop(opts)                    ! @(#)stop(3f): process stop directive
+subroutine stop(opts)                    !@(#)stop(3f): process stop directive
 character(len=*),intent(in)  :: opts
 integer                      :: ivalue
 character(len=:),allocatable :: message
@@ -19175,6 +19227,7 @@ integer                      :: iend
       else
          message=unquote(trim(opts(iend:)))
          write(stderr,'(a)')message
+         call flushit()
       endif
 
       ivalue=get_integer_from_string(opts(:iend))
@@ -19232,34 +19285,33 @@ stopit=.false.
 if(l_help)then
 !-------------------------------------------------------------------------------
 help_text=[ CHARACTER(LEN=128) :: &
-'Project is up to date                                                           ',&
 'NAME                                                                            ',&
 '   prep(1) - [DEVELOPER] pre-process FORTRAN source files                       ',&
 '   (LICENSE:MIT)                                                                ',&
 '                                                                                ',&
 'SYNOPSIS                                                                        ',&
-'   prep  [[-D] define_list]                                                     ',&
-'         [-I include_directories]                                               ',&
-'         [-i input_file(s)]                                                     ',&
-'         [-o output_file]                                                       ',&
-'         [--system]                                                             ',&
-'         [--verbose]                                                            ',&
-'         [--prefix character|ADE]                                               ',&
-'         [--keeptabs]                                                           ',&
-'         [--noenv]                                                              ',&
-'         [--width n]                                                            ',&
-'         [-d ignore|remove|blank]                                               ',&
-'         [--comment default|doxygen|ford|none]                                  ',&
-'         [--type FILE_TYPE | --start START_STRING --stop STOP_STRING]           ',&
-'         [--ident]                                                              ',&
-'         [--version]                                                            ',&
-'         [--help]                                                               ',&
+'   prep [[-D] define_list]                                                      ',&
+'        [-I include_directories]                                                ',&
+'        [-i input_file(s)]                                                      ',&
+'        [-o output_file]                                                        ',&
+'        [--system]                                                              ',&
+'        [--verbose]                                                             ',&
+'        [--prefix character|ADE]                                                ',&
+'        [--keeptabs]                                                            ',&
+'        [--noenv]                                                               ',&
+'        [--width n]                                                             ',&
+'        [-d ignore|remove|blank]                                                ',&
+'        [--comment default|doxygen|ford|none]                                   ',&
+'        [--type FILE_TYPE | --start START_STRING --stop STOP_STRING]            ',&
+'        [--ident]                                                               ',&
+'        [--version]                                                             ',&
+'        [--help]                                                                ',&
 'DESCRIPTION                                                                     ',&
 '                                                                                ',&
-'   A preprocessor traditionally is used to conditionally perform operations on  ',&
-'   input files before they are passed to a compiler, including machine-specific ',&
-'   rules. This makes it possible to use a single source file even when different',&
-'   code is required for different execution environments.                       ',&
+'   A preprocessor is used to conditionally perform operations on input files    ',&
+'   before they are passed to a compiler, including machine-specific selection   ',&
+'   of input lines. This makes it possible to use a single source file even when ',&
+'   different code is required for different execution environments.             ',&
 '                                                                                ',&
 '   The prep(1) preprocessor has additional features that help to include        ',&
 '   documentation in the same file as the source and to generate generic code    ',&
@@ -19267,63 +19319,56 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   * Conditionally output parts of the source file (controlled by expressions   ',&
 '     on the directives $if, $ifdef, $ifndef, $else, $elif, and $endif. The      ',&
-'     expressions controlling the output may include variables defined on the    ',&
-'     command line and the directives $define, $redefine, $define and $undefine).',&
+'     expressions may include variables defined on the command line and the      ',&
+'     directives $define, $redefine, and $undefine).                             ',&
 '                                                                                ',&
 '   * Include other files (provided by directive $include).                      ',&
 '                                                                                ',&
-'   * Replace text of the form ${NAME} (controlled by directives $set            ',&
-'     and $import).                                                              ',&
-'                                                                                ',&
-'   * Cause an error (controlled by directive $stop) and produce messages        ',&
-'     on stderr (using the directive $message).                                  ',&
-'                                                                                ',&
 '   * Define parcels of text that may be replayed multiple times with            ',&
 '     expansion, allowing for basic templating (controlled by directives         ',&
-'     $parcel and $post).                                                        ',&
+'     $parcel/$endparcel and $post). The mechanism supported is to replace       ',&
+'     text of the form ${NAME} with user-supplied strings similar to the         ',&
+'     POSIX shell (controlled by directives $set and $import).                   ',&
+'                                                                                ',&
+'   * Filter blocks of text and convert them to comments, a CHARACTER array,     ',&
+'     Fortran WRITE statements, ... (provided by the $block directive.)          ',&
+'                                                                                ',&
+'     The blocks of text may also be written to a file and executed, with        ',&
+'     stdout captured and included in the prep(1) output file.                   ',&
+'                                                                                ',&
+'     Blocked text may optionally be simultaneously written to a separate file,  ',&
+'     typically for use as documentation.                                        ',&
+'                                                                                ',&
+'   * Call system commands (using the $system directive).                        ',&
 '                                                                                ',&
 '   * Generate multiple output files from a single input file (using             ',&
 '     directive $output).                                                        ',&
 '                                                                                ',&
-'   * Filter blocks of text and convert them to comments, a character            ',&
-'     variable, or Fortran WRITE statements ... (this is provided by             ',&
-'     the $block directive).                                                     ',&
-'                                                                                ',&
-'     Blocked text may be simultaneously written to a separate file, typically   ',&
-'     for use as documentation.                                                  ',&
-'                                                                                ',&
-'   * Call system commands using the $system directive.                          ',&
-'                                                                                ',&
 '   * Record the parameters used and the date and time executed                  ',&
-'     as Fortran comments in the output using $show.                             ',&
+'     as Fortran comments in the output (using $show).                           ',&
 '                                                                                ',&
-'   The pre-processor will interpret lines beginning with "$" (by default) in    ',&
-'   column one as directives, and will output no such lines. Other input is      ',&
-'   conditionally written to the output file(s) based on the case-insensitive    ',&
-'   command names.                                              ',&
+'   * Cause an error (controlled by directive $stop or $error) and produce       ',&
+'     messages on stderr (using $message).                                       ',&
+'                                                                                ',&
+'   DIRECTIVE SYNTAX                                                             ',&
+'                                                                                ',&
+'   The prep(1) pre-processor directives begin with "$" (by default) in column   ',&
+'   one, and will output no such lines. Other input is conditionally written     ',&
+'   to the output file(s) based on the case-insensitive command names.           ',&
 '                                                                                ',&
 '   An exclamation character FOLLOWED BY A SPACE on most directives              ',&
 '   begins an in-line comment that is terminated by an end-of-line. The space    ',&
 '   is required so comments are not confused with C-style logical operators such ',&
 '   as "!", which may NOT be followed by a space.                                ',&
 '                                                                                ',&
-'   prep(1) supports string substitution and the inclusion of free-format        ',&
-'   text blocks that may be converted to such things as Fortran comments or      ',&
-'   CHARACTER variable definitions. Optionally, the text block may               ',&
-'   simultaneously be used to generate documentation files.                      ',&
-'                                                                                ',&
-'   Combined, strings substitution and repeatable text blocks allow for          ',&
-'   basic templating.                                                            ',&
-'                                                                                ',&
-'   INTEGER or LOGICAL expressions may be used on the family of $IF directives   ',&
+'   INTEGER or LOGICAL expressions are used on the family of $IF directives      ',&
 '   to conditionally select output lines. An expression is composed of INTEGER   ',&
-'   and LOGICAL constants, parameters, and operators. Operators are processed    ',&
-'   as in Fortran and/or C expressions.                                          ',&
+'   and LOGICAL constants, variable names, and operators. Operators are processed',&
+'   as in Fortran and/or C expressions. The supported operators are ...          ',&
 '                                                                                ',&
 '       #-----#-----#-----#-----#-----#-----#-----#                              ',&
 '       |  +  |  -  |  *  |  /  |  ** |  (  |  )  |  Math Operators              ',&
 '       #-----#-----#-----#-----#-----#-----#-----#                              ',&
-'                                                                                ',&
 '       Logical Operators                                                        ',&
 '       #-----#-----#-----#-----#-----#-----#-----#-----#-----#-----#------#     ',&
 '       | .EQ.| .NE.| .GE.| .GT.| .LE.| .LT.|.NOT.|.AND.| .OR.|.EQV.|.NEQV.|     ',&
@@ -19331,58 +19376,75 @@ help_text=[ CHARACTER(LEN=128) :: &
 '       #-----#  != #-----#-----#-----#-----#-----#-----#-----#-----#------#     ',&
 '             #-----#                                                            ',&
 ! C-STYLE NOT SUPPORTED:   %,  <<,  >>, &,  ~
+'SUGGESTED INPUT FILE SUFFIX                                                     ',&
 '                                                                                ',&
 '   The suggested suffix for Fortran input files is ".ff" for code files unless  ',&
 '   they contain $SYSTEM directives in which case ".FF" is preferred. $INCLUDE   ',&
 '   files should use ".ffinc" and ".FFINC" if they include prep(1) directives.   ',&
 '   This naming convention is not required.                                      ',&
 '                                                                                ',&
-'   The syntax for the directive lines is as follows:                            ',&
+'   If files end in ".md" they may be extended markdown files, as explained      ',&
+'   under the --type option description.                                         ',&
 '                                                                                ',&
-'    :VARIABLE DEFINITION FOR CONDITIONALS                                       ',&
-'     $DEFINE   variable_name[=expression] [;...]          [! comment ]          ',&
-'     $REDEFINE variable_name[=expression] [;...]          [! comment ]          ',&
-'     $UNDEFINE|$UNDEF variable_name [;...]                [! comment ]          ',&
+'DIRECTIVE SYNTAX SUMMARY                                                        ',&
+' The directives fall into the following categories:                             ',&
 '                                                                                ',&
-'    :CONDITIONAL CODE SELECTION                                                 ',&
-'     $IF  logical_integer-based expression |                                    ',&
-'     $IFDEF variable_name |                                                     ',&
-'     $IFNDEF variable_name                                [! comment ]          ',&
-'             { sequence of source statements}                                   ',&
-'     [$ELSEIF|$ELIF logical_integer-based expression      [! comment ]          ',&
-'             { sequence of source statements}]                                  ',&
-'     [$ELSE                                               [! comment ]          ',&
-'             { sequence of source statements}]                                  ',&
-'     $ENDIF                                               [! comment ]          ',&
+'  Variable Definition For Conditionals                                          ',&
 '                                                                                ',&
-'    :MACRO STRING EXPANSION AND TEXT REPLAY                                     ',&
-'     $SET      varname  string                                                  ',&
-'     $IMPORT   envname[;...]                                                    ',&
-'     $PARCEL   blockname                                  [! comment ]          ',&
-'     $POST     blockname                                  [! comment ]          ',&
+'      $DEFINE   variable_name[=expression] [;...]          [! comment ]         ',&
+'      $REDEFINE variable_name[=expression] [;...]          [! comment ]         ',&
+'      $UNDEFINE|$UNDEF variable_name [;...]                [! comment ]         ',&
 '                                                                                ',&
-'    :EXTERNAL FILES (see $BLOCK ... --file also)                                ',&
-'     $OUTPUT   filename  [-append]                        [! comment ]          ',&
-'     $INCLUDE  filename                                   [! comment ]          ',&
+'  Conditional Code Selection                                                    ',&
 '                                                                                ',&
-'    :TEXT BLOCK FILTERS                                                         ',&
-'     $BLOCK   [null|comment|write|variable [-varname NAME]|set|system|          ',&
-'              message|help|version] [-file NAME [-append]][! comment ]          ',&
+'      $IF  logical_integer-based expression |                                   ',&
+'      $IFDEF [variable_name|environment_variable] |                             ',&
+'      $IFNDEF [variable_name|environment_variable]         [! comment ]         ',&
+'              { sequence of source statements}                                  ',&
+'      [$ELSEIF|$ELIF logical_integer-based expression      [! comment ]         ',&
+'              { sequence of source statements}]                                 ',&
+'      [$ELSE                                               [! comment ]         ',&
+'              { sequence of source statements}]                                 ',&
+'      $ENDIF                                               [! comment ]         ',&
 '                                                                                ',&
-'    :IDENTIFIERS                                                                ',&
-'     $IDENT | $@(#)    metadata                           [! comment ]          ',&
+'  Macro String Expansion and Text Replay                                        ',&
 '                                                                                ',&
-'    :INFORMATION                                                                ',&
-'     $MESSAGE  message_to_stderr                                                ',&
-'     $SHOW [defined_variable_name[;...]]                  [! comment ]          ',&
+'      $SET      varname  string                                                 ',&
+'      $IMPORT   envname[;...]                              [! comment ]         ',&
+'      $PARCEL   blockname                                  [! comment ]         ',&
+'      $ENDPARCEL                                           [! comment ]         ',&
+'      $POST     blockname                                  [! comment ]         ',&
 '                                                                                ',&
-'    :SYSTEM COMMANDS                                                            ',&
-'     $SYSTEM   system_command                                                   ',&
+'  External Files (see $BLOCK ... --file also)                                   ',&
 '                                                                                ',&
-'    :PROGRAM TERMINATION                                                        ',&
-'     $STOP     [stop_value ["message"]]                   [! comment ]          ',&
-'     $QUIT     ["message"]                                [! comment ]          ',&
-'     $ERROR    ["message"]                                [! comment ]          ',&
+'      $OUTPUT   filename  [--append]                       [! comment ]         ',&
+'      $INCLUDE  filename                                   [! comment ]         ',&
+'                                                                                ',&
+'  Text Block Filters (--file is ignored unless $PREP_DOCUMENT_DIR is set)       ',&
+'                                                                                ',&
+'      $BLOCK   [null|comment|write|variable [--varname NAME]|                   ',&
+'               set|system|message|define|redefine|                              ',&
+'               help|version] [--file NAME [--append]]      [! comment ]         ',&
+'      $ENDBLOCK                                            [! comment ]         ',&
+'                                                                                ',&
+'  Identifiers                                                                   ',&
+'                                                                                ',&
+'      $IDENT | $@(#)    metadata                           [! comment ]         ',&
+'                                                                                ',&
+'  Information                                                                   ',&
+'                                                                                ',&
+'      $MESSAGE  message_to_stderr                                               ',&
+'      $SHOW [defined_variable_name[;...]]                  [! comment ]         ',&
+'                                                                                ',&
+'  System Commands (See also: $BLOCK SHELL)                                      ',&
+'                                                                                ',&
+'      $SYSTEM   system_command                                                  ',&
+'                                                                                ',&
+'  Program Termination                                                           ',&
+'                                                                                ',&
+'      $STOP     [stop_value ["message"]]                   [! comment ]         ',&
+'      $QUIT     ["message"]                                [! comment ]         ',&
+'      $ERROR    ["message"]                                [! comment ]         ',&
 '                                                                                ',&
 'OPTIONS                                                                         ',&
 '   define_list, -D define_list  An optional space-delimited list of expressions ',&
@@ -19397,20 +19459,19 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   -I include_directories  The directories to search for files specified on     ',&
 '                           $INCLUDE directives.                                 ',&
 '                                                                                ',&
-'   --prefix ADE|letter  The default directive prefix character is "$".          ',&
-'                        Alternatives may be specified by providing an           ',&
-'                        ASCII Decimal Equivalent (Common values are 37=%        ',&
-'                        42=* 35=# 36=$ 64=@). If the value is not numeric       ',&
-'                        it is assumed to be a literal character.                ',&
+'   --prefix ADE|letter  The directive prefix character. The default is "$".     ',&
+'                        If the value is numeric it is assumed to be an ASCII    ',&
+'                        Decimal Equivalent (Common values are 37=% 42=* 35=#    ',&
+'                        36=$ 64=@).                                             ',&
 '                                                                                ',&
 '   --noenv          The $IFDEF and $IFNDEF directives test for an internal      ',&
 '                    prep(1) variable and then an environment variable by        ',&
-'                    by default. This option turns off testing for environment   ',&
+'                    default. This option turns off testing for environment      ',&
 '                    variables.                                                  ',&
 '                                                                                ',&
-'   --type FILETYPE  this flag indicates to skip input lines until after a       ',&
+'   --type FILETYPE  This flag indicates to skip input lines until after a       ',&
 '                    specific start string is encountered and to stop once a     ',&
-'                    specific end string is found left-justified on lines by     ',&
+'                    specific end string is found, left-justified on lines by    ',&
 '                    themselves.                                                 ',&
 '                                                                                ',&
 '                        FileType  Start_String            Stop_String           ',&
@@ -19461,7 +19522,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                    away depending on what compilation options are used.        ',&
 '                                                                                ',&
 '   -d ignore|remove|blank  Enable special treatment for lines beginning         ',&
-'                           with "d" or "D" The letter will be left as-is        ',&
+'                           with "d" or "D". The letter will be left as-is       ',&
 '                           (the default); removed; or replaced with a blank     ',&
 '                           character. This non-standard syntax has been         ',&
 '                           used to support the optional compilation of          ',&
@@ -19483,7 +19544,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   --help       Display documentation and exit.                                 ',&
 '                                                                                ',&
-'   DIRECTIVES                                                                   ',&
+'DIRECTIVES                                                                      ',&
 '                                                                                ',&
 '   $DEFINE|$REDEFINE variable_name [=expression]; ...                           ',&
 '                                                                                ',&
@@ -19507,10 +19568,10 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   Example:                                                                     ',&
 '                                                                                ',&
-'    > $define A=1                                                               ',&
-'    > $define B = 10 - 1                                                        ',&
+'    > $define A                        ! will have default value of "1"         ',&
+'    > $define B = 10 - 2 * 2**3 / 3    ! integer expressions                    ',&
 '    > $define C=1+1; D=(-40)/(-10)                                              ',&
-'    > $define bigd=d.ge.a; bigb = b >= c && b > 0                               ',&
+'    > $define bigd= d .ge. a; bigb = ( (b >= c) && (b > 0) )  ! logical         ',&
 '    > $if ( A + B ) / C .eq. 1                                                  ',&
 '    >    (a+b)/c is one                                                         ',&
 '    > $endif                                                                    ',&
@@ -19551,7 +19612,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   Predefined variables are                                                     ',&
 '                                                                                ',&
-'    SYSTEMON = 1 if the --system switch was used on the command line, else 0.   ',&
+'    SYSTEMON = .TRUE. if --system was present on the command line, else .FALSE. ',&
 '                                                                                ',&
 '    UNKNOWN = 0 LINUX   = 1 MACOS   = 2 WINDOWS = 3                             ',&
 '    CYGWIN  = 4 SOLARIS = 5 FREEBSD = 6 OPENBSD = 7                             ',&
@@ -19580,6 +19641,18 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   $IFDEF and $IFNDEF are special forms of the $IF directive that simply test   ',&
 '   if a variable name is defined or not.                                        ',&
 '                                                                                ',&
+'   The expressions may optionally be enclosed in parenthesis and followed by    ',&
+'   the keyword "THEN", ie. they may use Fortran syntax. For example, the        ',&
+'   previous example may also be written as:                                     ',&
+'                                                                                ',&
+'     > $IF(OS .EQ. LINUX)THEN                                                   ',&
+'     >    write(*,*)"System type is Linux"                                      ',&
+'     > $ELSEIF(OS .EQ. WINDOWS)THEN                                             ',&
+'     >    write(*,*)"System type is MSWindows"                                  ',&
+'     > $ELSE                                                                    ',&
+'     >    write(*,*)"System type is unknown"                                    ',&
+'     > $ENDIF                                                                   ',&
+'                                                                                ',&
 '   Essentially, these are equivalent:                                           ',&
 '                                                                                ',&
 '     $IFDEF varname  ==> $IF DEFINED(varname)                                   ',&
@@ -19592,14 +19665,14 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   For the purposes of prep(1) an environment variable is defined if it is      ',&
 '   returned by the system and has a non-blank value.                            ',&
 '                                                                                ',&
-'   $IDENT metadata [-language fortran|c|shell]                                  ',&
+'   $IDENT metadata [--language fortran|c|shell]                                 ',&
 '                                                                                ',&
 '   $IDENT is a special-purpose directive generally used only by users of        ',&
 '   SCCS-metadata. This string is generally included for use with the            ',&
 '   what(1) command, and generates a comment if "-ident" is not specified        ',&
 '   on the command line.                                                         ',&
 '                                                                                ',&
-'   When the command line option "-ident" is specified this directive            ',&
+'   When the command line option "--ident" is specified this directive           ',&
 '   writes a line using SCCS-metadata format of one of the following forms:      ',&
 '                                                                                ',&
 '     language:                                                                  ',&
@@ -19619,13 +19692,13 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   in the metadata to remain compatible with SCCS metadata syntax.              ',&
 '   Do not use strings starting with " -" either.                                ',&
 '                                                                                ',&
-'   $OUTPUT filename [-append [.true.|.false.]]                                  ',&
+'   $OUTPUT filename [--append [.true.|.false.]]                                 ',&
 '                                                                                ',&
 '   Specify the output file to write to. This overrides the initial output file  ',&
 '   specified with command line options. If no output filename is given          ',&
 '   prep(1) reverts back to the initial output file. @ is a synonym for stdout.  ',&
 '                                                                                ',&
-'   Files open at the beginning by default. Use the -append switch to            ',&
+'   Files open at the beginning by default. Use the --append switch to           ',&
 '   append to the end of an existing file instead of overwriting it.             ',&
 '                                                                                ',&
 '   $INCLUDE filename                                                            ',&
@@ -19636,9 +19709,9 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   searched for as specified first. Double-quotes are treated as in Fortran     ',&
 '   list-directed input.                                                         ',&
 '                                                                                ',&
-'   $PARCEL [name]                                                               ',&
+'   $PARCEL [name] / $ENDPARCEL                                                  ',&
 '                                                                                ',&
-'   The lines between a "$PARCEL name" and "$PARCEL" block are written to a      ',&
+'   The lines between a "$PARCEL name" and "$ENDPARCEL" block are written to a   ',&
 '   scratch file WITHOUT expanding directives. the scratch file can then be read ',&
 '   in with the $POST directive much like a named file can be with $INCLUDE,     ',&
 '   except the scratch file is automatically deleted at program termination.     ',&
@@ -19673,9 +19746,18 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   "import home" gets the lowercase environment variable "home" and then sets   ',&
 '   the associated value and then sets the prep(1) variable "HOME" to the value. ',&
 '                                                                                ',&
-'   $BLOCK [comment|null|write|help|version  [-file NAME [-append]]              ',&
-'     or                                                                         ',&
-'   $BLOCK VARIABLE --varname NAME  [--file NAME [-append]]                      ',&
+'   $BLOCK / $ENDBLOCK                                                           ',&
+'                                                                                ',&
+'   $BLOCK has several forms but in all cases operates on a block of lines:      ',&
+'                                                                                ',&
+'     basic filtering:                                                           ',&
+'      $BLOCK [comment|null|write                 [--file NAME [--append]]       ',&
+'     creating a CHARACTER array:                                                ',&
+'      $BLOCK VARIABLE --varname NAME             [--file NAME [--append]]       ',&
+'     block versions of prep(1) commands:                                        ',&
+'      $BLOCK set|system|message|define|redefine  [--file NAME [--append]]       ',&
+'     specialized procedure construction:                                        ',&
+'      $BLOCK help|version                        [--file NAME [--append]]       ',&
 '                                                                                ',&
 '      NULL:      Do not write into current output file                          ',&
 '      COMMENT:   write text prefixed by an exclamation and a space or according ',&
@@ -19688,6 +19770,8 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                 the --varname switch. Default name is "textblock".             ',&
 '      MESSAGE:   All the lines in the block are treated as options to $MESSAGE  ',&
 '      SET:       All the lines in the block are treated as options to $SET      ',&
+'      DEFINE:    All the lines in the block are treated as options to $DEFINE   ',&
+'      REDEFINE   All the lines in the block are treated as options to $REDEFINE ',&
 '      SYSTEM:    The lines are gathered into a file and executed by the shell   ',&
 '                 with the stdout being written to a scratch file and then read  ',&
 '      END:       End block of specially processed text                          ',&
@@ -19698,7 +19782,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '      VERSION:   write text as a subroutine called HELP_VERSION prefixing       ',&
 '                 lines with @(#) for use with the what(1) command.              ',&
 '                                                                                ',&
-'   If the "-file NAME" option is present the text is written to the             ',&
+'   If the "--file NAME" option is present the text is written to the            ',&
 '   specified file unfiltered except for string expansion. This allows           ',&
 '   documentation to easily be maintained in the source file. It can be          ',&
 '   tex, html, markdown or any plain text. The filename will be prefixed         ',&
@@ -19710,7 +19794,8 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   documents. $SYSTEM commands may follow the $BLOCK block text to              ',&
 '   optionally post-process the doc files.                                       ',&
 '                                                                                ',&
-'   A blank value or "END" returns to normal output processing.                  ',&
+'   $ENDBLOCK ends the block, which is preferred; but a blank value or "END" on  ',&
+'   a $BLOCK directive does as well.                                             ',&
 '                                                                                ',&
 '   $SHOW [variable_name][;...]                                                  ',&
 '                                                                                ',&
@@ -19732,7 +19817,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '    > $show                                                                     ',&
 '    > $show H*;*H;*H*! show beginning with "H", ending with "H", containing "H" ',&
 '    > $stop 0                                                                   ',&
-'                                                                                ',&
+'    >                                                                           ',&
 '    > !  B  =  1                                                                ',&
 '    > !  Z  =  22                                                               ',&
 '    > !================================================================         ',&
@@ -19799,7 +19884,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '    > $SYSTEM echo compile_time="`date`" >> compiled.h                          ',&
 '    > $INCLUDE compiled.h                                                       ',&
 '                                                                                ',&
-'    > $if systemon ! if --system switch is present on command line              ',&
+'    > $if systemon      ! if --system switch is present on command line         ',&
 '    > $!  obtain up-to-date copy of source file from HTTP server:               ',&
 '    > $   SYSTEM wget http://repository.net/src/func.F90 -O - >_tmp.f90         ',&
 '    > $   INCLUDE _tmp.f90                                                      ',&
@@ -19817,7 +19902,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   $IF constructs can be nested up to 20 levels deep. Note that using           ',&
 '   more than two levels typically makes input files less readable.              ',&
 '                                                                                ',&
-'   $BLOCK is required after a $BLOCK or --file FILENAME is not written.         ',&
+'   $ENDBLOCK is required after a $BLOCK or --file FILENAME is not written.      ',&
 '                                                                                ',&
 '   Nesting of $BLOCK sections not allowed.                                      ',&
 '   $INCLUDE may be nested fifty (50) levels.                                    ',&
@@ -19879,24 +19964,15 @@ help_text=[ CHARACTER(LEN=128) :: &
 '                                                                                ',&
 '   > $!                                                                         ',&
 '   > $BLOCK NULL --file manual.tex                                              ',&
-'   > This is a block of text that will be ignored on output but                 ',&
-'   > optionally written to a doc/ file when $PREP_DOCUMENT_DIR is set.          ',&
-'   > $BLOCK                                                                     ',&
-'   > $!                                                                         ',&
-'   > $BLOCK COMMENT --file manual.tex --append                                  ',&
-'   > This is a block of text that will be converted to comments and             ',&
-'   > optionally appended to a doc/ file when $PREP_DOCUMENT_DIR is set.         ',&
-'   > $BLOCK                                                                     ',&
-'   > $!                                                                         ',&
+'   > This is a block of text that will be ignored except it is optionally       ',&
+'   > written to a $PREP_DOCUMENT_DIR/doc/ file when $PREP_DOCUMENT_DIR is set.  ',&
+'   > $ENDBLOCK                                                                  ',&
+'   >                                                                            ',&
 '                                                                                ',&
-'  Creating a help_usage(3f) subroutine and writing the same documentation       ',&
-'  to a doc file (if the environment variable $PREP_DOCUMENT_DIR is set).        ',&
+'  This is a block of text that will be converted to comments and optionally     ',&
+'  appended to a $PREP_DOCUMENT_DIR/doc/ file when $PREP_DOCUMENT_DIR is set.    ',&
 '                                                                                ',&
-'   > $!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         ',&
-'   > $! generate help_usage() procedure and file to run thru txt2man(1)         ',&
-'   > $! to make man(1) page if $PREP_DOCUMENT_DIR is set.                       ',&
-'   > $!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         ',&
-'   > $BLOCK HELP --file conditional_compile.man                                 ',&
+'   > $BLOCK COMMENT--file conditional_compile.man                               ',&
 '   > NAME                                                                       ',&
 '   >    conditional_compile - basic example for prep(1) pre-processor.          ',&
 '   > SYNOPSIS                                                                   ',&
@@ -19907,31 +19983,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   > OPTIONS                                                                    ',&
 '   >    --help     display this help and exit                                   ',&
 '   >    --version  output version information and exit                          ',&
-'   > $BLOCK                                                                     ',&
-'                                                                                ',&
-'  Creating a help_version(3f) subroutine                                        ',&
-'                                                                                ',&
-'   > $!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@         ',&
-'   > $! generate help_version() procedure                                       ',&
-'   > $BLOCK VERSION                                                             ',&
-'   > DESCRIPTION: example program showing conditional compilation               ',&
-'   > PROGRAM:     conditional_compile                                           ',&
-'   > VERSION:     1.0.0, 20160703                                               ',&
-'   > AUTHOR:      John S. Urban                                                 ',&
-'   > $BLOCK                                                                     ',&
-'   > $!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@        ',&
-'                                                                                ',&
-'  Sample program using help_usage(f), help_version(3f) and M_kracken95(3f):     ',&
-'                                                                                ',&
-'   > program conditional_compile                                                ',&
-'   >    use M_kracken95, only : kracken, lget                                   ',&
-'   >    ! use M_kracken95 module to crack command line arguments                ',&
-'   >    call kracken("cmd","--help .false. --version .false.")                  ',&
-'   >    ! call routine generated by $BLOCK HELP                                 ',&
-'   >    call help_usage(lget("cmd_help"))                                       ',&
-'   >    ! call routine generated by $BLOCK VERSION                              ',&
-'   >    call help_version(lget("cmd_version"))                                  ',&
-'   > end program conditional_compile                                            ',&
+'   > $ENDBLOCK                                                                  ',&
 '                                                                                ',&
 ' SET USAGE                                                                      ',&
 '  Note values are case-sensitive but variable names are not, and there are      ',&
@@ -19947,6 +19999,29 @@ help_text=[ CHARACTER(LEN=128) :: &
 '   > write(*,*)''Date ${DATE}''                                                 ',&
 '   > write(*,*)''Time ${TIME}''                                                 ',&
 '   > write(*,*)''HOME ${HOME}''                                                 ',&
+'                                                                                ',&
+'GENERAL TEMPLATING                                                              ',&
+'  A parcel can be posted multiple times, changing the value of variables        ',&
+'  before each post.                                                             ',&
+'                                                                                ',&
+'   > $PARCEL mysub                                                              ',&
+'   > subroutine mysub_${TYPE}(a,b)                                              ',&
+'   > use, intrinsic :: iso_fortran_env, only : &                                ',&
+'   > & real_kinds, real32,real64,real128                                        ',&
+'   > implicit none                                                              ',&
+'   > integer,parameter  :: wp=${type}                                           ',&
+'   > real(kind=${TYPE}) :: a,b                                                  ',&
+'   >    write(*,*)10.0_wp                                                       ',&
+'   >    write(*,*) "for type ${type}"                                           ',&
+'   > end subroutine mysub_${TYPE}                                               ',&
+'   >                                                                            ',&
+'   > $ENDPARCEL                                                                 ',&
+'   > $set type real32                                                           ',&
+'   > $post mysub                                                                ',&
+'   > $set type real64                                                           ',&
+'   > $post mysub                                                                ',&
+'   > $set type real128                                                          ',&
+'   > $post mysub                                                                ',&
 '                                                                                ',&
 'NOTE                                                                            ',&
 '  Not documented elsewhere, note that there is a developer flag (--debug) that  ',&
@@ -19986,7 +20061,8 @@ help_text=[ CHARACTER(LEN=128) :: &
 !'@(#)VERSION:        6.1.1: 20220326>',&
 !'@(#)VERSION:        6.1.2: 20220326>',&
 !'@(#)VERSION:        6.2.2: 20220329>',&
-'@(#)VERSION:        7.0.0: 20220401>',&
+!'@(#)VERSION:        7.0.0: 20220401>',&
+'@(#)VERSION:        8.0.0: 20220403>',&
 '@(#)AUTHOR:         John S. Urban>',&
 '@(#)HOME PAGE       https://github.com/urbanjost/prep.git/>',&
 '']
@@ -20010,7 +20086,7 @@ help_text=[ CHARACTER(LEN=128) :: &
 "   > Predefined values are                                                      ",&
 "   > UNKNOWN=0 LINUX=1 MACOS=2 WINDOWS=3 CYGWIN=4 SOLARIS=5 FREEBSD=6 OPENBSD=7 ",&
 "   > In addition OS is set to what the program guesses the system type is.      ",&
-"   > SYSTEMON is 1 if --system is used on the command line, else it is 0.       ",&
+"   > SYSTEMON is .TRUE. if --system is present on the command line, else .FALSE.",&
 "  $UNDEFINE|$UNDEF variable_name[;...]                                          ",&
 "CONDITIONAL CODE SELECTION                                                      ",&
 "  $IF logical_integer-based_expression | $IFDEF|$IFNDEF variable_name           ",&
@@ -20025,18 +20101,18 @@ help_text=[ CHARACTER(LEN=128) :: &
 "   > $set author  William Shakespeare                                           ",&
 "   > $import HOME                                                               ",&
 "   > write(*,*)'${AUTHOR} ${DATE} ${TIME} File ${FILE} Line ${LINE} HOME ${HOME}",&
-"  $PARCEL [blockname]  ! create a reuseable parcel of text that can be expanded ",&
+"  $PARCEL [blockname] ... $ENDPARCEL ! a reuseable parcel of expandable text    ",&
 "  $POST   blockname  ! insert a defined parcel of text                          ",&
 "EXTERNAL FILES (see $BLOCK ... --file also)                                     ",&
-"  $OUTPUT filename [-append]                                                    ",&
+"  $OUTPUT filename [--append]                                                   ",&
 "  $INCLUDE filename                                                             ",&
-"TEXT BLOCK FILTERS                                                              ",&
-"  $BLOCK [comment|null|write|variable [-varname NAME]|set|system|message|       ",&
-"         help|version][-file NAME [-append]]                                    ",&
+"TEXT BLOCK FILTERS (--file writes to $PREP_DOCUMENT_DIR/doc/NAME)               ",&
+"  $BLOCK [comment|null|write|variable [--varname NAME]|set|system|message|      ",&
+"         define|redefine|help|version][--file NAME [--append]] ... $ENDBLOCK    ",&
 "INFORMATION                                                                     ",&
 "  $MESSAGE message_to_stderr                                                    ",&
 "  $SHOW [defined_variable_name][;...]                                           ",&
-"SYSTEM COMMANDS                                                                 ",&
+"SYSTEM COMMANDS (see also: $BLOCK SHELL)                                        ",&
 "  $SYSTEM command                                                               ",&
 "  $STOP [stop_value[ ""message""]] | $QUIT [""message""]| $ERROR [""message""]     "]
    WRITE(stderr,'(a)')(trim(help_text(i)),i=1,size(help_text))
@@ -20044,7 +20120,7 @@ end subroutine short_help
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine write_out(line)  ! @(#)writeout(3f):  write (most) source code lines to output file
+subroutine write_out(line)  !@(#)writeout(3f):  write (most) source code lines to output file
 character(len=*),intent(in)    :: line
 integer                        :: istart
 
@@ -20060,7 +20136,7 @@ end subroutine write_out
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine www(line) ! @(#)www(3f):  change line into a WRITE, HELP/VERSION, COMMENT output line
+subroutine www(line) !@(#)www(3f):  change line into a WRITE, HELP/VERSION, COMMENT output line
 integer,parameter              :: linewidth=128
 character(len=*),intent(in)    :: line
 character(len=:),allocatable   :: buff
@@ -20078,6 +20154,12 @@ character(len=256)             :: message
 
    case('set')                                 ! do not write
       call set(line)
+
+   case('define')                              ! do not write
+      call define(nospace(upper(line)),1)
+
+   case('redefine')                            ! do not write
+      call define(nospace(upper(line)),0)
 
    case('message')                             ! do not write
       call write_err(line)                     ! trustingly trim MESSAGE from directive
@@ -20144,8 +20226,7 @@ integer                     :: ios
 ! ident_2="@(#)M_verify::write_err(3f): writes a message to standard error using a standard f2003 method"
 
    write(stderr,'(a)',iostat=ios) trim(msg)
-   flush(unit=stdout,iostat=ios)
-   flush(unit=stderr,iostat=ios)
+   call flushit()
 end subroutine write_err
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -20170,13 +20251,14 @@ character(len=:),allocatable :: names(:)
 integer                      :: i
    names=sep(line)
    do i=1,size(names)
-      call set(names(i)//' '//system_getenv(names(i)))
+      call set(names(i)//' '//get_env(names(i)))
    enddo
 end subroutine import
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine set(line)
+use M_list,      only : insert, locate, replace, remove                   ! Basic list lookup and maintenance
 character(len=*),intent(in)  :: line
 character(len=:),allocatable :: name
 character(len=:),allocatable :: val
@@ -20185,7 +20267,6 @@ integer                      :: i
 ! create a dictionary with character keywords, values, and value lengths
 ! using the routines for maintaining a list
 
-  call dissect2('set','-oo' ,line) ! parse options on input line
   iend=index(line//' ',' ')
   name=upper(line(:iend))
   if(name.eq.'')then
@@ -20202,6 +20283,7 @@ integer                      :: i
     !call update('a')
     ! get some values
     !write(stderr,*)'get b=>',get('b')
+    !call flushit()
   endif
 
 contains
@@ -20253,7 +20335,7 @@ end subroutine set
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine expand_variables(line)
-! @(#) brute force variable substitution. maybe add something like wordexp(3c) with command expansion only if --system?
+!@(#) brute force variable substitution. maybe add something like wordexp(3c) with command expansion only if --system?
 ! this is just to try the concept. Either use wordexp or an equivalent to replicate "here document" processing.
 ! note no automatic continuation of the line if it extends past allowed length, which for Fortran is currently 132 for free-format
 ! the way this is written it would do recursive substitution and does not know when there is just not a match
@@ -20282,81 +20364,6 @@ do i=1,toomany
 enddo
 line=temp
 end subroutine expand_variables
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
-!>
-!!##NAME
-!!    system_getenv(3f) - [M_system:ENVIRONMENT] get environment variable
-!!    from Fortran by calling get_environment_variable(3f)
-!!    (LICENSE:PD)
-!!
-!!##SYNOPSIS
-!!
-!!    function system_getenv(name,default)
-!!
-!!     character(len=:),allocatable         :: system_getenv
-!!     character(len=*),intent(in)          :: name
-!!     character(len=*),intent(in),optional :: default
-!!
-!!##DESCRIPTION
-!!    The system_getenv() function gets the value of an environment variable.
-!!
-!!##OPTIONS
-!!    name     Return the value of the specified environment variable or
-!!             blank if the variable is not defined.
-!!    default  If the value returned would be blank this value will be used
-!!             instead.
-!!
-!!##EXAMPLE
-!!
-!!   Sample setting an environment variable from Fortran:
-!!
-!!    program demo_system_getenv
-!!    use M_system, only : system_getenv
-!!    implicit none
-!!       write(*,'("USER     : ",a)')system_getenv('USER')
-!!       write(*,'("LOGNAME  : ",a)')system_getenv('LOGNAME')
-!!       write(*,'("USERNAME : ",a)')system_getenv('USERNAME')
-!!    end program demo_system_getenv
-!!
-!!##AUTHOR
-!!    John S. Urban
-!!##LICENSE
-!!    Public Domain
-function system_getenv(name,default) result(value)
-
-! ident_23="@(#)M_system::system_getenv(3f): call get_environment_variable as a function with a default value(3f)"
-
-character(len=*),intent(in)          :: name
-character(len=*),intent(in),optional :: default
-integer                              :: howbig
-integer                              :: stat
-character(len=:),allocatable         :: value
-
-   if(NAME.ne.'')then
-      call get_environment_variable(name, length=howbig, status=stat, trim_name=.true.)  ! get length required to hold value
-      if(howbig.ne.0)then
-         select case (stat)
-         case (1)     ! print *, NAME, " is not defined in the environment. Strange..."
-            value=''
-         case (2)     ! print *, "This processor doesn't support environment variables. Boooh!"
-            value=''
-         case default ! make string to hold value of sufficient size and get value
-            if(allocated(value))deallocate(value)
-            allocate(character(len=max(howbig,1)) :: VALUE)
-            call get_environment_variable(name,value,status=stat,trim_name=.true.)
-            if(stat.ne.0)VALUE=''
-         end select
-      else
-         value=''
-      endif
-   else
-      value=''
-   endif
-   if(value.eq.''.and.present(default))value=default
-
-end function system_getenv
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
@@ -20451,6 +20458,14 @@ end function ends_in
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
+subroutine flushit()
+integer :: ios
+      flush(unit=stdout,iostat=ios)
+      flush(unit=stderr,iostat=ios)
+end subroutine flushit
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
 end module M_fpp
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -20542,9 +20557,9 @@ logical                       :: isscratch
    G_comment_style=lower(sget('prep_comment'))             ! allow formatting comments for particular post-processors
    G_system_on = lget('prep_system')                       ! allow system commands on $SYSTEM directives
    if(G_system_on)then
-      call define('SYSTEMON=1', 0)
+      call define('SYSTEMON=.TRUE.', 0)
    else
-      call define('SYSTEMON=0', 0)
+      call define('SYSTEMON=.FALSE.', 0)
    endif
    !TODO! have an auto mode where start and end are selected based on file suffix
    select case(sget('prep_type'))
