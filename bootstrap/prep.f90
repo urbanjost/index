@@ -1,3 +1,4 @@
+ 
 !>>>>> build/dependencies/M_kracken95/src/M_kracken95.f90
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -1043,23 +1044,23 @@ end subroutine menu
 ! From: "Felix Becker" <felix.becker@zih.tu-dresden.de>
 ! Subject: Variable-length string interface for "retrev".
 ! Date: Tuesday, May 28, 2013 11:51 AM
-!
+! 
 ! Hello John Urban,
-!
+! 
 ! using your Fortran "M_kracken95" module, I wrote a small wrapper that
 ! allows for "val" to be of unknown length, and that allows just getting
 ! the length of val without getting val and vice versa.
-!
+! 
 ! (using allocatable strings, and optional arguments).
-!
+! 
 ! Tested with gfortran version '4.8.0 20130502 (prerelease)'.
-!
+! 
 ! I am aware that M_kracken95 itself uses fixed length strings, and I did
 ! not fiddle with that; just providing a more flexible user interface on
 ! top of that.
-!
+! 
 ! Find my quick hack attached, use it if you want.
-!
+! 
 !-----------------------------------------------------------------------------------------------------------------------------------
 !-!subroutine retrev_string_variable_length(name,val,len,ier)
 !-!  !!! @(#)retrev_string_variable_length: A wrapper for "retrev" from the module "M_kracken95":
@@ -1075,13 +1076,13 @@ end subroutine menu
 !-!  character(len=:),intent(out),allocatable,OPTIONAL ::  val
 !-!  integer,intent(out),OPTIONAL                      ::  llen
 !-!  integer,intent(out),OPTIONAL                      ::  ier
-!-!
+!-!  
 !-!  integer                                           ::  len_internal
 !-!  integer                                           ::  ier_internal
 !-!  character(llen=0)                                 ::  dummystring
-!-!
+!-!  
 !-!  call retrev(name,dummystring,len_internal,ier_internal)
-!-!
+!-!  
 !-!  if (present(val)) then
 !-!    if (allocated(val)) then
 !-!      deallocate(val)
@@ -1089,11 +1090,11 @@ end subroutine menu
 !-!    call allocate_string(int(len_internal,kind=8),val)
 !-!    call retrev(name,val,len_internal,ier_internal)
 !-!  end if
-!-!
+!-!  
 !-!  if (present(llen)) then
 !-!    llen = len_internal
 !-!  end if
-!-!
+!-!  
 !-!  if (present(ier)) then
 !-!    ier = ier_internal
 !-!  end if
@@ -1105,7 +1106,7 @@ end subroutine menu
 !-!  !!! @(#)allocate_string: allocate string
 !-!  integer(kind=8),intent(in)                  :: stringlength
 !-!  character(len=:),allocatable,intent(out)    :: stringvariable
-!-!
+!-!  
 !-!  allocate(character(len=stringlength) :: stringvariable)
 !-!
 !-!end subroutine allocate_string
@@ -1140,7 +1141,8 @@ end module M_kracken95
 ! updated 20131029
 ! read environment variable DEFAULT_CMD
 !-----------------------------------------------------------------------------------------------------------------------------------
-
+ 
+ 
 !>>>>> build/dependencies/M_io/src/M_io.f90
 !===================================================================================================================================
 MODULE M_io
@@ -4428,6 +4430,7 @@ doubleprecision function s2v(chars,ierr,onerr)
 
 !character(len=*),parameter::ident_43="@(#)M_strings::s2v(3f): returns doubleprecision number from string"
 
+
 character(len=*),intent(in)  :: chars
 integer,optional             :: ierr
 doubleprecision              :: valu
@@ -5780,7 +5783,8 @@ end module m_io
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-
+ 
+ 
 !>>>>> build/dependencies/M_strings/src/M_strings.f90
 !>
 !!##NAME
@@ -11080,6 +11084,7 @@ doubleprecision function s2v(chars,ierr,onerr)
 
 ! ident_44="@(#)M_strings::s2v(3f): returns doubleprecision number from string"
 
+
 character(len=*),intent(in)  :: chars
 integer,optional             :: ierr
 doubleprecision              :: valu
@@ -15602,7 +15607,8 @@ end subroutine matching_delimiter
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 end module M_strings
-
+ 
+ 
 !>>>>> build/dependencies/M_list/src/M_list.f90
 !>
 !!##NAME
@@ -17111,7 +17117,8 @@ end module M_list
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
-
+ 
+ 
 !>>>>> app/prep.f90
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -18067,13 +18074,16 @@ integer                         :: numop
        IF (NUMOP.EQ.1) LEN=2
        IF (I.EQ.len_trim(NEWL)) then            ! if operator is at end of string
           call stop_prep("*prep* ERROR(035) - INCOMPLETE STATEMENT. OPERATOR (**,/,*,+,-) AT STRING END:"//trim(G_SOURCE))
+          exit OVERALL
        endif
        IF (I.EQ.1.AND.NUMOP.NE.3) then          ! if operator at beginning of string and not +-
         call stop_prep("*prep* ERROR(036) - SYNTAX ERROR. OPERATOR (**,*,/) NOT ALLOWED TO PREFIX EXPRESSION:"//trim(G_SOURCE))
+          exit OVERALL
        endif
        if (.not.(i.eq.1.and.numop.eq.3)) then   ! if processing +- operators and sign at beginning of string skip this
           if (index('*/+-',newl(i-1:i-1)).ne.0.or.index('*/+-',newl(i+len:i+len)).ne.0) then
             call stop_prep('*prep* ERROR(037) - SYNTAX ERROR IN DOMATH:'//trim(G_source))
+            exit OVERALL
           endif
        endif
 
@@ -18103,6 +18113,7 @@ integer                         :: numop
           case(2)
              if(i2.eq.0)then
                 call stop_prep('*prep* ERROR(038) - DIVIDE BY ZERO:'//trim(G_source))
+                exit OVERALL
              endif
              i1=i1/i2*minus1
           case(3)
@@ -18119,6 +18130,7 @@ integer                         :: numop
              endif
           case default
              call stop_prep('*prep* ERROR(039) - INTERNAL PROGRAM ERROR:'//trim(G_source))
+             exit OVERALL
           end select
        endif
 
@@ -18460,7 +18472,7 @@ character(len=G_line_length) :: options                 ! everything after first
 ! CHECK COMMAND SYNTAX
    if(G_outtype.eq.'help')then  ! if in 'help' mode wrap up the routine
       write(G_iout,'(a)')"'']"
-      write(G_iout,'(a)')"   WRITE(stdout,'(a)')(trim(help_text(i)),i=1,size(help_text))"
+      write(G_iout,'(a)')"   WRITE(*,'(a)')(trim(help_text(i)),i=1,size(help_text))"
       write(G_iout,'(a)')"   stop ! if --help was specified, stop"
       write(G_iout,'(a)')"endif"
       write(G_iout,'(a)')"end subroutine help_usage"
@@ -18476,16 +18488,17 @@ character(len=G_line_length) :: options                 ! everything after first
    elseif(G_outtype.eq.'version')then  ! if in 'version' mode wrap up the routine
       write(G_iout,'("''@(#)COMPILED:       ",a,"'',&")') getdate('long')//'>'
       write(G_iout,'(a)')"'']"
-      write(G_iout,'(a)')"   WRITE(stdout,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))"
-      !x!write(G_iout,'(a)')'   write(stdout,*)"COMPILER VERSION=",COMPILER_VERSION()'
-      !x!write(G_iout,'(a)')'   write(stdout,*)"COMPILER OPTIONS=",COMPILER_OPTIONS()'
+      write(G_iout,'(a)')"   WRITE(*,'(a)')(trim(help_text(i)(5:len_trim(help_text(i))-1)),i=1,size(help_text))"
+      !x!write(G_iout,'(a)')'   write(*,*)"COMPILER VERSION=",COMPILER_VERSION()'
+      !x!write(G_iout,'(a)')'   write(*,*)"COMPILER OPTIONS=",COMPILER_OPTIONS()'
       write(G_iout,'(a)')"   stop ! if --version was specified, stop"
       write(G_iout,'(a)')"endif"
       write(G_iout,'(a)')"end subroutine help_version"
       !x!write(G_iout,'("!",a)')repeat('-',131)
    endif
 
-   call dissect2('block','--oo --file --cmd sh --varname textblock --append .false.',opts) ! parse options on input line
+   ! parse options on input line
+   call dissect2('block','--oo --file --cmd sh --varname textblock --style "#N#" --append .false.',opts)
    ! if a previous command has opened a --file FILENAME flush it, because a new one is being opened or this is an END command
    ! and if a --file FILENAME has been selected open it
    call print_comment_block()
@@ -18513,7 +18526,9 @@ character(len=G_line_length) :: options                 ! everything after first
       G_outtype='comment'
       G_MAN_PRINT=.true.
       G_MAN_COLLECT=.true.
-
+      if(sget('block_style').ne.'#N#')then 
+         G_comment_style=lower(sget('block_style'))             ! allow formatting comments for particular post-processors
+      endif
    case('NULL')
       G_outtype='null'
 
