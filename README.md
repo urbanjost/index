@@ -54,7 +54,7 @@ Please provide feedback on the
   | **Date and Time**                                        | **Description**                                                       | fpm support     | gmake support      | fpm registry     |
   | [M_time](https://github.com/urbanjost/M_time)            | date and time conversion, formatting and computation                  | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
   | **Command Line Parsing**                                 | **Description**                                                       | fpm support     | gmake support      | fpm registry     |
-  | [M_CLI2](https://github.com/urbanjost/M_CLI2)            | commandline parsing using a prototype command                         ! ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
+  | [M_CLI2](https://github.com/urbanjost/M_CLI2)            | commandline parsing using a prototype command                         | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
   | [M_CLI](https://github.com/urbanjost/M_CLI)              | commandline parsing using a prototype command and NAMELIST            | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
   | [M_kracken](https://github.com/urbanjost/M_kracken95)    | command line parsing                                                  | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
   | [M_kracken95](https://github.com/urbanjost/M_kracken95)  | command line parsing using Fortran 95                                 | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![no](I/no.gif)  |
