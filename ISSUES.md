@@ -1,4 +1,4 @@
-github/issues/urbanjost/easy
+![easy](github/issues/urbanjost/easy)
 
 github/issues/urbanjost/general-purpose-fortran
 
