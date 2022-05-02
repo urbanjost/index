@@ -34,7 +34,9 @@ Please provide feedback on the
 ## General Repository
  - [GPF](https://github.com/urbanjost/general-purpose-fortran) : GPF (General Purpose Fortran)
 ---
+
   | **Strings**                                              | **Description**                                                       | fpm support     | gmake support      | fpm registry     |
+  | -------------------------------------------------------- |---------------------------------------------------------------------- | --------------- | ------------------ | ---------------- |
   |  [M_strings](https://github.com/urbanjost/M_strings/ )   | String manipulation                                                   | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![yes](I/R.gif)  |
   | **Posix and System Interfaces**                          | **Description**                                                       | fpm support     | gmake support      | fpm registry     |
   | [M_system](https://github.com/urbanjost/M_system)        | (mostly)POSIX system routine interface                                | ![fpm](I/L.gif) | ![make](I/gnu.gif) | ![yes](I/R.gif)  |
