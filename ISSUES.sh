@@ -57,12 +57,11 @@ scripts \
 index \
 $NULL
 do
-echo "
+echo "\
 |[$NAME](http://github.com/urbanjost/$NAME)|\
 [![GitHub issues open](https://img.shields.io/github/issues/urbanjost/$NAME.svg?maxAge=2)](https://github.com/urbanjost/$NAME/issues)|\
-[![GitHub stars](https://img.shields.io/github/stars/urbanjost/$NAME.svg)](https://github.com/urbanjost/$NAME/docs/man3.html)\
-|
-"
+[![GitHub stars](https://img.shields.io/github/stars/urbanjost/$NAME.svg)](https://urbanjost.github.io/$NAME/docs/man3.html)\
+|"
 done
 cat <<\EOF
 ## See Also:
