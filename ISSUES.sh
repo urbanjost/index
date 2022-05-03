@@ -63,7 +63,6 @@ echo "
 [![GitHub stars](https://img.shields.io/github/stars/urbanjost/$NAME.svg)](https://github.com/urbanjost/$NAME/docs/man3.html)\
 |
 "
-EOF
 done
 cat <<\EOF
 ## See Also:
