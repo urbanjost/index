@@ -61,6 +61,27 @@ echo "\
 |[$NAME](http://github.com/urbanjost/$NAME)|\
 [![GitHub issues open](https://img.shields.io/github/issues/urbanjost/$NAME.svg?maxAge=2)](https://github.com/urbanjost/$NAME/issues)|\
 [![GitHub stars](https://img.shields.io/github/stars/urbanjost/$NAME.svg)](https://urbanjost.github.io/$NAME/man3.html)\
+| [![Build FORD(1) docs]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/deploy_api_docs.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/deploy_api_docs.yml)\
+| [![test ubuntu with intel]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_intel_ubuntu.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_intel_ubuntu.yml)\
+| [![test ubuntu with gfortran]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_ubuntu.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_ubuntu.yml)\
+| [![test macos with gfortran]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_macos.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_macos.yml)\
+| [![test windows with gfortran]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_windows.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_windows.yml)\
+| [![test windows with mingw64 gfortran]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_mingw64_windows.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_mingw64_windows.yml)\
+| [![test windows with msys gfortran]\
+   (https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_msys_windows.yml/badge.svg)\
+   ](https://github.com/urbanjost/$NAME/actions/workflows/test_gfortran_msys_windows.yml)\
 |"
 done
 cat <<\EOF
