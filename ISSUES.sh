@@ -1,7 +1,7 @@
 #!/bin/bash
 (
 echo '|Repository|Description|Issues|Stars|Build FORD(1) docs|ubuntu with intel|ubuntu with gfortran|macos with gfortran|windows with gfortran|windows with mingw64 gfortran|windows with msys gfortran|'
-echo '| -------- | ---- | --- | ---------------- | --------------- | ------------------ | ------------------ | ------------------- | --------------------------- | ----------------------- |'
+echo '| -------- | --------- | ---- | --- | ---------------- | --------------- | ------------------ | ------------------ | ------------------- | --------------------------- | ----------------------- |'
 while read NAME DESCR
 do
 echo "\
