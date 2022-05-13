@@ -89,6 +89,7 @@ EOF
 cat <<\EOF
 ## See Also:
 ```bash
+curl 'https://api.github.com/users/urbanjost/repos?per_page=1000'
 w3m -dump 'https://api.github.com/users/urbanjost/repos?per_page=1000'
 ```
 EOF
