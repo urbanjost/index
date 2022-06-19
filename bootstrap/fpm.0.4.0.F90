@@ -1,119 +1,4 @@
-#define FPM_BOOTSTRAP
-!>>>>> ././src/fpm_backend_console.f90
-!># Build Backend Console
-!> This module provides a lightweight implementation for printing to the console
-!> and updating previously-printed console lines. It used by `[[fpm_backend_output]]`
-!> for pretty-printing build status and progress.
-!>
-!> @note The implementation for updating previous lines relies on no other output
-!> going to `stdout`/`stderr` except through the `console_t` object provided.
-!>
-!> @note All write statements to `stdout` are enclosed within OpenMP `critical` regions
-!>
-module fpm_backend_console
-use iso_fortran_env, only: stdout=>output_unit
-implicit none
-
-private
-public :: console_t
-public :: LINE_RESET
-public :: COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-
-character(len=*), parameter :: ESC = char(27)
-!> Escape code for erasing current line
-character(len=*), parameter :: LINE_RESET = ESC//"[2K"//ESC//"[1G"
-!> Escape code for moving up one line
-character(len=*), parameter :: LINE_UP = ESC//"[1A"
-!> Escape code for moving down one line
-character(len=*), parameter :: LINE_DOWN = ESC//"[1B"
-!> Escape code for red foreground color
-character(len=*), parameter :: COLOR_RED = ESC//"[31m"
-!> Escape code for green foreground color
-character(len=*), parameter :: COLOR_GREEN = ESC//"[32m"
-!> Escape code for yellow foreground color
-character(len=*), parameter :: COLOR_YELLOW = ESC//"[93m"
-!> Escape code to reset foreground color
-character(len=*), parameter :: COLOR_RESET = ESC//"[0m"
-
-!> Console object
-type console_t
-    !> Number of lines printed
-    integer :: n_line = 1
-
-contains
-    !> Write a single line to the console
-    procedure :: write_line => console_write_line
-    !> Update a previously-written console line
-    procedure :: update_line => console_update_line
-end type console_t
-
-contains
-
-!> Write a single line to the standard output
-subroutine console_write_line(console,str,line,advance)
-    !> Console object
-    class(console_t), intent(inout) :: console
-    !> String to write
-    character(*), intent(in) :: str
-    !> Integer needed to later update console line
-    integer, intent(out), optional :: line
-    !> Advancing output (print newline?)
-    logical, intent(in), optional :: advance
-
-    character(3) :: adv
-
-    adv = "yes"
-    if (present(advance)) then
-        if (.not.advance) then
-            adv = "no"
-        end if
-    end if
-
-    !$omp critical
-
-    if (present(line)) then
-        line = console%n_line
-    end if
-    
-    write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
-
-    if (adv=="yes") then
-        console%n_line = console%n_line + 1
-    end if
-
-    !$omp end critical
-
-end subroutine console_write_line
-
-!> Overwrite a previously-written line in standard output
-subroutine console_update_line(console,line_no,str)
-    !> Console object
-    class(console_t), intent(in) :: console
-    !> Integer output from `[[console_write_line]]`
-    integer, intent(in) :: line_no
-    !> New string to overwrite line
-    character(*), intent(in) :: str
-
-    integer :: n
-
-    !$omp critical
-
-    n = console%n_line - line_no
-
-    ! Step back to line
-    write(stdout,'(A)',advance="no") repeat(LINE_UP,n)//LINE_RESET
-
-    write(stdout,'(A)',advance="no") str
-
-    ! Step forward to end
-    write(stdout,'(A)',advance="no") repeat(LINE_DOWN,n)//LINE_RESET
-
-    !$omp end critical
-
-end subroutine console_update_line
-
-end module fpm_backend_console 
- 
+#undef unix
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -156,7 +41,7 @@ use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_po
 implicit none
 
 private
-public :: f_string, lower, split, str_ends_with, string_t, str_begins_with_str
+public :: f_string, lower, split, str_ends_with, string_t
 public :: to_fortran_name, is_fortran_name
 public :: string_array_contains, string_cat, len_trim, operator(.in.), fnv_1a
 public :: replace, resize, str, join, glob
@@ -231,19 +116,6 @@ pure logical function str_ends_with_any(s, e) result(r)
     r = .false.
 
 end function str_ends_with_any
-
-!> test if a CHARACTER string begins with a specified prefix
-pure logical function str_begins_with_str(s, e) result(r)
-    character(*), intent(in) :: s, e
-    integer :: n1, n2
-    n1 = 1
-    n2 = 1 + len(e)-1
-    if (n2 > len(s)) then
-        r = .false.
-    else
-        r = (s(n1:n2) == e)
-    end if
-end function str_begins_with_str
 
 !> return Fortran character variable when given a C-like array of
 !! single characters terminated with a C_NULL_CHAR character
@@ -1230,8 +1102,8 @@ integer                       :: iade         ! ADE (ASCII Decimal Equivalent) o
 end subroutine notabs
 
 end module fpm_strings
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/constants.f90
 ! This file is part of toml-f.
 !
@@ -1378,8 +1250,8 @@ module tomlf_constants
       & TOML_LETTERS//TOML_DIGITS//'_-+.'
 
 end module tomlf_constants
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/version.f90
 ! This file is part of toml-f.
 !
@@ -1456,8 +1328,8 @@ end subroutine get_tomlf_version
 
 
 end module tomlf_version
- 
- 
+
+
 !>>>>> build/dependencies/M_CLI2/src/M_CLI2.f90
 !VERSION 1.0 20200115
 !VERSION 2.0 20200802
@@ -7580,8 +7452,8 @@ end module M_CLI2
 ! to
 !       strings=[character(len=len(strings)) ::]
 !===================================================================================================================================
- 
- 
+
+
 !>>>>> ././src/fpm/error.f90
 !> Implementation of basic error handling.
 module fpm_error
@@ -7762,8 +7634,8 @@ contains
     end subroutine fpm_stop
 
 end module fpm_error
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/datetime.f90
 ! This file is part of toml-f.
 !
@@ -7867,8 +7739,8 @@ end subroutine datetime_to_string
 
 
 end module tomlf_datetime
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/error.f90
 ! This file is part of toml-f.
 !
@@ -8116,8 +7988,8 @@ end subroutine add_context
 
 
 end module tomlf_error
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/verify.f90
 ! This file is part of toml-f.
 !
@@ -8344,8 +8216,8 @@ end function toml_raw_verify_time
 
 
 end module tomlf_utils_verify
- 
- 
+
+
 !>>>>> ././src/fpm_environment.f90
 !> This module contains procedures that interact with the programming environment.
 !!
@@ -8360,6 +8232,7 @@ module fpm_environment
     private
     public :: get_os_type
     public :: os_is_unix
+    public :: run
     public :: get_env
     public :: get_command_arguments_quoted
     public :: separator
@@ -8502,8 +8375,35 @@ contains
         else
             build_os = get_os_type()
         end if
-        unix = build_os /= OS_WINDOWS
+        unix = os /= OS_WINDOWS
     end function os_is_unix
+
+    !> echo command string and pass it to the system for execution
+    subroutine run(cmd,echo,exitstat)
+        character(len=*), intent(in) :: cmd
+        logical,intent(in),optional  :: echo
+        integer, intent(out),optional  :: exitstat
+        logical :: echo_local
+        integer :: stat
+
+        if(present(echo))then
+           echo_local=echo
+        else
+           echo_local=.true.
+        endif
+        if(echo_local) print *, '+ ', cmd
+
+        call execute_command_line(cmd, exitstat=stat)
+
+        if (present(exitstat)) then
+            exitstat = stat
+        else
+            if (stat /= 0) then
+                call fpm_stop(1,'*run*:Command failed')
+            end if
+        end if
+
+    end subroutine run
 
     !> get named environment variable value. It it is blank or
     !! not set return the optional default value
@@ -8668,116 +8568,8 @@ character(len=:),allocatable :: fname
    !*ifort_bug*!sep_cache=sep
 end function separator
 end module fpm_environment
- 
- 
-!>>>>> ././src/fpm_os.F90
-module fpm_os
-    use, intrinsic :: iso_c_binding, only : c_char, c_int, c_null_char, c_ptr, c_associated
-    use fpm_error, only : error_t, fatal_error
-    implicit none
-    private
-    public :: change_directory, get_current_directory
 
-#ifndef _WIN32
-    character(len=*), parameter :: pwd_env = "PWD"
-#else
-    character(len=*), parameter :: pwd_env = "CD"
-#endif
 
-    interface
-        function chdir(path) result(stat) &
-#ifndef _WIN32
-                bind(C, name="chdir")
-#else
-                bind(C, name="_chdir")
-#endif
-            import :: c_char, c_int
-            character(kind=c_char, len=1), intent(in) :: path(*)
-            integer(c_int) :: stat
-        end function chdir
-
-        function getcwd(buf, bufsize) result(path) &
-#ifndef _WIN32
-                bind(C, name="getcwd")
-#else
-                bind(C, name="_getcwd")
-#endif
-            import :: c_char, c_int, c_ptr
-            character(kind=c_char, len=1), intent(in) :: buf(*)
-            integer(c_int), value, intent(in) :: bufsize
-            type(c_ptr) :: path
-        end function getcwd
-    end interface
-
-contains
-
-    subroutine change_directory(path, error)
-        character(len=*), intent(in) :: path
-        type(error_t), allocatable, intent(out) :: error
-
-        character(kind=c_char, len=1), allocatable :: cpath(:)
-        integer :: stat
-
-        allocate(cpath(len(path)+1))
-        call f_c_character(path, cpath, len(path)+1)
-
-        stat = chdir(cpath)
-
-        if (stat /= 0) then
-            call fatal_error(error, "Failed to change directory to '"//path//"'")
-        end if
-    end subroutine change_directory
-
-    subroutine get_current_directory(path, error)
-        character(len=:), allocatable, intent(out) :: path
-        type(error_t), allocatable, intent(out) :: error
-
-        character(kind=c_char, len=1), allocatable :: cpath(:)
-        integer(c_int), parameter :: buffersize = 1000_c_int
-        type(c_ptr) :: tmp
-
-        allocate(cpath(buffersize))
-
-        tmp = getcwd(cpath, buffersize)
-        if (c_associated(tmp)) then
-            call c_f_character(cpath, path)
-        else
-            call fatal_error(error, "Failed to retrieve current directory")
-        end if
-
-    end subroutine get_current_directory
-
-    subroutine f_c_character(rhs, lhs, len)
-        character(kind=c_char), intent(out) :: lhs(*)
-        character(len=*), intent(in) :: rhs
-        integer, intent(in) :: len
-        integer :: length
-        length = min(len-1, len_trim(rhs))
-
-        lhs(1:length) = transfer(rhs(1:length), lhs(1:length))
-        lhs(length+1:length+1) = c_null_char
-
-    end subroutine f_c_character
-
-    subroutine c_f_character(rhs, lhs)
-        character(kind=c_char), intent(in) :: rhs(*)
-        character(len=:), allocatable, intent(out) :: lhs
-
-        integer :: ii
-
-        do ii = 1, huge(ii) - 1
-            if (rhs(ii) == c_null_char) then
-                exit
-            end if
-        end do
-        allocate(character(len=ii-1) :: lhs)
-        lhs = transfer(rhs(1:ii-1), lhs)
-
-    end subroutine c_f_character
-
-end module fpm_os
- 
- 
 !>>>>> ././src/fpm/versioning.f90
 !> Implementation of versioning data for comparing packages
 module fpm_versioning
@@ -9190,8 +8982,8 @@ contains
 
 
 end module fpm_versioning
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/convert.f90
 ! This file is part of toml-f.
 !
@@ -9494,9 +9286,107 @@ end subroutine toml_normalize_string
 
 
 end module tomlf_utils_convert
- 
- 
-!>>>>> ././src/fpm_filesystem.F90
+
+
+!>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
+! This file is part of toml-f.
+!
+! Copyright (C) 2019-2020 Sebastian Ehlert
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+module tomlf_utils
+   use tomlf_constants
+   use tomlf_datetime, only : toml_datetime, toml_date, toml_time
+   use tomlf_utils_convert
+   use tomlf_utils_verify
+   implicit none
+   private
+
+   public :: convert_raw
+   public :: toml_raw_to_string, toml_raw_to_float, toml_raw_to_bool
+   public :: toml_raw_to_integer, toml_raw_to_timestamp
+   public :: toml_raw_verify_string, toml_raw_verify_float, toml_raw_verify_bool
+   public :: toml_raw_verify_integer, toml_raw_verify_timestamp
+   public :: toml_raw_verify_date, toml_raw_verify_time
+   public :: toml_escape_string, toml_get_value_type
+
+
+contains
+
+
+!> Determine TOML value type
+function toml_get_value_type(raw) result(vtype)
+
+   !> Raw representation of TOML string
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Value type
+   integer :: vtype
+
+   if (toml_raw_verify_string(raw)) then
+      vtype = toml_type%string
+      return
+   end if
+   if (toml_raw_verify_bool(raw)) then
+      vtype = toml_type%boolean
+      return
+   end if
+   if (toml_raw_verify_integer(raw)) then
+      vtype = toml_type%int
+      return
+   end if
+   if (toml_raw_verify_float(raw)) then
+      vtype = toml_type%float
+      return
+   end if
+   if (toml_raw_verify_timestamp(raw)) then
+      vtype = toml_type%datetime
+      return
+   end if
+   vtype = toml_type%invalid
+
+end function
+
+
+!> Escape all special characters in a TOML string
+subroutine toml_escape_string(raw, escaped)
+
+   !> Raw representation of TOML string
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Escaped view of the TOML string
+   character(kind=tfc, len=:), allocatable, intent(out) :: escaped
+
+   integer :: i
+
+   escaped = '"'
+   do i = 1, len(raw)
+      select case(raw(i:i))
+      case default; escaped = escaped // raw(i:i)
+      case('\'); escaped = escaped // '\\'
+      case('"'); escaped = escaped // '\"'
+      case(TOML_NEWLINE); escaped = escaped // '\n'
+      case(TOML_FORMFEED); escaped = escaped // '\f'
+      case(TOML_CARRIAGE_RETURN); escaped = escaped // '\r'
+      case(TOML_TABULATOR); escaped = escaped // '\t'
+      case(TOML_BACKSPACE); escaped = escaped // '\b'
+      end select
+   end do
+   escaped = escaped // '"'
+
+end subroutine toml_escape_string
+
+
+end module tomlf_utils
 !> This module contains general routines for interacting with the file system
 !!
 module fpm_filesystem
@@ -9504,8 +9394,8 @@ module fpm_filesystem
     use fpm_environment, only: get_os_type, &
                                OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_WINDOWS, &
                                OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD
-    use fpm_environment, only: separator, get_env, os_is_unix
-    use fpm_strings, only: f_string, replace, string_t, split, notabs, str_begins_with_str
+    use fpm_environment, only: separator, get_env
+    use fpm_strings, only: f_string, replace, string_t, split, notabs
     use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_pointer
     use fpm_error, only : fpm_stop
     implicit none
@@ -9513,46 +9403,10 @@ module fpm_filesystem
     public :: basename, canon_path, dirname, is_dir, join_path, number_of_rows, list_files, env_variable, &
             mkdir, exists, get_temp_filename, windows_path, unix_path, getline, delete_file
     public :: fileopen, fileclose, filewrite, warnwrite, parent_dir
-    public :: is_hidden_file
     public :: read_lines, read_lines_expanded
-    public :: which, run, LINE_BUFFER_LEN
-    public :: os_delete_dir
+    public :: which
 
     integer, parameter :: LINE_BUFFER_LEN = 1000
-
-#ifndef FPM_BOOTSTRAP
-    interface
-        function c_opendir(dir) result(r) bind(c, name="c_opendir")
-            import c_char, c_ptr
-            character(kind=c_char), intent(in) :: dir(*)
-            type(c_ptr) :: r
-        end function c_opendir
-
-        function c_readdir(dir) result(r) bind(c, name="c_readdir")
-            import c_ptr
-            type(c_ptr), intent(in), value :: dir
-            type(c_ptr) :: r
-        end function c_readdir
-
-        function c_closedir(dir) result(r) bind(c, name="closedir")
-            import c_ptr, c_int
-            type(c_ptr), intent(in), value :: dir
-            integer(kind=c_int) :: r
-        end function c_closedir
-
-        function c_get_d_name(dir) result(r) bind(c, name="get_d_name")
-            import c_ptr
-            type(c_ptr), intent(in), value :: dir
-            type(c_ptr) :: r
-        end function c_get_d_name
-
-        function c_is_dir(path) result(r) bind(c, name="c_is_dir")
-            import c_char, c_int
-            character(kind=c_char), intent(in) :: path(*)
-            integer(kind=c_int) :: r
-        end function c_is_dir
-    end interface
-#endif
 
 contains
 
@@ -9595,18 +9449,21 @@ function basename(path,suffix) result (base)
         with_suffix = suffix
     end if
 
-    call split(path,file_parts,delimiters='\/')
-    if(size(file_parts).gt.0)then
-       base = trim(file_parts(size(file_parts)))
+    if (with_suffix) then
+        call split(path,file_parts,delimiters='\/')
+        if(size(file_parts).gt.0)then
+           base = trim(file_parts(size(file_parts)))
+        else
+           base = ''
+        endif
     else
-       base = ''
-    endif
-    if(.not.with_suffix)then
-        call split(base,file_parts,delimiters='.')
+        call split(path,file_parts,delimiters='\/.')
         if(size(file_parts).ge.2)then
            base = trim(file_parts(size(file_parts)-1))
+        else
+           base = ''
         endif
-    endif
+    end if
 
 end function basename
 
@@ -9751,15 +9608,6 @@ logical function is_dir(dir)
 
 end function is_dir
 
-!> test if a file is hidden
-logical function is_hidden_file(file_basename) result(r)
-    character(*), intent(in) :: file_basename
-    if (len(file_basename) <= 2) then
-        r = .false.
-    else
-        r = str_begins_with_str(file_basename, '.')
-    end if
-end function is_hidden_file
 
 !> Construct path by joining strings with os file separator
 function join_path(a1,a2,a3,a4,a5) result(path)
@@ -9859,36 +9707,20 @@ function read_lines(fh) result(lines)
 end function read_lines
 
 !> Create a directory. Create subdirectories as needed
-subroutine mkdir(dir, echo)
+subroutine mkdir(dir)
     character(len=*), intent(in) :: dir
-    logical, intent(in), optional :: echo
-
-    integer :: stat
-    logical :: echo_local
-
-    if(present(echo))then
-        echo_local=echo
-      else
-        echo_local=.true.
-    end if
+    integer                      :: stat
 
     if (is_dir(dir)) return
 
     select case (get_os_type())
         case (OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD)
             call execute_command_line('mkdir -p ' // dir, exitstat=stat)
-
-            if (echo_local) then
-                write (*, '(" + ",2a)') 'mkdir -p ' // dir
-            end if
+            write (*, '(" + ",2a)') 'mkdir -p ' // dir
 
         case (OS_WINDOWS)
             call execute_command_line("mkdir " // windows_path(dir), exitstat=stat)
-
-            if (echo_local) then
-                write (*, '(" + ",2a)') 'mkdir ' // windows_path(dir)
-            end if
-
+            write (*, '(" + ",2a)') 'mkdir ' // windows_path(dir)
     end select
 
     if (stat /= 0) then
@@ -9896,94 +9728,6 @@ subroutine mkdir(dir, echo)
     end if
 end subroutine mkdir
 
-#ifndef FPM_BOOTSTRAP
-!> Get file & directory names in directory `dir` using iso_c_binding.
-!!
-!!  - File/directory names return are relative to cwd, ie. preprended with `dir`
-!!  - Includes files starting with `.` except current directory and parent directory
-!!
-recursive subroutine list_files(dir, files, recurse)
-    character(len=*), intent(in) :: dir
-    type(string_t), allocatable, intent(out) :: files(:)
-    logical, intent(in), optional :: recurse
-
-    integer :: i
-    type(string_t), allocatable :: dir_files(:)
-    type(string_t), allocatable :: sub_dir_files(:)
-
-    type(c_ptr) :: dir_handle
-    type(c_ptr) :: dir_entry_c
-    character(len=:,kind=c_char), allocatable :: fortran_name
-    character(len=:), allocatable :: string_fortran
-    integer, parameter :: N_MAX = 256
-    type(string_t) :: files_tmp(N_MAX)
-    integer(kind=c_int) :: r
-
-    if (c_is_dir(dir(1:len_trim(dir))//c_null_char) .eq. 0) then
-        allocate (files(0))
-        return
-    end if
-
-    dir_handle = c_opendir(dir(1:len_trim(dir))//c_null_char)
-    if (.not. c_associated(dir_handle)) then
-        print *, 'c_opendir() failed'
-        error stop
-    end if
-
-    i = 0
-    allocate(files(0))
-
-    do
-        dir_entry_c = c_readdir(dir_handle)
-        if (.not. c_associated(dir_entry_c)) then
-            exit
-        else
-            string_fortran = f_string(c_get_d_name(dir_entry_c))
-
-            if ((string_fortran .eq. '.' .or. string_fortran .eq. '..')) then
-                cycle
-            end if
-
-            i = i + 1
-
-            if (i .gt. N_MAX) then
-                files = [files, files_tmp]
-                i = 1
-            end if
-
-            files_tmp(i)%s = join_path(dir, string_fortran)
-        end if
-    end do
-
-    r = c_closedir(dir_handle)
-
-    if (r .ne. 0) then
-        print *, 'c_closedir() failed'
-        error stop
-    end if
-
-    if (i .gt. 0) then
-        files = [files, files_tmp(1:i)]
-    end if
-
-    if (present(recurse)) then
-        if (recurse) then
-
-            allocate(sub_dir_files(0))
-
-            do i=1,size(files)
-                if (c_is_dir(files(i)%s//c_null_char) .ne. 0) then
-                    call list_files(files(i)%s, dir_files, recurse=.true.)
-                    sub_dir_files = [sub_dir_files, dir_files]
-                end if
-            end do
-
-            files = [files, sub_dir_files]
-        end if
-    end if
-end subroutine list_files
-
-#else
 !> Get file & directory names in directory `dir`.
 !!
 !!  - File/directory names return are relative to cwd, ie. preprended with `dir`
@@ -10047,9 +9791,6 @@ recursive subroutine list_files(dir, files, recurse)
     end if
 
 end subroutine list_files
-
-#endif
-
 
 !> test if pathname already exists
 logical function exists(filename) result(r)
@@ -10360,210 +10101,9 @@ integer                         :: i, j
    enddo SEARCH
 end function which
 
-!> echo command string and pass it to the system for execution
-subroutine run(cmd,echo,exitstat,verbose,redirect)
-    character(len=*), intent(in) :: cmd
-    logical,intent(in),optional  :: echo
-    integer, intent(out),optional  :: exitstat
-    logical, intent(in), optional :: verbose
-    character(*), intent(in), optional :: redirect
-
-    logical :: echo_local, verbose_local
-    character(:), allocatable :: redirect_str
-    character(:), allocatable :: line
-    integer :: stat, fh, ios
-
-
-    if(present(echo))then
-       echo_local=echo
-    else
-       echo_local=.true.
-    end if
-
-    if(present(verbose))then
-        verbose_local=verbose
-    else
-        verbose_local=.true.
-    end if
-
-    if (present(redirect)) then
-        redirect_str =  ">"//redirect//" 2>&1"
-    else
-        if(verbose_local)then
-            ! No redirection but verbose output
-            redirect_str = ""
-        else
-            ! No redirection and non-verbose output
-            if (os_is_unix()) then
-                redirect_str = ">/dev/null 2>&1"
-            else
-                redirect_str = ">NUL 2>&1"
-            end if
-        end if
-    end if
-
-    if(echo_local) print *, '+ ', cmd
-
-    call execute_command_line(cmd//redirect_str, exitstat=stat)
-
-    if (verbose_local.and.present(redirect)) then
-
-        open(newunit=fh,file=redirect,status='old')
-        do
-            call getline(fh, line, ios)
-            if (ios /= 0) exit
-            write(*,'(A)') trim(line)
-        end do
-        close(fh)
-
-    end if
-
-    if (present(exitstat)) then
-        exitstat = stat
-    else
-        if (stat /= 0) then
-            call fpm_stop(1,'*run*:Command failed')
-        end if
-    end if
-
-end subroutine run
-
-!> Delete directory using system OS remove directory commands
-subroutine os_delete_dir(unix, dir, echo)
-    logical, intent(in) :: unix
-    character(len=*), intent(in) :: dir
-    logical, intent(in), optional :: echo
-
-    logical :: echo_local
-
-    if(present(echo))then
-        echo_local=echo
-      else
-        echo_local=.true.
-    end if
-
-    if (unix) then
-        call run('rm -rf ' // dir, .false.)
-
-        if (echo_local) then
-          write (*, '(" + ",2a)') 'rm -rf ' // dir
-        end if
-
-    else
-        call run('rmdir /s/q ' // dir, .false.)
-
-        if (echo_local) then
-          write (*, '(" + ",2a)') 'rmdir /s/q ' // dir
-        end if
-
-    end if
-
-end subroutine os_delete_dir
-
 end module fpm_filesystem
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
-! This file is part of toml-f.
-!
-! Copyright (C) 2019-2020 Sebastian Ehlert
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-module tomlf_utils
-   use tomlf_constants
-   use tomlf_datetime, only : toml_datetime, toml_date, toml_time
-   use tomlf_utils_convert
-   use tomlf_utils_verify
-   implicit none
-   private
-
-   public :: convert_raw
-   public :: toml_raw_to_string, toml_raw_to_float, toml_raw_to_bool
-   public :: toml_raw_to_integer, toml_raw_to_timestamp
-   public :: toml_raw_verify_string, toml_raw_verify_float, toml_raw_verify_bool
-   public :: toml_raw_verify_integer, toml_raw_verify_timestamp
-   public :: toml_raw_verify_date, toml_raw_verify_time
-   public :: toml_escape_string, toml_get_value_type
 
 
-contains
-
-
-!> Determine TOML value type
-function toml_get_value_type(raw) result(vtype)
-
-   !> Raw representation of TOML string
-   character(kind=tfc, len=*), intent(in) :: raw
-
-   !> Value type
-   integer :: vtype
-
-   if (toml_raw_verify_string(raw)) then
-      vtype = toml_type%string
-      return
-   end if
-   if (toml_raw_verify_bool(raw)) then
-      vtype = toml_type%boolean
-      return
-   end if
-   if (toml_raw_verify_integer(raw)) then
-      vtype = toml_type%int
-      return
-   end if
-   if (toml_raw_verify_float(raw)) then
-      vtype = toml_type%float
-      return
-   end if
-   if (toml_raw_verify_timestamp(raw)) then
-      vtype = toml_type%datetime
-      return
-   end if
-   vtype = toml_type%invalid
-
-end function
-
-
-!> Escape all special characters in a TOML string
-subroutine toml_escape_string(raw, escaped)
-
-   !> Raw representation of TOML string
-   character(kind=tfc, len=*), intent(in) :: raw
-
-   !> Escaped view of the TOML string
-   character(kind=tfc, len=:), allocatable, intent(out) :: escaped
-
-   integer :: i
-
-   escaped = '"'
-   do i = 1, len(raw)
-      select case(raw(i:i))
-      case default; escaped = escaped // raw(i:i)
-      case('\'); escaped = escaped // '\\'
-      case('"'); escaped = escaped // '\"'
-      case(TOML_NEWLINE); escaped = escaped // '\n'
-      case(TOML_FORMFEED); escaped = escaped // '\f'
-      case(TOML_CARRIAGE_RETURN); escaped = escaped // '\r'
-      case(TOML_TABULATOR); escaped = escaped // '\t'
-      case(TOML_BACKSPACE); escaped = escaped // '\b'
-      end select
-   end do
-   escaped = escaped // '"'
-
-end subroutine toml_escape_string
-
-
-end module tomlf_utils
- 
- 
 !>>>>> ././src/fpm_command_line.f90
 !># Definition of the command line interface
 !>
@@ -10590,20 +10130,18 @@ end module tomlf_utils
 !> ``fpm-help`` and ``fpm --list`` help pages below to make sure the help output
 !> is complete and consistent as well.
 module fpm_command_line
-use fpm_environment,  only : get_os_type, get_env, os_is_unix, &
+use fpm_environment,  only : get_os_type, get_env, &
                              OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_WINDOWS, &
                              OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD
 use M_CLI2,           only : set_args, lget, sget, unnamed, remaining, specified
 use M_CLI2,           only : get_subcommand, CLI_RESPONSE_FILE
 use fpm_strings,      only : lower, split, fnv_1a, to_fortran_name, is_fortran_name
-use fpm_filesystem,   only : basename, canon_path, which, run
-use fpm_environment,  only : get_command_arguments_quoted
-use fpm_error,        only : fpm_stop, error_t
-use fpm_os,           only : get_current_directory
+use fpm_filesystem,   only : basename, canon_path, which
+use fpm_environment,  only : run, get_command_arguments_quoted
+use fpm_error,        only : fpm_stop
 use,intrinsic :: iso_fortran_env, only : stdin=>input_unit, &
                                        & stdout=>output_unit, &
                                        & stderr=>error_unit
-
 implicit none
 
 private
@@ -10614,7 +10152,6 @@ public :: fpm_cmd_settings, &
           fpm_run_settings, &
           fpm_test_settings, &
           fpm_update_settings, &
-          fpm_clean_settings, &
           get_command_line_settings
 
 type, abstract :: fpm_cmd_settings
@@ -10638,7 +10175,6 @@ type, extends(fpm_cmd_settings)  :: fpm_build_settings
     logical                      :: list=.false.
     logical                      :: show_model=.false.
     logical                      :: build_tests=.false.
-    logical                      :: prune=.true.
     character(len=:),allocatable :: compiler
     character(len=:),allocatable :: c_compiler
     character(len=:),allocatable :: archiver
@@ -10673,13 +10209,6 @@ type, extends(fpm_cmd_settings)  :: fpm_update_settings
     logical :: clean
 end type
 
-type, extends(fpm_cmd_settings)   :: fpm_clean_settings
-    logical                       :: unix
-    character(len=:), allocatable :: calling_dir  ! directory clean called from
-    logical                       :: clean_skip=.false.
-    logical                       :: clean_call=.false.
-end type
-
 character(len=:),allocatable :: name
 character(len=:),allocatable :: os_type
 character(len=ibug),allocatable :: names(:)
@@ -10689,45 +10218,36 @@ character(len=:), allocatable :: version_text(:)
 character(len=:), allocatable :: help_new(:), help_fpm(:), help_run(:), &
                  & help_test(:), help_build(:), help_usage(:), help_runner(:), &
                  & help_text(:), help_install(:), help_help(:), help_update(:), &
-                 & help_list(:), help_list_dash(:), help_list_nodash(:), &
-                 & help_clean(:)
+                 & help_list(:), help_list_dash(:), help_list_nodash(:)
 character(len=20),parameter :: manual(*)=[ character(len=20) ::&
-&  ' ',     'fpm',    'new',     'build',  'run',    'clean',  &
+&  ' ',     'fpm',     'new',   'build',  'run',     &
 &  'test',  'runner', 'install', 'update', 'list',   'help',   'version'  ]
 
 character(len=:), allocatable :: val_runner, val_compiler, val_flag, val_cflag, val_ldflag, &
     val_profile
 
 !   '12345678901234567890123456789012345678901234567890123456789012345678901234567890',&
-character(len=80), parameter :: help_text_build_common(*) = [character(len=80) ::      &
-    ' --profile PROF    Selects the compilation profile for the build.               ',&
-    '                   Currently available profiles are "release" for               ',&
-    '                   high optimization and "debug" for full debug options.        ',&
-    '                   If --flag is not specified the "debug" flags are the         ',&
-    '                   default.                                                     ',&
-    ' --no-prune        Disable tree-shaking/pruning of unused module dependencies   '&
-    ]
-!   '12345678901234567890123456789012345678901234567890123456789012345678901234567890',&
 character(len=80), parameter :: help_text_compiler(*) = [character(len=80) :: &
-    ' --compiler NAME    Specify a compiler name. The default is "gfortran"          ',&
-    '                    unless set by the environment variable FPM_FC.              ',&
-    ' --c-compiler NAME  Specify the C compiler name. Automatically determined by    ',&
-    '                    default unless set by the environment variable FPM_CC.      ',&
-    ' --archiver NAME    Specify the archiver name. Automatically determined by      ',&
-    '                    default unless set by the environment variable FPM_AR.      '&
+    ' --compiler NAME   Specify a compiler name. The default is "gfortran"',&
+    '                   unless set by the environment variable FPM_FC.',&
+    ' --c-compiler NAME Specify the C compiler name. Automatically determined by ',&
+    '                   default unless set by the environment variable FPM_CC.',&
+    ' --archiver NAME   Specify the archiver name. Automatically determined by ',&
+    '                   default unless set by the environment variable FPM_AR.'&
     ]
 
-!   '12345678901234567890123456789012345678901234567890123456789012345678901234567890',&
 character(len=80), parameter :: help_text_flag(*) = [character(len=80) :: &
-    ' --flag  FFLAGS    selects compile arguments for the build, the default value is',&
-    '                   set by the FPM_FFLAGS environment variable. These are added  ',&
-    '                   to the profile options if --profile is specified, else these ',&
-    '                   these options override the defaults. Note object and .mod    ',&
-    '                   directory locations are always built in.                     ',&
+    ' --flag  FFLAGS    selects compile arguments for the build, the default',&
+    '                   value is set by the FPM_FFLAGS environment variable.', &
+    '                   These are added to the profile options if --profile', &
+    '                   is specified, else these options override the defaults.',&
+    '                   Note object and .mod directory locations are always',&
+    '                   built in.',&
     ' --c-flag CFLAGS   selects compile arguments specific for C source in the build.',&
-    '                   The default value is set by the FPM_CFLAGS environment       ',&
-    '                   variable.                                                    ',&
-    ' --link-flag LDFLAGS  select arguments passed to the linker for the build. The  ',&
+    '                   The default value is set by the FPM_CFLAGS environment',&
+    '                   variable.',&
+    ' --link-flag LDFLAGS',&
+    '                   select arguments passed to the linker for the build. The',&
     '                   default value is set by the FPM_LDFLAGS environment variable.'&
     ]
 
@@ -10760,8 +10280,6 @@ contains
         character(len=4096)           :: cmdarg
         integer                       :: i
         integer                       :: widest
-        integer                       :: os
-        logical                       :: unix
         type(fpm_install_settings), allocatable :: install_settings
         character(len=:), allocatable :: common_args, compiler_args, run_args, working_dir, &
             & c_compiler, archiver
@@ -10769,12 +10287,10 @@ contains
         character(len=*), parameter :: fc_env = "FC", cc_env = "CC", ar_env = "AR", &
             & fflags_env = "FFLAGS", cflags_env = "CFLAGS", ldflags_env = "LDFLAGS", &
             & fc_default = "gfortran", cc_default = " ", ar_default = " ", flags_default = " "
-        type(error_t), allocatable :: error
 
         call set_help()
-        os = get_os_type()
         ! text for --version switch,
-        select case (os)
+        select case (get_os_type())
             case (OS_LINUX);   os_type =  "OS Type:     Linux"
             case (OS_MACOS);   os_type =  "OS Type:     macOS"
             case (OS_WINDOWS); os_type =  "OS Type:     Windows"
@@ -10785,9 +10301,8 @@ contains
             case (OS_UNKNOWN); os_type =  "OS Type:     Unknown"
             case default     ; os_type =  "OS Type:     UNKNOWN"
         end select
-        unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.6.0, alpha',                               &
+         &  'Version:     0.4.0, alpha',                               &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -10809,7 +10324,6 @@ contains
 
         compiler_args = &
           ' --profile " "' // &
-          ' --no-prune F' // &
           ' --compiler "'//get_fpm_env(fc_env, fc_default)//'"' // &
           ' --c-compiler "'//get_fpm_env(cc_env, cc_default)//'"' // &
           ' --archiver "'//get_fpm_env(ar_env, ar_default)//'"' // &
@@ -10860,7 +10374,6 @@ contains
             cmd_settings=fpm_run_settings(&
             & args=remaining,&
             & profile=val_profile,&
-            & prune=.not.lget('no-prune'), &
             & compiler=val_compiler, &
             & c_compiler=c_compiler, &
             & archiver=archiver, &
@@ -10888,7 +10401,6 @@ contains
             allocate( fpm_build_settings :: cmd_settings )
             cmd_settings=fpm_build_settings(  &
             & profile=val_profile,&
-            & prune=.not.lget('no-prune'), &
             & compiler=val_compiler, &
             & c_compiler=c_compiler, &
             & archiver=archiver, &
@@ -10913,13 +10425,9 @@ contains
             & help_new, version_text)
             select case(size(unnamed))
             case(1)
-                if(lget('backfill'))then
-                   name='.'
-                else
-                   write(stderr,'(*(7x,g0,/))') &
-                   & '<USAGE> fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|[--full|--bare] [--backfill]'
-                   call fpm_stop(1,'directory name required')
-                endif
+                write(stderr,'(*(7x,g0,/))') &
+                & '<USAGE> fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|[--full|--bare] [--backfill]'
+                call fpm_stop(1,'directory name required')
             case(2)
                 name=trim(unnamed(2))
             case default
@@ -10928,13 +10436,6 @@ contains
                 call fpm_stop(2,'only one directory name allowed')
             end select
             !*! canon_path is not converting ".", etc.
-            if(name.eq.'.')then
-               call get_current_directory(name, error)
-               if (allocated(error)) then
-                  write(stderr, '("[Error]", 1x, a)') error%message
-                  stop 1
-               endif
-            endif
             name=canon_path(name)
             if( .not.is_fortran_name(to_fortran_name(basename(name))) )then
                 write(stderr,'(g0)') [ character(len=72) :: &
@@ -10942,7 +10443,6 @@ contains
                 & '        numbers, underscores, or hyphens, and start with a letter.']
                 call fpm_stop(4,' ')
             endif
-
 
             allocate(fpm_new_settings :: cmd_settings)
             if (any( specified([character(len=10) :: 'src','lib','app','test','example','bare'])) &
@@ -11017,8 +10517,6 @@ contains
                    help_text=[character(len=widest) :: help_text, help_help]
                 case('version' )
                    help_text=[character(len=widest) :: help_text, version_text]
-                case('clean' )
-                   help_text=[character(len=widest) :: help_text, help_clean]
                 case default
                    help_text=[character(len=widest) :: help_text, &
                    & '<ERROR> unknown help topic "'//trim(unnamed(i))//'"']
@@ -11042,7 +10540,6 @@ contains
             install_settings = fpm_install_settings(&
                 list=lget('list'), &
                 profile=val_profile,&
-                prune=.not.lget('no-prune'), &
                 compiler=val_compiler, &
                 c_compiler=c_compiler, &
                 archiver=archiver, &
@@ -11065,7 +10562,6 @@ contains
             if(lget('list'))then
                call printhelp(help_list_dash)
             endif
-
         case('test')
             call set_args(common_args // compiler_args // run_args // ' --', &
               help_test,version_text)
@@ -11097,7 +10593,6 @@ contains
             cmd_settings=fpm_test_settings(&
             & args=remaining, &
             & profile=val_profile, &
-            & prune=.not.lget('no-prune'), &
             & compiler=val_compiler, &
             & c_compiler=c_compiler, &
             & archiver=archiver, &
@@ -11126,23 +10621,9 @@ contains
                 fetch_only=lget('fetch-only'), verbose=lget('verbose'), &
                 clean=lget('clean'))
 
-        case('clean')
-            call set_args(common_args // &
-            &   ' --skip'             // &
-            &   ' --all',                &
-                help_clean, version_text)
-            allocate(fpm_clean_settings :: cmd_settings)
-            call get_current_directory(working_dir, error)
-            cmd_settings=fpm_clean_settings( &
-            &   unix=unix,                   &
-            &   calling_dir=working_dir,     &
-            &   clean_skip=lget('skip'),     &
-                clean_call=lget('all'))
-
         case default
 
-            if(cmdarg.ne.''.and.which('fpm-'//cmdarg).ne.'')then
-
+            if(which('fpm-'//cmdarg).ne.'')then
                 call run('fpm-'//trim(cmdarg)//' '// get_command_arguments_quoted(),.false.)
             else
                 call set_args('&
@@ -11219,7 +10700,6 @@ contains
    '  test      Run the test programs                                       ', &
    '  update    Update and manage project dependencies                      ', &
    '  install   Install project                                             ', &
-   '  clean     Delete the build                                            ', &
    '                                                                        ', &
    ' Enter "fpm --list" for a brief list of subcommand options. Enter       ', &
    ' "fpm --help" or "fpm SUBCOMMAND --help" for detailed descriptions.     ', &
@@ -11227,7 +10707,7 @@ contains
    help_list_dash = [character(len=80) :: &
    '                                                                                ', &
    ' build [--compiler COMPILER_NAME] [--profile PROF] [--flag FFLAGS] [--list]     ', &
-   '       [--tests] [--no-prune]                                                   ', &
+   '       [--tests]                                                                ', &
    ' help [NAME(s)]                                                                 ', &
    ' new NAME [[--lib|--src] [--app] [--test] [--example]]|                         ', &
    '          [--full|--bare][--backfill]                                           ', &
@@ -11239,7 +10719,6 @@ contains
    '      [--list] [--compiler COMPILER_NAME] [-- ARGS]                             ', &
    ' install [--profile PROF] [--flag FFLAGS] [--no-rebuild] [--prefix PATH]        ', &
    '         [options]                                                              ', &
-   ' clean [--skip] [--all]                                                         ', &
    ' ']
     help_usage=[character(len=80) :: &
     '' ]
@@ -11333,50 +10812,46 @@ contains
     'SUBCOMMANDS                                                            ', &
     '  Valid fpm(1) subcommands are:                                        ', &
     '                                                                       ', &
-    '  + build    Compile the packages into the "build/" directory.         ', &
-    '  + new      Create a new Fortran package directory with sample files. ', &
-    '  + update   Update the project dependencies.                          ', &
-    '  + run      Run the local package binaries. Defaults to all binaries  ', &
-    '             for that release.                                         ', &
-    '  + test     Run the tests.                                            ', &
-    '  + help     Alternate to the --help switch for displaying help text.  ', &
-    '  + list     Display brief descriptions of all subcommands.            ', &
-    '  + install  Install project.                                          ', &
-    '  + clean    Delete directories in the "build/" directory, except      ', &
-    '             dependencies. Prompts for confirmation to delete.         ', &
+    '  + build Compile the packages into the "build/" directory.            ', &
+    '  + new   Create a new Fortran package directory with sample files.    ', &
+    '  + update  Update the project dependencies.                           ', &
+    '  + run   Run the local package binaries. defaults to all binaries for ', &
+    '          that release.                                                ', &
+    '  + test  Run the tests.                                               ', &
+    '  + help  Alternate to the --help switch for displaying help text.     ', &
+    '  + list  Display brief descriptions of all subcommands.               ', &
+    '  + install Install project                                            ', &
     '                                                                       ', &
     '  Their syntax is                                                      ', &
     '                                                                                ', &
     '    build [--profile PROF] [--flag FFLAGS] [--list] [--compiler COMPILER_NAME]  ', &
-    '          [--tests] [--no-prune]                                                ', &
+    '          [--tests]                                                             ', &
     '    new NAME [[--lib|--src] [--app] [--test] [--example]]|                      ', &
     '             [--full|--bare][--backfill]                                        ', &
     '    update [NAME(s)] [--fetch-only] [--clean]                                   ', &
     '    run [[--target] NAME(s)] [--profile PROF] [--flag FFLAGS] [--list] [--all]  ', &
-    '        [--example] [--runner "CMD"] [--compiler COMPILER_NAME]                 ', &
-    '        [--no-prune] [-- ARGS]                                                  ', &
+    '        [--example] [--runner "CMD"] [--compiler COMPILER_NAME] [-- ARGS]       ', &
     '    test [[--target] NAME(s)] [--profile PROF] [--flag FFLAGS] [--list]         ', &
-    '         [--runner "CMD"] [--compiler COMPILER_NAME] [--no-prune] [-- ARGS]     ', &
+    '         [--runner "CMD"] [--compiler COMPILER_NAME] [-- ARGS]                  ', &
     '    help [NAME(s)]                                                              ', &
     '    list [--list]                                                               ', &
     '    install [--profile PROF] [--flag FFLAGS] [--no-rebuild] [--prefix PATH]     ', &
-    '            [options]                                                           ', &
-    '    clean [--skip] [--all]                                                       ', &
+    '    [options]                                                                   ', &
     '                                                                                ', &
     'SUBCOMMAND OPTIONS                                                              ', &
     ' -C, --directory PATH', &
     '             Change working directory to PATH before running any command', &
-    help_text_build_common, &
+    ' --profile PROF    selects the compilation profile for the build.',&
+    '                   Currently available profiles are "release" for',&
+    '                   high optimization and "debug" for full debug options.',&
+    '                   If --flag is not specified the "debug" flags are the',&
+    '                   default. ',&
     help_text_compiler, &
     help_text_flag, &
     '  --list     List candidates instead of building or running them. On   ', &
     '             the fpm(1) command this shows a brief list of subcommands.', &
     '  --runner CMD   Provides a command to prefix program execution paths. ', &
     '  -- ARGS    Arguments to pass to executables.                         ', &
-    '  --skip     Delete directories in the build/ directory without        ', &
-    '             prompting, but skip dependencies.                         ', &
-    '  --all      Delete directories in the build/ directory without        ', &
-    '             prompting, including dependencies.                        ', &
     '                                                                       ', &
     'VALID FOR ALL SUBCOMMANDS                                              ', &
     '  --help     Show help text and exit                                   ', &
@@ -11390,7 +10865,7 @@ contains
     '   directory.                                                          ', &
     '                                                                       ', &
     '   If "file" does not exist or cannot be read, then an error occurs and', &
-    '   the program stops. Each line of the file is prefixed with "options" ', &
+    '   the program stops.  Each line of the file is prefixed with "options"', &
     '   and interpreted as a separate argument. The file itself may not     ', &
     '   contain @file arguments. That is, it is not processed recursively.  ', &
     '                                                                       ', &
@@ -11406,8 +10881,8 @@ contains
     '     # my build options                                                ', &
     '     options build                                                     ', &
     '     options --compiler gfortran                                       ', &
-    '     options --flag "-pg -static -pthread -Wunreachable-code -Wunused  ', &
-    '      -Wuninitialized -g -O -fbacktrace -fdump-core -fno-underscoring  ', &
+    '     options --flag "-pg -static -pthread -Wunreachable-code -Wunused \', &
+    '      -Wuninitialized -g -O -fbacktrace -fdump-core -fno-underscoring \', &
     '      -frecord-marker=4 -L/usr/X11R6/lib -L/usr/X11R6/lib64 -lX11"     ', &
     '                                                                       ', &
     '   Note --flag would have to be on one line as response files do not   ', &
@@ -11427,7 +10902,6 @@ contains
     '    fpm new --help                                                     ', &
     '    fpm run myprogram --profile release -- -x 10 -y 20 --title "my title"       ', &
     '    fpm install --prefix ~/.local                                               ', &
-    '    fpm clean --all                                                             ', &
     '                                                                                ', &
     'SEE ALSO                                                                        ', &
     '                                                                                ', &
@@ -11489,12 +10963,16 @@ contains
     '                   the special characters from shell expansion.        ', &
     ' --all   Run all examples or applications. An alias for --target ''*''.  ', &
     ' --example  Run example programs instead of applications.              ', &
-    help_text_build_common, &
+    ' --profile PROF    selects the compilation profile for the build.',&
+    '                   Currently available profiles are "release" for',&
+    '                   high optimization and "debug" for full debug options.',&
+    '                   If --flag is not specified the "debug" flags are the',&
+    '                   default. ',&
     help_text_compiler, &
     help_text_flag, &
     ' --runner CMD  A command to prefix the program execution paths with.   ', &
     '               see "fpm help runner" for further details.              ', &
-    ' --list     list basenames of candidates instead of running them. Note ', &
+    ' --list     list pathname of candidates instead of running them. Note  ', &
     '            out-of-date candidates will still be rebuilt before being  ', &
     '            listed.                                                    ', &
     ' -- ARGS    optional arguments to pass to the program(s). The same     ', &
@@ -11506,9 +10984,7 @@ contains
     ' fpm(1) - run or display project applications:                         ', &
     '                                                                       ', &
     '  fpm run        # run a target when only one exists or list targets   ', &
-    '  fpm run --list # list basename of all targets, running nothing.      ', &
-    '  fpm run "demo*" --list # list target basenames starting with "demo*".', &
-    '  fpm run "psi*" --runner # list target pathnames starting with "psi*".', &
+    '  fpm run --list # list all targets, running nothing.                  ', &
     '  fpm run --all  # run all targets, no matter how many there are.      ', &
     '                                                                       ', &
     '  # run default program built or to be built with the compiler command ', &
@@ -11517,7 +10993,7 @@ contains
     '  fpm run --compiler f90                                               ', &
     '                                                                       ', &
     '  # run example programs instead of the application programs.          ', &
-    '  fpm run --example "*"                                                ', &
+    '  fpm run --example ''*''                                                ', &
     '                                                                       ', &
     '  # run a specific program and pass arguments to the command           ', &
     '  fpm run myprog -- -x 10 -y 20 --title "my title line"                ', &
@@ -11556,14 +11032,18 @@ contains
     ' specified in the "fpm.toml" file.                                     ', &
     '                                                                       ', &
     'OPTIONS                                                                ', &
-    help_text_build_common,&
+    ' --profile PROF    selects the compilation profile for the build.',&
+    '                   Currently available profiles are "release" for',&
+    '                   high optimization and "debug" for full debug options.',&
+    '                   If --flag is not specified the "debug" flags are the',&
+    '                   default. ',&
     help_text_compiler, &
     help_text_flag, &
-    ' --list        list candidates instead of building or running them     ', &
-    ' --tests       build all tests (otherwise only if needed)              ', &
-    ' --show-model  show the model and exit (do not build)                  ', &
-    ' --help        print this help and exit                                ', &
-    ' --version     print program version information and exit              ', &
+    ' --list       list candidates instead of building or running them      ', &
+    ' --tests      build all tests (otherwise only if needed)               ', &
+    ' --show-model show the model and exit (do not build)                   ', &
+    ' --help       print this help and exit                                 ', &
+    ' --version    print program version information and exit               ', &
     '                                                                       ', &
     help_text_environment, &
     '                                                                       ', &
@@ -11609,8 +11089,8 @@ contains
     'NAME                                                                   ', &
     ' new(1) - the fpm(1) subcommand to initialize a new project            ', &
     'SYNOPSIS                                                               ', &
-    '  fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|           ', &
-    '      [--full|--bare][--backfill]                                      ', &
+   '  fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|            ', &
+   '      [--full|--bare][--backfill]                                       ', &
     ' fpm new --help|--version                                              ', &
     '                                                                       ', &
     'DESCRIPTION                                                            ', &
@@ -11705,7 +11185,7 @@ contains
     '   fpm new A --full # create example/ and an annotated fpm.toml as well', &
     '   fpm new A --bare # create no directories                            ', &
     '   create any missing files in current directory                       ', &
-    '   fpm new --full --backfill                                           ', &
+    '   fpm new `pwd` --full --backfill                                     ', &
     '' ]
     help_test=[character(len=80) :: &
     'NAME                                                                   ', &
@@ -11729,13 +11209,16 @@ contains
     '                   any single character and "*" represents any string. ', &
     '                   Note The glob string normally needs quoted to       ', &
     '                   protect the special characters from shell expansion.', &
-    help_text_build_common,&
+    ' --profile PROF    selects the compilation profile for the build.',&
+    '                   Currently available profiles are "release" for',&
+    '                   high optimization and "debug" for full debug options.',&
+    '                   If --flag is not specified the "debug" flags are the',&
+    '                   default. ',&
     help_text_compiler, &
     help_text_flag, &
     ' --runner CMD  A command to prefix the program execution paths with.   ', &
     '               see "fpm help runner" for further details.              ', &
-    ' --list     list candidate basenames instead of running them. Note they', &
-    ' --list     will still be built if not currently up to date.           ', &
+    ' --list     list candidates instead of building or running them        ', &
     ' -- ARGS    optional arguments to pass to the test program(s).         ', &
     '            The same arguments are passed to all test names            ', &
     '            specified.                                                 ', &
@@ -11794,7 +11277,11 @@ contains
     'OPTIONS', &
     ' --list            list all installable targets for this project,', &
     '                   but do not install any of them', &
-    help_text_build_common,&
+    ' --profile PROF    selects the compilation profile for the build.',&
+    '                   Currently available profiles are "release" for',&
+    '                   high optimization and "debug" for full debug options.',&
+    '                   If --flag is not specified the "debug" flags are the',&
+    '                   default. ',&
     help_text_flag, &
     ' --no-rebuild      do not rebuild project before installation', &
     ' --prefix DIR      path to installation directory (requires write access),', &
@@ -11822,22 +11309,7 @@ contains
     '', &
     '    fpm install --prefix $PWD --bindir exe', &
     '' ]
-    help_clean=[character(len=80) :: &
-    'NAME', &
-    ' clean(1) - delete the build', &
-    '', &
-    'SYNOPSIS', &
-    ' fpm clean', &
-    '', &
-    'DESCRIPTION', &
-    ' Prompts the user to confirm deletion of the build. If affirmative,', &
-    ' directories in the build/ directory are deleted, except dependencies.', &
-    '', &
-    'OPTIONS', &
-    ' --skip           delete the build without prompting but skip dependencies.', &
-    ' --all            delete the build without prompting including dependencies.', &
-    '' ]
-     end subroutine set_help
+    end subroutine set_help
 
     subroutine get_char_arg(var, arg)
       character(len=:), allocatable, intent(out) :: var
@@ -11860,8 +11332,8 @@ contains
     end function get_fpm_env
 
 end module fpm_command_line
- 
- 
+
+
 !>>>>> ././src/fpm_compiler.f90
 !># Define compiler command options
 !!
@@ -11892,6 +11364,7 @@ end module fpm_command_line
 ! Unisys            ?          ?       ?               ?             ?          discontinued
 module fpm_compiler
 use fpm_environment, only: &
+        run, &
         get_env, &
         get_os_type, &
         OS_LINUX, &
@@ -11903,8 +11376,8 @@ use fpm_environment, only: &
         OS_OPENBSD, &
         OS_UNKNOWN
 use fpm_filesystem, only: join_path, basename, get_temp_filename, delete_file, unix_path, &
-    & getline, run
-use fpm_strings, only: split, string_cat, string_t
+    & getline
+use fpm_strings, only: string_cat, string_t
 implicit none
 public :: compiler_t, new_compiler, archiver_t, new_archiver
 public :: debug
@@ -11925,8 +11398,6 @@ enum, bind(C)
         id_nvhpc, &
         id_nag, &
         id_flang, &
-        id_flang_new, &
-        id_f18, &
         id_ibmxl, &
         id_cray, &
         id_lahey, &
@@ -11945,8 +11416,6 @@ type :: compiler_t
     character(len=:), allocatable :: cc
     !> Print all commands
     logical :: echo = .true.
-    !> Verbose output of command
-    logical :: verbose = .true.
 contains
     !> Get default compiler flags
     procedure :: get_default_flags
@@ -11962,8 +11431,6 @@ contains
     procedure :: link
     !> Check whether compiler is recognized
     procedure :: is_unknown
-    !> Enumerate libraries, based on compiler and platform
-    procedure :: enumerate_libraries
 end type compiler_t
 
 
@@ -11975,8 +11442,6 @@ type :: archiver_t
     logical :: use_response_file = .false.
     !> Print all command
     logical :: echo = .true.
-    !> Verbose output of command
-    logical :: verbose = .true.
 contains
     !> Create static archive
     procedure :: make_archive
@@ -12024,7 +11489,7 @@ character(*), parameter :: &
     flag_intel_warn_win = " /warn:all", &
     flag_intel_check_win = " /check:all", &
     flag_intel_debug_win = " /Od /Z7", &
-    flag_intel_fp_win = " /fp:precise", &
+    flag_intel_fp_win = " /fp-model:precise", &
     flag_intel_align_win = " /align:all", &
     flag_intel_limit_win = " /error-limit:1", &
     flag_intel_pthread_win = " /reentrancy:threaded", &
@@ -12038,9 +11503,6 @@ character(*), parameter :: &
     flag_nag_debug = " -g -O0", &
     flag_nag_opt = " -O4", &
     flag_nag_backtrace = " -gline"
-
-character(*), parameter :: &
-    flag_lfortran_opt = " --fast"
 
 contains
 
@@ -12144,9 +11606,7 @@ subroutine get_release_compile_flags(id, flags)
             flag_nag_pic
 
     case(id_lfortran)
-        flags = &
-            flag_lfortran_opt
-
+        flags = ""
     end select
 end subroutine get_release_compile_flags
 
@@ -12250,8 +11710,7 @@ function get_include_flag(self, path) result(flags)
     case default
         flags = "-I "//path
 
-    case(id_caf, id_gcc, id_f95, id_cray, id_nvhpc, id_pgi, &
-        & id_flang, id_flang_new, id_f18, &
+    case(id_caf, id_gcc, id_f95, id_cray, id_nvhpc, id_pgi, id_flang, &
         & id_intel_classic_nix, id_intel_classic_mac, &
         & id_intel_llvm_nix, id_lahey, id_nag, id_ibmxl, &
         & id_lfortran)
@@ -12277,9 +11736,6 @@ function get_module_flag(self, path) result(flags)
 
     case(id_nvhpc, id_pgi, id_flang)
         flags = "-module "//path
-
-    case(id_flang_new, id_f18)
-        flags = "-module-dir "//path
 
     case(id_intel_classic_nix, id_intel_classic_mac, &
         & id_intel_llvm_nix)
@@ -12317,7 +11773,7 @@ subroutine get_default_c_compiler(f_compiler, c_compiler)
     case(id_intel_llvm_nix,id_intel_llvm_windows)
         c_compiler = 'icx'
 
-    case(id_flang, id_flang_new, id_f18)
+    case(id_flang)
         c_compiler='clang'
 
     case(id_ibmxl)
@@ -12341,7 +11797,7 @@ function get_compiler_id(compiler) result(id)
     character(len=*), intent(in) :: compiler
     integer(kind=compiler_enum) :: id
 
-    character(len=:), allocatable :: full_command, full_command_parts(:), command, output
+    character(len=:), allocatable :: command, output
     integer :: stat, io
 
     ! Check whether we are dealing with an MPI compiler wrapper first
@@ -12349,18 +11805,14 @@ function get_compiler_id(compiler) result(id)
         & .or. check_compiler(compiler, "mpif90") &
         & .or. check_compiler(compiler, "mpif77")) then
         output = get_temp_filename()
-        call run(compiler//" -show > "//output//" 2>&1", &
+        call run(compiler//" -showme:command > "//output//" 2>&1", &
             & echo=.false., exitstat=stat)
         if (stat == 0) then
             open(file=output, newunit=io, iostat=stat)
-            if (stat == 0) call getline(io, full_command, stat)
+            if (stat == 0) call getline(io, command, stat)
             close(io, iostat=stat)
 
             ! If we get a command from the wrapper, we will try to identify it
-            call split(full_command, full_command_parts, delimiters=' ')
-            if(size(full_command_parts) > 0)then
-               command = trim(full_command_parts(1))
-            endif
             if (allocated(command)) then
                 id = get_id(command)
                 if (id /= id_unknown) return
@@ -12432,16 +11884,6 @@ function get_id(compiler) result(id)
         return
     end if
 
-    if (check_compiler(compiler, "flang-new")) then
-        id = id_flang_new
-        return
-    end if
-
-    if (check_compiler(compiler, "f18")) then
-        id = id_f18
-        return
-    end if
-
     if (check_compiler(compiler, "flang")) then
         id = id_flang
         return
@@ -12488,41 +11930,18 @@ pure function is_unknown(self)
     is_unknown = self%id == id_unknown
 end function is_unknown
 
-!>
-!> Enumerate libraries, based on compiler and platform
-!>
-function enumerate_libraries(self, prefix, libs) result(r)
-    class(compiler_t), intent(in) :: self
-    character(len=*), intent(in) :: prefix
-    type(string_t), intent(in) :: libs(:)
-    character(len=:), allocatable :: r
-
-    if (self%id == id_intel_classic_windows .or. &
-        self%id == id_intel_llvm_windows) then
-        r = prefix // " " // string_cat(libs,".lib ")//".lib"
-    else
-        r = prefix // " -l" // string_cat(libs," -l")
-    end if
-end function enumerate_libraries
-
 
 !> Create new compiler instance
-subroutine new_compiler(self, fc, cc, echo, verbose)
+subroutine new_compiler(self, fc, cc)
     !> New instance of the compiler
     type(compiler_t), intent(out) :: self
     !> Fortran compiler name or path
     character(len=*), intent(in) :: fc
     !> C compiler name or path
     character(len=*), intent(in) :: cc
-    !> Echo compiler command
-    logical, intent(in) :: echo
-    !> Verbose mode: dump compiler output
-    logical, intent(in) :: verbose
 
     self%id = get_compiler_id(fc)
-    
-    self%echo = echo
-    self%verbose = verbose
+
     self%fc = fc
     if (len_trim(cc) > 0) then
       self%cc = cc
@@ -12533,15 +11952,11 @@ end subroutine new_compiler
 
 
 !> Create new archiver instance
-subroutine new_archiver(self, ar, echo, verbose)
+subroutine new_archiver(self, ar)
     !> New instance of the archiver
     type(archiver_t), intent(out) :: self
     !> User provided archiver command
     character(len=*), intent(in) :: ar
-    !> Echo compiler command
-    logical, intent(in) :: echo
-    !> Verbose mode: dump compiler output
-    logical, intent(in) :: verbose
 
     integer :: estat, os_type
 
@@ -12575,13 +11990,12 @@ subroutine new_archiver(self, ar, echo, verbose)
       end if
     end if
     self%use_response_file = os_type == OS_WINDOWS
-    self%echo = echo
-    self%verbose = verbose
+    self%echo = .true.
 end subroutine new_archiver
 
 
 !> Compile a Fortran object
-subroutine compile_fortran(self, input, output, args, log_file, stat)
+subroutine compile_fortran(self, input, output, args, stat)
     !> Instance of the compiler object
     class(compiler_t), intent(in) :: self
     !> Source file input
@@ -12590,18 +12004,16 @@ subroutine compile_fortran(self, input, output, args, log_file, stat)
     character(len=*), intent(in) :: output
     !> Arguments for compiler
     character(len=*), intent(in) :: args
-    !> Compiler output log file
-    character(len=*), intent(in) :: log_file
     !> Status flag
     integer, intent(out) :: stat
 
     call run(self%fc // " -c " // input // " " // args // " -o " // output, &
-        & echo=self%echo, verbose=self%verbose, redirect=log_file, exitstat=stat)
+        & echo=self%echo, exitstat=stat)
 end subroutine compile_fortran
 
 
 !> Compile a C object
-subroutine compile_c(self, input, output, args, log_file, stat)
+subroutine compile_c(self, input, output, args, stat)
     !> Instance of the compiler object
     class(compiler_t), intent(in) :: self
     !> Source file input
@@ -12610,60 +12022,47 @@ subroutine compile_c(self, input, output, args, log_file, stat)
     character(len=*), intent(in) :: output
     !> Arguments for compiler
     character(len=*), intent(in) :: args
-    !> Compiler output log file
-    character(len=*), intent(in) :: log_file
     !> Status flag
     integer, intent(out) :: stat
 
     call run(self%cc // " -c " // input // " " // args // " -o " // output, &
-        & echo=self%echo, verbose=self%verbose, redirect=log_file, exitstat=stat)
+        & echo=self%echo, exitstat=stat)
 end subroutine compile_c
 
 
 !> Link an executable
-subroutine link(self, output, args, log_file, stat)
+subroutine link(self, output, args, stat)
     !> Instance of the compiler object
     class(compiler_t), intent(in) :: self
     !> Output file of object
     character(len=*), intent(in) :: output
     !> Arguments for compiler
     character(len=*), intent(in) :: args
-    !> Compiler output log file
-    character(len=*), intent(in) :: log_file
     !> Status flag
     integer, intent(out) :: stat
 
-    call run(self%fc // " " // args // " -o " // output, echo=self%echo, &
-        & verbose=self%verbose, redirect=log_file, exitstat=stat)
+    call run(self%fc // " " // args // " -o " // output, echo=self%echo, exitstat=stat)
 end subroutine link
 
 
 !> Create an archive
-!> @todo An OMP critical section is added for Windows OS,
-!> which may be related to a bug in Mingw64-openmp and is expected to be resolved in the future,
-!> see issue #707 and #708.
-subroutine make_archive(self, output, args, log_file, stat)
+subroutine make_archive(self, output, args, stat)
     !> Instance of the archiver object
     class(archiver_t), intent(in) :: self
     !> Name of the archive to generate
     character(len=*), intent(in) :: output
     !> Object files to include into the archive
     type(string_t), intent(in) :: args(:)
-    !> Compiler output log file
-    character(len=*), intent(in) :: log_file
     !> Status flag
     integer, intent(out) :: stat
 
     if (self%use_response_file) then
-        !$omp critical
         call write_response_file(output//".resp" , args)
-        call run(self%ar // output // " @" // output//".resp", echo=self%echo, &
-            &  verbose=self%verbose, redirect=log_file, exitstat=stat)
+        call run(self%ar // output // " @" // output//".resp", echo=self%echo, exitstat=stat)
         call delete_file(output//".resp")
-        !$omp end critical
     else
         call run(self%ar // output // " " // string_cat(args, " "), &
-            & echo=self%echo, verbose=self%verbose, redirect=log_file, exitstat=stat)
+            & echo=self%echo, exitstat=stat)
     end if
 end subroutine make_archive
 
@@ -12709,8 +12108,8 @@ end function debug_archiver
 
 
 end module fpm_compiler
- 
- 
+
+
 !>>>>> ././src/fpm/git.f90
 !> Implementation for interacting with git repositories.
 module fpm_git
@@ -12975,8 +12374,8 @@ contains
 
 
 end module fpm_git
- 
- 
+
+
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
 !>
@@ -13011,8 +12410,6 @@ module fpm_installer
     integer :: verbosity = 1
     !> Command to copy objects into the installation prefix
     character(len=:), allocatable :: copy
-    !> Command to move objects into the installation prefix
-    character(len=:), allocatable :: move
     !> Cached operating system
     integer :: os
   contains
@@ -13051,18 +12448,11 @@ module fpm_installer
   !> Copy command on Windows platforms
   character(len=*), parameter :: default_copy_win = "copy"
 
-  !> Move command on Unix platforms
-  character(len=*), parameter :: default_move_unix = "mv"
-
-  !> Move command on Windows platforms
-  character(len=*), parameter :: default_move_win = "move"
-
-
 contains
 
   !> Create a new instance of an installer
   subroutine new_installer(self, prefix, bindir, libdir, includedir, verbosity, &
-          copy, move)
+          copy)
     !> Instance of the installer
     type(installer_t), intent(out) :: self
     !> Path to installation directory
@@ -13077,8 +12467,6 @@ contains
     integer, intent(in), optional :: verbosity
     !> Copy command
     character(len=*), intent(in), optional :: copy
-    !> Move command
-    character(len=*), intent(in), optional :: move
 
     self%os = get_os_type()
 
@@ -13089,16 +12477,6 @@ contains
         self%copy = default_copy_unix
       else
         self%copy = default_copy_win
-      end if
-    end if
-
-    if (present(move)) then
-      self%move = move
-    else
-      if (os_is_unix(self%os)) then
-        self%move = default_move_unix
-      else
-        self%move = default_move_win
       end if
     end if
 
@@ -13239,12 +12617,7 @@ contains
       end if
     end if
 
-    ! move instead of copy if already installed
-    if (exists(install_dest)) then
-      call self%run(self%move//' "'//source//'" "'//install_dest//'"', error)
-    else
-      call self%run(self%copy//' "'//source//'" "'//install_dest//'"', error)
-    end if
+    call self%run(self%copy//' "'//source//'" "'//install_dest//'"', error)
     if (allocated(error)) return
 
   end subroutine install
@@ -13288,8 +12661,8 @@ contains
   end subroutine run
 
 end module fpm_installer
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 !
@@ -13439,8 +12812,8 @@ end function match_key
 
 
 end module tomlf_type_value
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
 ! This file is part of toml-f.
 !
@@ -13518,8 +12891,8 @@ end subroutine destroy
 
 
 end module tomlf_type_keyval
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/base.f90
 ! This file is part of toml-f.
 !
@@ -13707,8 +13080,8 @@ module tomlf_structure_base
 
 
 end module tomlf_structure_base
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/vector.f90
 ! This file is part of toml-f.
 !
@@ -14059,8 +13432,8 @@ end subroutine destroy
 
 
 end module tomlf_structure_vector
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure.f90
 ! This file is part of toml-f.
 !
@@ -14153,8 +13526,8 @@ end function get_len
 
 
 end module tomlf_structure
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/array.f90
 ! This file is part of toml-f.
 !
@@ -14355,8 +13728,8 @@ end subroutine destroy
 
 
 end module tomlf_type_array
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/table.f90
 ! This file is part of toml-f.
 !
@@ -14578,8 +13951,8 @@ end subroutine destroy
 
 
 end module tomlf_type_table
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type.f90
 ! This file is part of toml-f.
 !
@@ -15016,8 +14389,8 @@ end function is_array_of_tables
 
 
 end module tomlf_type
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/ser.f90
 ! This file is part of toml-f.
 !
@@ -15362,8 +14735,8 @@ end subroutine resize
 
 
 end module tomlf_ser
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de/tokenizer.f90
 ! This file is part of toml-f.
 !
@@ -16111,8 +15484,8 @@ end subroutine next
 
 
 end module tomlf_de_tokenizer
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
 ! This file is part of toml-f.
 !
@@ -16593,8 +15966,8 @@ end subroutine set_value_string
 
 
 end module tomlf_build_keyval
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
 ! This file is part of toml-f.
 !
@@ -16713,8 +16086,8 @@ end subroutine merge_array
 
 
 end module tomlf_build_merge
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
 ! This file is part of toml-f.
 !
@@ -17019,8 +16392,8 @@ end function new_token
 
 
 end module tomlf_de_character
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
 ! This file is part of toml-f.
 !
@@ -17708,8 +17081,8 @@ end subroutine set_elem_value_bool
 
 
 end module tomlf_build_array
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/table.f90
 ! This file is part of toml-f.
 !
@@ -18480,8 +17853,8 @@ end subroutine set_child_value_string
 
 
 end module tomlf_build_table
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
 !
@@ -18513,8 +17886,8 @@ module tomlf_build
 
 
 end module tomlf_build
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de.f90
 ! This file is part of toml-f.
 !
@@ -18564,7 +17937,7 @@ subroutine toml_parse_unit(table, unit, error)
    integer :: size
    integer :: stat
    allocate(character(len=0) :: conf)
-   do 
+   do
       read(unit, '(a)', advance='no', iostat=stat, iomsg=error_msg, size=size) &
          & buffer
       if (stat > 0) exit
@@ -18623,8 +17996,8 @@ end subroutine toml_parse_string
 
 
 end module tomlf_de
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf.f90
 ! This file is part of toml-f.
 !
@@ -18654,8 +18027,41 @@ module tomlf
    public
 
 end module tomlf
- 
- 
+
+
+!>>>>> build/dependencies/toml-f/src/tomlf/all.f90
+! This file is part of toml-f.
+!
+! Copyright (C) 2019-2020 Sebastian Ehlert
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Complete reexport of the public API of TOML-Fortran
+module tomlf_all
+   use tomlf_build
+   use tomlf_constants
+   use tomlf_datetime
+   use tomlf_de
+   use tomlf_error
+   use tomlf_ser
+   use tomlf_structure
+   use tomlf_type
+   use tomlf_utils
+   use tomlf_version
+   implicit none
+   public
+
+end module tomlf_all
+
+
 !>>>>> ././src/fpm/toml.f90
 !># Interface to TOML processing library
 !>
@@ -18772,8 +18178,8 @@ contains
 
 
 end module fpm_toml
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/build.f90
 !> Implementation of the build configuration data.
 !>
@@ -18949,8 +18355,8 @@ contains
     end subroutine info
 
 end module fpm_manifest_build
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/dependency.f90
 !> Implementation of the meta data for dependencies.
 !>
@@ -19200,8 +18606,8 @@ contains
 
 
 end module fpm_manifest_dependency
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
 !>
@@ -19311,8 +18717,8 @@ contains
   end subroutine info
 
 end module fpm_manifest_install
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/library.f90
 !> Implementation of the meta data for libraries.
 !>
@@ -19456,8 +18862,8 @@ contains
 
 
 end module fpm_manifest_library
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/executable.f90
 !> Implementation of the meta data for an executables.
 !>
@@ -19648,8 +19054,8 @@ contains
 
 
 end module fpm_manifest_executable
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
 !>
@@ -19829,8 +19235,8 @@ contains
 
 
 end module fpm_manifest_test
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/example.f90
 !> Implementation of the meta data for an example.
 !>
@@ -20010,8 +19416,8 @@ contains
 
 
 end module fpm_manifest_example
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/package.f90
 !> Define the package data containing the meta data from the configuration file.
 !>
@@ -20475,8 +19881,8 @@ contains
 
 
 end module fpm_manifest_package
- 
- 
+
+
 !>>>>> ././src/fpm/manifest.f90
 !> Package configuration data.
 !>
@@ -20662,8 +20068,8 @@ contains
 
 
 end module fpm_manifest
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/new.f90
 module fpm_cmd_new
 !># Definition of the "new" subcommand
@@ -20721,12 +20127,11 @@ module fpm_cmd_new
 !> be the first go-to for a CLI utility).
 
 use fpm_command_line, only : fpm_new_settings
-use fpm_environment, only : OS_LINUX, OS_MACOS, OS_WINDOWS
+use fpm_environment, only : run, OS_LINUX, OS_MACOS, OS_WINDOWS
 use fpm_filesystem, only : join_path, exists, basename, mkdir, is_dir
-use fpm_filesystem, only : fileopen, fileclose, filewrite, warnwrite, which, run
+use fpm_filesystem, only : fileopen, fileclose, filewrite, warnwrite
 use fpm_strings, only : join, to_fortran_name
 use fpm_error, only : fpm_stop
-
 use,intrinsic :: iso_fortran_env, only : stderr=>error_unit
 implicit none
 private
@@ -21240,57 +20645,8 @@ character(len=:,kind=tfc),allocatable :: littlefile(:)
         call create_verified_basic_manifest(join_path(settings%name, 'fpm.toml'))
     endif
     ! assumes git(1) is installed and in path
-    if(which('git').ne.'')then
-      call run('git init ' // settings%name)
-    endif
+    call run('git init ' // settings%name)
 contains
-
-function git_metadata(what) result(returned)
-!> get metadata values such as email address and git name from git(1) or return appropriate default
-  use fpm_filesystem, only : get_temp_filename, getline
-  character(len=*), intent(in)  :: what     ! keyword designating what git metatdata to query
-  character(len=:), allocatable :: returned ! value to return for requested keyword
-  character(len=:), allocatable :: command
-  character(len=:), allocatable :: temp_filename
-  character(len=:), allocatable :: iomsg
-  character(len=:), allocatable :: temp_value
-  integer :: stat, unit
-  temp_filename = get_temp_filename()
-  ! for known keywords set default value for RETURNED and associated git(1) command for query
-  select case(what)
-  case('uname')
-    returned = "Jane Doe"
-    command = "git config --get user.name > " // temp_filename
-  case('email')
-    returned = "jane.doe@example.com"
-    command = "git config --get user.email > " // temp_filename
-  case default
-    write(stderr,'(*(g0,1x))')&
-    & '<ERROR> *git_metadata* unknown metadata name ',trim(what)
-    returned=''
-    return
-  end select
-  ! Execute command if git(1) is in command path
-  if(which('git')/='')then
-     call run(command, exitstat=stat)
-     if (stat /= 0) then ! If command failed just return default
-        return
-     else ! Command did not return an error so try to read expected output file
-        open(file=temp_filename, newunit=unit,iostat=stat)
-        if(stat == 0)then
-           ! Read file into a scratch variable until status of doing so is checked
-           call getline(unit, temp_value, stat, iomsg)
-           if (stat == 0 .and. temp_value /= '') then
-              ! Return output from successful command
-              returned=temp_value
-           endif
-        endif
-        ! Always do the CLOSE because a failed open has unpredictable results.
-        ! Add IOSTAT so a failed close does not cause program to stop
-        close(unit, status="delete",iostat=stat)
-     endif
-  endif
-end function git_metadata
 
 subroutine create_verified_basic_manifest(filename)
 !> create a basic but verified default manifest file
@@ -21320,9 +20676,9 @@ character(len=*),intent(in) :: filename
     call set_value(table, "name",       BNAME)
     call set_value(table, "version",    "0.1.0")
     call set_value(table, "license",    "license")
-    call set_value(table, "author",     git_metadata('uname'))
-    call set_value(table, "maintainer", git_metadata('email'))
-    call set_value(table, "copyright",  'Copyright '//date(1:4)//', '//git_metadata('uname'))
+    call set_value(table, "author",     "Jane Doe")
+    call set_value(table, "maintainer", "jane.doe@example.com")
+    call set_value(table, "copyright",  'Copyright '//date(1:4)//', Jane Doe')
     ! continue building of manifest
     ! ...
     call new_package(package, table, error=error)
@@ -21370,8 +20726,8 @@ end subroutine validate_toml_data
 end subroutine cmd_new
 
 end module fpm_cmd_new
- 
- 
+
+
 !>>>>> ././src/fpm/dependency.f90
 !> # Dependency management
 !>
@@ -22187,8 +21543,8 @@ contains
   end subroutine resize_dependency_node
 
 end module fpm_dependency
- 
- 
+
+
 !>>>>> ././src/fpm_model.f90
 !># The fpm package model
 !>
@@ -22205,23 +21561,6 @@ end module fpm_dependency
 !>
 !> __Source type:__ `FPM_UNIT_*`
 !> Describes the type of source file     determines build target generation
-!>
-!> The logical order of precedence for assigning `unit_type` is as follows:
-!>
-!>```
-!> if source-file contains program then
-!>   unit_type = FPM_UNIT_PROGRAM
-!> else if source-file contains non-module subroutine/function then
-!>   unit_type = FPM_UNIT_SUBPROGRAM
-!> else if source-file contains submodule then
-!>   unit_type = FPM_UNIT_SUBMODULE
-!> else if source-file contains module then
-!>   unit_type = FPM_UNIT_MODULE
-!> end if
-!>```
-!>
-!> @note A source file is only designated `FPM_UNIT_MODULE` if it **only** contains modules - no non-module subprograms.
-!> (This allows tree-shaking/pruning of build targets based on unused module dependencies.)
 !>
 !> __Source scope:__ `FPM_SCOPE_*`
 !> Describes the scoping rules for using modules     controls module dependency resolution
@@ -22243,13 +21582,13 @@ public :: FPM_UNIT_UNKNOWN, FPM_UNIT_PROGRAM, FPM_UNIT_MODULE, &
 
 !> Source type unknown
 integer, parameter :: FPM_UNIT_UNKNOWN = -1
-!> Source contains a fortran program
+!> Source type is fortran program
 integer, parameter :: FPM_UNIT_PROGRAM = 1
-!> Source **only** contains one or more fortran modules
+!> Source type is fortran module
 integer, parameter :: FPM_UNIT_MODULE = 2
-!> Source contains one or more fortran submodules
+!> Source type is fortran submodule
 integer, parameter :: FPM_UNIT_SUBMODULE = 3
-!> Source contains one or more fortran subprogram not within modules
+!> Source type is fortran subprogram
 integer, parameter :: FPM_UNIT_SUBPROGRAM = 4
 !> Source type is c source file
 integer, parameter :: FPM_UNIT_CSOURCE = 5
@@ -22286,9 +21625,6 @@ type srcfile_t
 
     !> Type of source unit
     integer :: unit_type = FPM_UNIT_UNKNOWN
-
-    !> Parent modules (submodules only)
-    type(string_t), allocatable :: parent_modules(:)
 
     !>  Modules USEd by this source file (lowerstring)
     type(string_t), allocatable :: modules_used(:)
@@ -22419,12 +21755,6 @@ function info_srcfile(source) result(s)
         if (i < size(source%modules_provided)) s = s // ", "
     end do
     s = s // "]"
-    s = s // ", parent_modules=["
-    do i = 1, size(source%parent_modules)
-        s = s // '"' // source%parent_modules(i)%s // '"'
-        if (i < size(source%parent_modules)) s = s // ", "
-    end do
-    s = s // "]"
     !    integer :: unit_type = FPM_UNIT_UNKNOWN
     s = s // ", unit_type="
     select case(source%unit_type)
@@ -22532,8 +21862,8 @@ subroutine show_model(model)
 end subroutine show_model
 
 end module fpm_model
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/update.f90
 module fpm_cmd_update
   use fpm_command_line, only : fpm_update_settings
@@ -22603,8 +21933,8 @@ contains
   end subroutine handle_error
 
 end module fpm_cmd_update
- 
- 
+
+
 !>>>>> ././src/fpm_source_parsing.f90
 !># Parsing of package source files
 !>
@@ -22623,14 +21953,14 @@ end module fpm_cmd_update
 !> - `[[parse_c_source]]`
 !>
 module fpm_source_parsing
-use fpm_error, only: error_t, file_parse_error, fatal_error, file_not_found_error
+use fpm_error, only: error_t, file_parse_error, fatal_error
 use fpm_strings, only: string_t, string_cat, len_trim, split, lower, str_ends_with, fnv_1a, is_fortran_name
 use fpm_model, only: srcfile_t, &
                     FPM_UNIT_UNKNOWN, FPM_UNIT_PROGRAM, FPM_UNIT_MODULE, &
                     FPM_UNIT_SUBMODULE, FPM_UNIT_SUBPROGRAM, &
                     FPM_UNIT_CSOURCE, FPM_UNIT_CHEADER, FPM_SCOPE_UNKNOWN, &
                     FPM_SCOPE_LIB, FPM_SCOPE_DEP, FPM_SCOPE_APP, FPM_SCOPE_TEST
-use fpm_filesystem, only: read_lines, read_lines_expanded, exists
+use fpm_filesystem, only: read_lines, read_lines_expanded
 implicit none
 
 private
@@ -22684,16 +22014,10 @@ function parse_f_source(f_filename,error) result(f_source)
     type(srcfile_t) :: f_source
     type(error_t), allocatable, intent(out) :: error
 
-    logical :: inside_module, inside_interface
     integer :: stat
-    integer :: fh, n_use, n_include, n_mod, n_parent, i, j, ic, pass
+    integer :: fh, n_use, n_include, n_mod, i, j, ic, pass
     type(string_t), allocatable :: file_lines(:), file_lines_lower(:)
     character(:), allocatable :: temp_string, mod_name, string_parts(:)
-
-    if (.not. exists(f_filename)) then
-        call file_not_found_error(error, f_filename)
-        return
-    end if
 
     f_source%file_name = f_filename
 
@@ -22708,54 +22032,16 @@ function parse_f_source(f_filename,error) result(f_source)
        file_lines_lower(i)%s=adjustl(lower(file_lines_lower(i)%s))
     enddo
 
-    ! fnv_1a can only be applied to non-zero-length arrays
-    if (len_trim(file_lines_lower) > 0) f_source%digest = fnv_1a(file_lines)
+    ! Ignore empty files, returned as FPM_UNIT_UNKNOWN
+    if (len_trim(file_lines_lower) < 1) return
+
+    f_source%digest = fnv_1a(file_lines)
 
     do pass = 1,2
         n_use = 0
         n_include = 0
         n_mod = 0
-        n_parent = 0
-        inside_module = .false.
-        inside_interface = .false.
         file_loop: do i=1,size(file_lines_lower)
-
-            ! Skip comment lines and preprocessor directives
-            if (index(file_lines_lower(i)%s,'!') == 1 .or. &
-                index(file_lines_lower(i)%s,'#') == 1 .or. &
-                len_trim(file_lines_lower(i)%s) < 1) then
-                cycle
-            end if
-
-            ! Detect exported C-API via bind(C)
-            if (.not.inside_interface .and. &
-                parse_subsequence(file_lines_lower(i)%s,'bind','(','c')) then
-                
-                do j=i,1,-1
-
-                    if (index(file_lines_lower(j)%s,'function') > 0 .or. &
-                        index(file_lines_lower(j)%s,'subroutine') > 0) then
-                        f_source%unit_type = FPM_UNIT_SUBPROGRAM
-                        exit
-                    end if
-
-                    if (j>1) then
-
-                        ic = index(file_lines_lower(j-1)%s,'!')
-                        if (ic < 1) then
-                            ic = len(file_lines_lower(j-1)%s)
-                        end if
-
-                        temp_string = trim(file_lines_lower(j-1)%s(1:ic))
-                        if (index(temp_string,'&') /= len(temp_string)) then
-                            exit
-                        end if
-
-                    end if
-
-                end do
-
-            end if
 
             ! Skip lines that are continued: not statements
             if (i > 1) then
@@ -22767,22 +22053,6 @@ function parse_f_source(f_filename,error) result(f_source)
                 if (len(temp_string) > 0 .and. index(temp_string,'&') == len(temp_string)) then
                     cycle
                 end if
-            end if
-
-            ! Detect beginning of interface block
-            if (index(file_lines_lower(i)%s,'interface') == 1) then
-
-                inside_interface = .true.
-                cycle
-
-            end if
-
-            ! Detect end of interface block
-            if (parse_sequence(file_lines_lower(i)%s,'end','interface')) then
-
-                inside_interface = .false.
-                cycle
-
             end if
 
             ! Process 'USE' statements
@@ -22836,8 +22106,6 @@ function parse_f_source(f_filename,error) result(f_source)
 
                 end if
 
-                cycle
-
             end if
 
             ! Process 'INCLUDE' statements
@@ -22859,9 +22127,6 @@ function parse_f_source(f_filename,error) result(f_source)
                             return
                         end if
                     end if
-
-                    cycle
-
                 end if
             end if
 
@@ -22905,20 +22170,7 @@ function parse_f_source(f_filename,error) result(f_source)
                     f_source%modules_provided(n_mod) = string_t(mod_name)
                 end if
 
-                if (f_source%unit_type == FPM_UNIT_UNKNOWN) then
-                    f_source%unit_type = FPM_UNIT_MODULE
-                end if
-
-                if (.not.inside_module) then    
-                    inside_module = .true.
-                else
-                    ! Must have missed an end module statement (can't assume a pure module)
-                    if (f_source%unit_type /= FPM_UNIT_PROGRAM) then
-                        f_source%unit_type = FPM_UNIT_SUBPROGRAM
-                    end if
-                end if
-
-                cycle
+                f_source%unit_type = FPM_UNIT_MODULE
 
             end if
 
@@ -22948,16 +22200,10 @@ function parse_f_source(f_filename,error) result(f_source)
                           file_lines_lower(i)%s)
                     return
                 end if
-                
-                if (f_source%unit_type /= FPM_UNIT_PROGRAM) then
-                    f_source%unit_type = FPM_UNIT_SUBMODULE
-                end if
+
+                f_source%unit_type = FPM_UNIT_SUBMODULE
 
                 n_use = n_use + 1
-
-                inside_module = .true.
-
-                n_parent = n_parent + 1
 
                 if (pass == 2) then
 
@@ -22975,12 +22221,10 @@ function parse_f_source(f_filename,error) result(f_source)
                     end if
 
                     f_source%modules_used(n_use)%s = temp_string
-                    f_source%parent_modules(n_parent)%s = temp_string
+
                     f_source%modules_provided(n_mod)%s = mod_name
 
                 end if
-
-                cycle
 
             end if
 
@@ -23002,32 +22246,12 @@ function parse_f_source(f_filename,error) result(f_source)
 
                 f_source%unit_type = FPM_UNIT_PROGRAM
 
-                cycle
-
-            end if
-
-            ! Parse end module statement
-            !  (to check for code outside of modules)
-            if (parse_sequence(file_lines_lower(i)%s,'end','module') .or. &
-                parse_sequence(file_lines_lower(i)%s,'end','submodule')) then
-                
-                inside_module = .false.
-                cycle
-
-            end if
-
-            ! Any statements not yet parsed are assumed to be other code statements
-            if (.not.inside_module .and. f_source%unit_type /= FPM_UNIT_PROGRAM) then
-
-                f_source%unit_type = FPM_UNIT_SUBPROGRAM
-
             end if
 
         end do file_loop
 
-        ! If unable to parse end of module statement, then can't assume pure module
-        !  (there could be non-module subprograms present)
-        if (inside_module .and. f_source%unit_type == FPM_UNIT_MODULE) then
+        ! Default to subprogram unit type
+        if (f_source%unit_type == FPM_UNIT_UNKNOWN) then
             f_source%unit_type = FPM_UNIT_SUBPROGRAM
         end if
 
@@ -23035,7 +22259,6 @@ function parse_f_source(f_filename,error) result(f_source)
             allocate(f_source%modules_used(n_use))
             allocate(f_source%include_dependencies(n_include))
             allocate(f_source%modules_provided(n_mod))
-            allocate(f_source%parent_modules(n_parent))
         end if
 
     end do
@@ -23071,7 +22294,6 @@ function parse_c_source(c_filename,error) result(c_source)
 
     allocate(c_source%modules_used(0))
     allocate(c_source%modules_provided(0))
-    allocate(c_source%parent_modules(0))
 
     open(newunit=fh,file=c_filename,status='old')
     file_lines = read_lines(fh)
@@ -23162,104 +22384,9 @@ function split_n(string,delims,n,stat) result(substring)
 
 end function split_n
 
-
-!> Parse a subsequence of blank-separated tokens within a string
-!>  (see parse_sequence)
-function parse_subsequence(string,t1,t2,t3,t4) result(found)
-    character(*), intent(in) :: string
-    character(*), intent(in) :: t1
-    character(*), intent(in), optional :: t2, t3, t4
-    logical :: found
-
-    integer :: offset, i
-
-    found = .false.
-    offset = 1
-
-    do 
-
-        i = index(string(offset:),t1)
-
-        if (i == 0) return
-
-        offset = offset + i - 1
-
-        found = parse_sequence(string(offset:),t1,t2,t3,t4)
-
-        if (found) return
-
-        offset = offset + len(t1)
-
-        if (offset > len(string)) return
-
-    end do
-
-end function parse_subsequence
-
-!> Helper utility to parse sequences of tokens
-!> that may be optionally separated by zero or more spaces
-function parse_sequence(string,t1,t2,t3,t4) result(found)
-    character(*), intent(in) :: string
-    character(*), intent(in) :: t1
-    character(*), intent(in), optional :: t2, t3, t4
-    logical :: found
-
-    integer :: post, n, incr, pos, token_n
-    logical :: match
-
-    n = len(string)
-    found = .false.
-    pos = 1
-
-    do token_n=1,4
-
-        do while (pos <= n)
-            if (string(pos:pos) /= ' ') then
-                exit
-            end if
-            pos = pos + 1
-        end do
-
-        select case(token_n)
-        case(1)
-            incr = len(t1)
-            if (pos+incr-1>n) return
-            match = string(pos:pos+incr-1) == t1
-        case(2)
-            if (.not.present(t2)) exit
-            incr = len(t2)
-            if (pos+incr-1>n) return
-            match = string(pos:pos+incr-1) == t2
-        case(3)
-            if (.not.present(t3)) exit
-            incr = len(t3)
-            if (pos+incr-1>n) return
-            match = string(pos:pos+incr-1) == t3
-        case(4)
-            if (.not.present(t4)) exit
-            incr = len(t4)
-            if (pos+incr-1>n) return
-            match = string(pos:pos+incr-1) == t4
-        case default
-            exit
-        end select
-
-        if (.not.match) then
-            return
-        end if
-
-        pos = pos + incr
-
-    end do
-
-    found = .true.
-
-end function parse_sequence
-
 end module fpm_source_parsing
 
- 
- 
+
 !>>>>> ././src/fpm_targets.f90
 !># Build target handling
 !>
@@ -23338,12 +22465,6 @@ type build_target_t
     !> File path of output directory
     character(:), allocatable :: output_dir
 
-    !> File path of build log file relative to cwd
-    character(:), allocatable :: output_log_file
-
-    !> Name of parent package
-    character(:), allocatable :: package_name
-
     !> Primary source for this build target
     type(srcfile_t), allocatable :: source
 
@@ -23386,7 +22507,7 @@ end type build_target_t
 contains
 
 !> High-level wrapper to generate build target information
-subroutine targets_from_sources(targets,model,prune,error)
+subroutine targets_from_sources(targets,model,error)
 
     !> The generated list of build targets
     type(build_target_ptr), intent(out), allocatable :: targets(:)
@@ -23394,9 +22515,6 @@ subroutine targets_from_sources(targets,model,prune,error)
     !> The package model from which to construct the target list
     type(fpm_model_t), intent(inout), target :: model
 
-    !> Enable tree-shaking/pruning of module dependencies
-    logical, intent(in) :: prune
-    
     !> Error structure
     type(error_t), intent(out), allocatable :: error
 
@@ -23404,10 +22522,6 @@ subroutine targets_from_sources(targets,model,prune,error)
 
     call resolve_module_dependencies(targets,model%external_modules,error)
     if (allocated(error)) return
-
-    if (prune) then
-        call prune_build_targets(targets,root_package=model%package_name)
-    end if
 
     call resolve_target_linking(targets,model)
 
@@ -23464,7 +22578,7 @@ subroutine build_target_list(targets,model)
                       i=1,size(model%packages(j)%sources)), &
                       j=1,size(model%packages))])
 
-    if (with_lib) call add_target(targets,package=model%package_name,type = FPM_TARGET_ARCHIVE,&
+    if (with_lib) call add_target(targets,type = FPM_TARGET_ARCHIVE,&
                             output_name = join_path(&
                                    model%package_name,'lib'//model%package_name//'.a'))
 
@@ -23481,7 +22595,7 @@ subroutine build_target_list(targets,model)
                 select case (sources(i)%unit_type)
                 case (FPM_UNIT_MODULE,FPM_UNIT_SUBMODULE,FPM_UNIT_SUBPROGRAM,FPM_UNIT_CSOURCE)
 
-                    call add_target(targets,package=model%packages(j)%name,source = sources(i), &
+                    call add_target(targets,source = sources(i), &
                                 type = merge(FPM_TARGET_C_OBJECT,FPM_TARGET_OBJECT,&
                                                sources(i)%unit_type==FPM_UNIT_CSOURCE), &
                                 output_name = get_object_name(sources(i)))
@@ -23493,7 +22607,7 @@ subroutine build_target_list(targets,model)
 
                 case (FPM_UNIT_PROGRAM)
 
-                    call add_target(targets,package=model%packages(j)%name,type = FPM_TARGET_OBJECT,&
+                    call add_target(targets,type = FPM_TARGET_OBJECT,&
                                 output_name = get_object_name(sources(i)), &
                                 source = sources(i) &
                                 )
@@ -23512,7 +22626,7 @@ subroutine build_target_list(targets,model)
 
                     end if
 
-                    call add_target(targets,package=model%packages(j)%name,type = FPM_TARGET_EXECUTABLE,&
+                    call add_target(targets,type = FPM_TARGET_EXECUTABLE,&
                                     link_libraries = sources(i)%link_libraries, &
                                     output_name = join_path(exe_dir, &
                                     sources(i)%exe_name//xsuffix))
@@ -23562,9 +22676,8 @@ end subroutine build_target_list
 
 
 !> Allocate a new target and append to target list
-subroutine add_target(targets,package,type,output_name,source,link_libraries)
+subroutine add_target(targets,type,output_name,source,link_libraries)
     type(build_target_ptr), allocatable, intent(inout) :: targets(:)
-    character(*), intent(in) :: package
     integer, intent(in) :: type
     character(*), intent(in) :: output_name
     type(srcfile_t), intent(in), optional :: source
@@ -23592,7 +22705,6 @@ subroutine add_target(targets,package,type,output_name,source,link_libraries)
     allocate(new_target)
     new_target%target_type = type
     new_target%output_name = output_name
-    new_target%package_name = package
     if (present(source)) new_target%source = source
     if (present(link_libraries)) new_target%link_libraries = link_libraries
     allocate(new_target%dependencies(0))
@@ -23728,208 +22840,6 @@ function find_module_dependency(targets,module_name,include_dir) result(target_p
 end function find_module_dependency
 
 
-!> Perform tree-shaking to remove unused module targets
-subroutine prune_build_targets(targets, root_package)
-
-    !> Build target list to prune
-    type(build_target_ptr), intent(inout), allocatable :: targets(:)
-
-    !> Name of root package
-    character(*), intent(in) :: root_package 
-
-    integer :: i, j, nexec
-    type(string_t), allocatable :: modules_used(:)
-    logical :: exclude_target(size(targets))
-    logical, allocatable :: exclude_from_archive(:)
-    
-    if (size(targets) < 1) then
-        return
-    end if
-
-    nexec = 0
-    allocate(modules_used(0))
-
-    ! Enumerate modules used by executables, non-module subprograms and their dependencies
-    do i=1,size(targets)
-            
-        if (targets(i)%ptr%target_type == FPM_TARGET_EXECUTABLE) then
-
-            nexec = nexec + 1
-            call collect_used_modules(targets(i)%ptr)
-
-        elseif (allocated(targets(i)%ptr%source)) then
-
-            if (targets(i)%ptr%source%unit_type == FPM_UNIT_SUBPROGRAM) then
-
-                call collect_used_modules(targets(i)%ptr)
-
-            end if
-
-        end if
-
-    end do
-
-    ! If there aren't any executables, then prune
-    !  based on modules used in root package
-    if (nexec < 1) then
-        
-        do i=1,size(targets)
-            
-            if (targets(i)%ptr%package_name == root_package .and. &
-                 targets(i)%ptr%target_type /= FPM_TARGET_ARCHIVE) then
-    
-                call collect_used_modules(targets(i)%ptr)
-    
-            end if
-            
-        end do
-
-    end if
-
-    call reset_target_flags(targets)
-
-    exclude_target(:) = .false.
-
-    ! Exclude purely module targets if they are not used anywhere
-    do i=1,size(targets)
-        associate(target=>targets(i)%ptr)
-
-            if (allocated(target%source)) then
-                if (target%source%unit_type == FPM_UNIT_MODULE) then
-
-                    exclude_target(i) = .true.
-                    target%skip = .true.
-
-                    do j=1,size(target%source%modules_provided)
-
-                        if (target%source%modules_provided(j)%s .in. modules_used) then
-                            
-                            exclude_target(i) = .false.
-                            target%skip = .false.
-
-                        end if 
-
-                    end do
-
-                elseif (target%source%unit_type == FPM_UNIT_SUBMODULE) then
-                    ! Remove submodules if their parents are not used
-
-                    exclude_target(i) = .true.
-                    target%skip = .true.
-                    do j=1,size(target%source%parent_modules)
-
-                        if (target%source%parent_modules(j)%s .in. modules_used) then
-                            
-                            exclude_target(i) = .false.
-                            target%skip = .false.
-
-                        end if 
-
-                    end do
-
-                end if
-            end if
-
-            ! (If there aren't any executables then we only prune modules from dependencies)
-            if (nexec < 1 .and. target%package_name == root_package) then
-                exclude_target(i) = .false.
-                target%skip = .false.
-            end if
-
-        end associate        
-    end do
-
-    targets = pack(targets,.not.exclude_target)
-
-    ! Remove unused targets from archive dependency list
-    if (targets(1)%ptr%target_type == FPM_TARGET_ARCHIVE) then
-        associate(archive=>targets(1)%ptr)
-
-            allocate(exclude_from_archive(size(archive%dependencies)))
-            exclude_from_archive(:) = .false.
-
-            do i=1,size(archive%dependencies)
-
-                if (archive%dependencies(i)%ptr%skip) then
-
-                    exclude_from_archive(i) = .true.
-
-                end if
-
-            end do
-
-            archive%dependencies = pack(archive%dependencies,.not.exclude_from_archive)
-
-        end associate
-    end if
-
-    contains
-
-    !> Recursively collect which modules are actually used
-    recursive subroutine collect_used_modules(target)
-        type(build_target_t), intent(inout) :: target
-
-        integer :: j, k
-
-        if (target%touched) then
-            return
-        else
-            target%touched = .true.
-        end if
-
-        if (allocated(target%source)) then
-
-            ! Add modules from this target and from any of it's children submodules
-            do j=1,size(target%source%modules_provided)
-
-                if (.not.(target%source%modules_provided(j)%s .in. modules_used)) then
-
-                    modules_used = [modules_used, target%source%modules_provided(j)]
-
-                end if
-
-                ! Recurse into child submodules
-                do k=1,size(targets)
-                    if (allocated(targets(k)%ptr%source)) then
-                        if (targets(k)%ptr%source%unit_type == FPM_UNIT_SUBMODULE) then
-                            if (target%source%modules_provided(j)%s .in. targets(k)%ptr%source%parent_modules) then
-                                call collect_used_modules(targets(k)%ptr)
-                            end if
-                        end if
-                    end if
-                end do
-
-            end do
-        end if
-
-        ! Recurse into dependencies
-        do j=1,size(target%dependencies)
-
-            if (target%dependencies(j)%ptr%target_type /= FPM_TARGET_ARCHIVE) then
-                call collect_used_modules(target%dependencies(j)%ptr)
-            end if
-
-        end do
-
-    end subroutine collect_used_modules
-
-    !> Reset target flags after recursive search
-    subroutine reset_target_flags(targets)
-        type(build_target_ptr), intent(inout) :: targets(:)
-
-        integer :: i
-
-        do i=1,size(targets)
-
-            targets(i)%ptr%touched = .false.
-
-        end do
-
-    end subroutine reset_target_flags
-
-end subroutine prune_build_targets
-
-
 !> Construct the linker flags string for each target
 !>  `target%link_flags` includes non-library objects and library flags
 !>
@@ -23946,7 +22856,7 @@ subroutine resolve_target_linking(targets, model)
     global_link_flags = ""
     if (allocated(model%link_libraries)) then
         if (size(model%link_libraries) > 0) then
-            global_link_flags = model%compiler%enumerate_libraries(global_link_flags, model%link_libraries)
+            global_link_flags = global_link_flags // " -l" // string_cat(model%link_libraries," -l")
         end if
     end if
 
@@ -23971,7 +22881,6 @@ subroutine resolve_target_linking(targets, model)
             end if
             target%output_dir = get_output_dir(model%build_prefix, target%compile_flags)
             target%output_file = join_path(target%output_dir, target%output_name)
-            target%output_log_file = join_path(target%output_dir, target%output_name)//'.log'
         end associate
 
     end do
@@ -23999,8 +22908,10 @@ subroutine resolve_target_linking(targets, model)
 
                 if (allocated(target%link_libraries)) then
                     if (size(target%link_libraries) > 0) then
-                        target%link_flags = model%compiler%enumerate_libraries(target%link_flags, target%link_libraries)
-                        local_link_flags = model%compiler%enumerate_libraries(local_link_flags, target%link_libraries)
+                        target%link_flags = target%link_flags &
+                           & // " -l" // string_cat(target%link_libraries," -l")
+                        local_link_flags = local_link_flags &
+                           & // " -l" // string_cat(target%link_libraries," -l")
                     end if
                 end if
 
@@ -24009,8 +22920,7 @@ subroutine resolve_target_linking(targets, model)
                 target%output_dir = get_output_dir(model%build_prefix, &
                    & target%compile_flags//local_link_flags)
                 target%output_file = join_path(target%output_dir, target%output_name)
-                target%output_log_file = join_path(target%output_dir, target%output_name)//'.log'
-        end if
+            end if
 
         end associate
 
@@ -24169,11 +23079,10 @@ subroutine filter_modules(targets, list)
     do i = 1, size(targets)
         associate(target => targets(i)%ptr)
             if (.not.allocated(target%source)) cycle
-            if (target%source%unit_type == FPM_UNIT_SUBMODULE) cycle
             if (n + size(target%source%modules_provided) >= size(list)) call resize(list)
             do j = 1, size(target%source%modules_provided)
                 n = n + 1
-                list(n)%s = join_path(target%output_dir, &
+                list(n)%s = join_path(target%output_dir, "fpm", &
                     target%source%modules_provided(j)%s)
             end do
         end associate
@@ -24183,423 +23092,9 @@ end subroutine filter_modules
 
 
 end module fpm_targets
- 
- 
-!>>>>> ././src/fpm_backend_output.f90
-!># Build Backend Progress Output
-!> This module provides a derived type `build_progress_t` for printing build status
-!> and progress messages to the console while the backend is building the package.
-!>
-!> The `build_progress_t` type supports two modes: `normal` and `plain`
-!> where the former does 'pretty' output and the latter does not.
-!> The `normal` mode is intended for typical interactive usage whereas
-!> 'plain' mode is used with the `--verbose` flag or when `stdout` is not attached
-!> to a terminal (e.g. when piping or redirecting `stdout`). In these cases,
-!> the pretty output must be suppressed to avoid control codes being output.
 
-module fpm_backend_output
-use iso_fortran_env, only: stdout=>output_unit
-use fpm_filesystem, only: basename
-use fpm_targets, only: build_target_ptr
-use fpm_backend_console, only: console_t, LINE_RESET, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-implicit none
 
-private
-public build_progress_t
-
-!> Build progress object
-type build_progress_t
-    !> Console object for updating console lines
-    type(console_t) :: console
-    !> Number of completed targets
-    integer :: n_complete
-    !> Total number of targets scheduled
-    integer :: n_target
-    !> 'Plain' output (no colors or updating)
-    logical :: plain_mode = .true.
-    !> Store needed when updating previous console lines
-    integer, allocatable :: output_lines(:)
-    !> Queue of scheduled build targets
-    type(build_target_ptr), pointer :: target_queue(:)
-contains
-    !> Output 'compiling' status for build target
-    procedure :: compiling_status => output_status_compiling
-    !> Output 'complete' status for build target
-    procedure :: completed_status => output_status_complete
-    !> Output finished status for whole package
-    procedure :: success => output_progress_success
-end type build_progress_t
-
-!> Constructor for build_progress_t
-interface build_progress_t
-    procedure :: new_build_progress
-end interface build_progress_t
-
-contains
-    
-    !> Initialise a new build progress object
-    function new_build_progress(target_queue,plain_mode) result(progress)
-        !> The queue of scheduled targets
-        type(build_target_ptr), intent(in), target :: target_queue(:)
-        !> Enable 'plain' output for progress object
-        logical, intent(in), optional :: plain_mode
-        !> Progress object to initialise
-        type(build_progress_t) :: progress
-
-        progress%n_target = size(target_queue,1)
-        progress%target_queue => target_queue
-        progress%plain_mode = plain_mode
-        progress%n_complete = 0
-
-        allocate(progress%output_lines(progress%n_target))
-
-    end function new_build_progress
-
-    !> Output 'compiling' status for build target and overall percentage progress
-    subroutine output_status_compiling(progress, queue_index)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(100) :: overall_progress
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            write(overall_progress,'(A,I4,A)') '[',100*progress%n_complete/progress%n_target,'%]'
-
-            if (progress%plain_mode) then ! Plain output
-
-                !$omp critical
-                write(*,'(A8,A30)') trim(overall_progress),target_name
-                !$omp end critical
-
-            else ! Pretty output
-
-                write(output_string,'(A,T40,A,A)') target_name, COLOR_YELLOW//'compiling...'//COLOR_RESET
-
-                call progress%console%write_line(trim(output_string),progress%output_lines(queue_index))
-
-                call progress%console%write_line(trim(overall_progress)//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_compiling
-
-    !> Output 'complete' status for build target and update overall percentage progress
-    subroutine output_status_complete(progress, queue_index, build_stat)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-        !> Build status flag
-        integer, intent(in) :: build_stat
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(100) :: overall_progress
-
-        !$omp critical 
-        progress%n_complete = progress%n_complete + 1
-        !$omp end critical
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            if (build_stat == 0) then
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_GREEN//'done.'//COLOR_RESET
-            else
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_RED//'failed.'//COLOR_RESET
-            end if
-
-            write(overall_progress,'(A,I4,A)') '[',100*progress%n_complete/progress%n_target,'%] '
-
-            if (progress%plain_mode) then  ! Plain output
-
-                !$omp critical
-                write(*,'(A8,A30,A7)') trim(overall_progress),target_name, 'done.'
-                !$omp end critical
-
-            else ! Pretty output
-
-                call progress%console%update_line(progress%output_lines(queue_index),trim(output_string))
-
-                call progress%console%write_line(trim(overall_progress)//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_complete
-
-    !> Output finished status for whole package
-    subroutine output_progress_success(progress)
-        class(build_progress_t), intent(inout) :: progress
-
-        if (progress%plain_mode) then ! Plain output
-
-            write(*,'(A)') '[100%] Project compiled successfully.'
-
-        else ! Pretty output
-
-            write(*,'(A)') LINE_RESET//COLOR_GREEN//'[100%] Project compiled successfully.'//COLOR_RESET
-
-        end if
-
-    end subroutine output_progress_success
-
-end module fpm_backend_output 
- 
-!>>>>> ././src/fpm_sources.f90
-!># Discovery of sources
-!>
-!> This module implements subroutines for building a list of
-!> `[[srcfile_t]]` objects by looking for source files in the filesystem.
-!>
-module fpm_sources
-use fpm_error, only: error_t
-use fpm_model, only: srcfile_t, FPM_UNIT_PROGRAM
-use fpm_filesystem, only: basename, canon_path, dirname, join_path, list_files, is_hidden_file
-use fpm_strings, only: lower, str_ends_with, string_t, operator(.in.)
-use fpm_source_parsing, only: parse_f_source, parse_c_source
-use fpm_manifest_executable, only: executable_config_t
-implicit none
-
-private
-public :: add_sources_from_dir, add_executable_sources
-
-character(4), parameter :: fortran_suffixes(2) = [".f90", &
-                                                  ".f  "]
-
-contains
-
-!> Wrapper to source parsing routines.
-!> Selects parsing routine based on source file name extension
-function parse_source(source_file_path,error) result(source)
-    character(*), intent(in) :: source_file_path
-    type(error_t), allocatable, intent(out) :: error
-    type(srcfile_t)  :: source
-
-    if (str_ends_with(lower(source_file_path), fortran_suffixes)) then
-
-        source = parse_f_source(source_file_path, error)
-
-        if (source%unit_type == FPM_UNIT_PROGRAM) then
-            source%exe_name = basename(source_file_path,suffix=.false.)
-        end if
-
-    else if (str_ends_with(lower(source_file_path), [".c", ".h"])) then
-
-        source = parse_c_source(source_file_path,error)
-
-    end if
-
-    if (allocated(error)) then
-        return
-    end if
-
-end function parse_source
-
-!> Add to `sources` by looking for source files in `directory`
-subroutine add_sources_from_dir(sources,directory,scope,with_executables,recurse,error)
-    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
-    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
-    !> Directory in which to search for source files
-    character(*), intent(in) :: directory
-    !> Scope to apply to the discovered sources, see [[fpm_model]] for enumeration
-    integer, intent(in) :: scope
-    !> Executable sources (fortran `program`s) are ignored unless `with_executables=.true.`
-    logical, intent(in), optional :: with_executables
-    !> Whether to recursively search subdirectories, default is `.true.`
-    logical, intent(in), optional :: recurse
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: i
-    logical, allocatable :: is_source(:), exclude_source(:)
-    type(string_t), allocatable :: file_names(:)
-    type(string_t), allocatable :: src_file_names(:)
-    type(string_t), allocatable :: existing_src_files(:)
-    type(srcfile_t), allocatable :: dir_sources(:)
-
-    ! Scan directory for sources
-    call list_files(directory, file_names,recurse=merge(recurse,.true.,present(recurse)))
-
-    if (allocated(sources)) then
-        allocate(existing_src_files(size(sources)))
-        do i=1,size(sources)
-            existing_src_files(i)%s = canon_path(sources(i)%file_name)
-        end do
-    else
-        allocate(existing_src_files(0))
-    end if
-
-    is_source = [(.not.(is_hidden_file(basename(file_names(i)%s))) .and. &
-                 .not.(canon_path(file_names(i)%s) .in. existing_src_files) .and. &
-                 (str_ends_with(lower(file_names(i)%s), fortran_suffixes) .or. &
-                 str_ends_with(lower(file_names(i)%s),[".c",".h"]) ),i=1,size(file_names))]
-    src_file_names = pack(file_names,is_source)
-
-    allocate(dir_sources(size(src_file_names)))
-    allocate(exclude_source(size(src_file_names)))
-
-    do i = 1, size(src_file_names)
-
-        dir_sources(i) = parse_source(src_file_names(i)%s,error)
-        if (allocated(error)) return
-
-        dir_sources(i)%unit_scope = scope
-        allocate(dir_sources(i)%link_libraries(0))
-
-        ! Exclude executables unless specified otherwise
-        exclude_source(i) = (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM)
-        if (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM .and. &
-            & present(with_executables)) then
-            if (with_executables) then
-
-                exclude_source(i) = .false.
-
-            end if
-        end if
-
-    end do
-
-    if (.not.allocated(sources)) then
-        sources = pack(dir_sources,.not.exclude_source)
-    else
-        sources = [sources, pack(dir_sources,.not.exclude_source)]
-    end if
-
-end subroutine add_sources_from_dir
-
-
-!> Add to `sources` using the executable and test entries in the manifest and
-!> applies any executable-specific overrides such as `executable%name`.
-!> Adds all sources (including modules) from each `executable%source_dir`
-subroutine add_executable_sources(sources,executables,scope,auto_discover,error)
-    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
-    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
-    !> List of `[[executable_config_t]]` entries from manifest
-    class(executable_config_t), intent(in) :: executables(:)
-    !> Scope to apply to the discovered sources: either `FPM_SCOPE_APP` or `FPM_SCOPE_TEST`, see [[fpm_model]]
-    integer, intent(in) :: scope
-    !> If `.false.` only executables and tests specified in the manifest are added to `sources`
-    logical, intent(in) :: auto_discover
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: i, j
-
-    type(string_t), allocatable :: exe_dirs(:)
-    type(srcfile_t) :: exe_source
-
-    call get_executable_source_dirs(exe_dirs,executables)
-
-    do i=1,size(exe_dirs)
-        call add_sources_from_dir(sources,exe_dirs(i)%s, scope, &
-                     with_executables=auto_discover, recurse=.false., error=error)
-
-        if (allocated(error)) then
-            return
-        end if
-    end do
-
-    exe_loop: do i=1,size(executables)
-
-        ! Check if executable already discovered automatically
-        !  and apply any overrides
-        do j=1,size(sources)
-
-            if (basename(sources(j)%file_name,suffix=.true.) == executables(i)%main .and.&
-                 canon_path(dirname(sources(j)%file_name)) == &
-                 canon_path(executables(i)%source_dir) ) then
-
-                sources(j)%exe_name = executables(i)%name
-                if (allocated(executables(i)%link)) then
-                    sources(j)%link_libraries = executables(i)%link
-                end if
-                sources(j)%unit_type = FPM_UNIT_PROGRAM
-                cycle exe_loop
-
-            end if
-
-        end do
-
-        ! Add if not already discovered (auto_discovery off)
-        associate(exe => executables(i))
-            exe_source = parse_source(join_path(exe%source_dir,exe%main),error)
-            exe_source%exe_name = exe%name
-            if (allocated(exe%link)) then
-                exe_source%link_libraries = exe%link
-            end if
-            exe_source%unit_type = FPM_UNIT_PROGRAM
-            exe_source%unit_scope = scope
-        end associate
-
-        if (allocated(error)) return
-
-        if (.not.allocated(sources)) then
-            sources = [exe_source]
-        else
-            sources = [sources, exe_source]
-        end if
-
-    end do exe_loop
-
-end subroutine add_executable_sources
-
-!> Build a list of unique source directories
-!>  from executables specified in manifest
-subroutine get_executable_source_dirs(exe_dirs,executables)
-    type(string_t), allocatable, intent(inout) :: exe_dirs(:)
-    class(executable_config_t), intent(in) :: executables(:)
-
-    type(string_t) :: dirs_temp(size(executables))
-
-    integer :: i, n
-
-    n = 0
-
-    do i=1,size(executables)
-       dirs_temp(i)%s=' '
-    enddo
-
-    do i=1,size(executables)
-        if (.not.(executables(i)%source_dir .in. dirs_temp)) then
-
-            n = n + 1
-            dirs_temp(n)%s = executables(i)%source_dir
-
-        end if
-    end do
-
-    if (.not.allocated(exe_dirs)) then
-        exe_dirs = dirs_temp(1:n)
-    else
-        exe_dirs = [exe_dirs,dirs_temp(1:n)]
-    end if
-
-end subroutine get_executable_source_dirs
-
-end module fpm_sources
- 
- 
-!>>>>> ././src/fpm_backend.F90
+!>>>>> ././src/fpm_backend.f90
 !># Build backend
 !> Uses a list of `[[build_target_ptr]]` and a valid `[[fpm_model]]` instance
 !> to schedule and execute the compilation and linking of package targets.
@@ -24631,33 +23126,23 @@ module fpm_backend
 
 use,intrinsic :: iso_fortran_env, only : stdin=>input_unit, stdout=>output_unit, stderr=>error_unit
 use fpm_error, only : fpm_stop
-use fpm_filesystem, only: basename, dirname, join_path, exists, mkdir, run, getline
+use fpm_environment, only: run, get_os_type, OS_WINDOWS
+use fpm_filesystem, only: basename, dirname, join_path, exists, mkdir
 use fpm_model, only: fpm_model_t
 use fpm_strings, only: string_t, operator(.in.)
 use fpm_targets, only: build_target_t, build_target_ptr, FPM_TARGET_OBJECT, &
                        FPM_TARGET_C_OBJECT, FPM_TARGET_ARCHIVE, FPM_TARGET_EXECUTABLE
-use fpm_backend_output
 implicit none
 
 private
 public :: build_package, sort_target, schedule_targets
 
-#ifndef FPM_BOOTSTRAP
-interface
-    function c_isatty() bind(C, name = 'c_isatty')
-        use, intrinsic :: iso_c_binding, only: c_int
-        integer(c_int) :: c_isatty
-    end function
-end interface
-#endif
-
 contains
 
 !> Top-level routine to build package described by `model`
-subroutine build_package(targets,model,verbose)
+subroutine build_package(targets,model)
     type(build_target_ptr), intent(inout) :: targets(:)
     type(fpm_model_t), intent(in) :: model
-    logical, intent(in) :: verbose
 
     integer :: i, j
     type(build_target_ptr), allocatable :: queue(:)
@@ -24665,9 +23150,6 @@ subroutine build_package(targets,model,verbose)
     logical :: build_failed, skip_current
     type(string_t), allocatable :: build_dirs(:)
     type(string_t) :: temp
-
-    type(build_progress_t) :: progress
-    logical :: plain_output
 
     ! Need to make output directory for include (mod) files
     allocate(build_dirs(0))
@@ -24680,7 +23162,7 @@ subroutine build_package(targets,model,verbose)
     end do
 
     do i = 1, size(build_dirs)
-       call mkdir(build_dirs(i)%s,verbose)
+       call mkdir(build_dirs(i)%s)
     end do
 
     ! Perform depth-first topological sort of targets
@@ -24693,25 +23175,10 @@ subroutine build_package(targets,model,verbose)
     ! Construct build schedule queue
     call schedule_targets(queue, schedule_ptr, targets)
 
-    ! Check if queue is empty
-    if (.not.verbose .and. size(queue) < 1) then
-        write(stderr, '(a)') 'Project is up to date'
-        return
-    end if
-
     ! Initialise build status flags
     allocate(stat(size(queue)))
     stat(:) = 0
     build_failed = .false.
-
-    ! Set output mode
-#ifndef FPM_BOOTSTRAP
-    plain_output = (.not.(c_isatty()==1)) .or. verbose
-#else
-    plain_output = .true.
-#endif
-
-    progress = build_progress_t(queue,plain_output)
 
     ! Loop over parallel schedule regions
     do i=1,size(schedule_ptr)-1
@@ -24725,9 +23192,7 @@ subroutine build_package(targets,model,verbose)
             skip_current = build_failed
 
             if (.not.skip_current) then
-                call progress%compiling_status(j)
-                call build_target(model,queue(j)%ptr,verbose,stat(j))
-                call progress%completed_status(j,stat(j))
+                call build_target(model,queue(j)%ptr,stat(j))
             end if
 
             ! Set global flag if this target failed to build
@@ -24740,12 +23205,6 @@ subroutine build_package(targets,model,verbose)
 
         ! Check if this schedule region failed: exit with message if failed
         if (build_failed) then
-            write(*,*)
-            do j=1,size(stat)
-                if (stat(j) /= 0) Then
-                    call print_build_log(queue(j)%ptr)
-                end if
-            end do
             do j=1,size(stat)
                 if (stat(j) /= 0) then
                     write(stderr,'(*(g0:,1x))') '<ERROR> Compilation failed for object "',basename(queue(j)%ptr%output_file),'"'
@@ -24755,8 +23214,6 @@ subroutine build_package(targets,model,verbose)
         end if
 
     end do
-
-    call progress%success()
 
 end subroutine build_package
 
@@ -24901,37 +23358,33 @@ end subroutine schedule_targets
 !>
 !> If successful, also caches the source file digest to disk.
 !>
-subroutine build_target(model,target,verbose,stat)
+subroutine build_target(model,target,stat)
     type(fpm_model_t), intent(in) :: model
     type(build_target_t), intent(in), target :: target
-    logical, intent(in) :: verbose
     integer, intent(out) :: stat
 
     integer :: fh
 
-    !$omp critical
     if (.not.exists(dirname(target%output_file))) then
-        call mkdir(dirname(target%output_file),verbose)
+        call mkdir(dirname(target%output_file))
     end if
-    !$omp end critical
 
     select case(target%target_type)
 
     case (FPM_TARGET_OBJECT)
         call model%compiler%compile_fortran(target%source%file_name, target%output_file, &
-            & target%compile_flags, target%output_log_file, stat)
+            & target%compile_flags, stat)
 
     case (FPM_TARGET_C_OBJECT)
         call model%compiler%compile_c(target%source%file_name, target%output_file, &
-            & target%compile_flags, target%output_log_file, stat)
+            & target%compile_flags, stat)
 
     case (FPM_TARGET_EXECUTABLE)
         call model%compiler%link(target%output_file, &
-            & target%compile_flags//" "//target%link_flags, target%output_log_file, stat)
+            & target%compile_flags//" "//target%link_flags, stat)
 
     case (FPM_TARGET_ARCHIVE)
-        call model%archiver%make_archive(target%output_file, target%link_objects, &
-            & target%output_log_file, stat)
+        call model%archiver%make_archive(target%output_file, target%link_objects, stat)
 
     end select
 
@@ -24944,47 +23397,246 @@ subroutine build_target(model,target,verbose,stat)
 end subroutine build_target
 
 
-!> Read and print the build log for target
+end module fpm_backend
+
+
+!>>>>> ././src/fpm_sources.f90
+!># Discovery of sources
 !>
-subroutine print_build_log(target)
-    type(build_target_t), intent(in), target :: target
+!> This module implements subroutines for building a list of
+!> `[[srcfile_t]]` objects by looking for source files in the filesystem.
+!>
+module fpm_sources
+use fpm_error, only: error_t
+use fpm_model, only: srcfile_t, FPM_UNIT_PROGRAM
+use fpm_filesystem, only: basename, canon_path, dirname, join_path, list_files
+use fpm_strings, only: lower, str_ends_with, string_t, operator(.in.)
+use fpm_source_parsing, only: parse_f_source, parse_c_source
+use fpm_manifest_executable, only: executable_config_t
+implicit none
 
-    integer :: fh, ios
-    character(:), allocatable :: line
+private
+public :: add_sources_from_dir, add_executable_sources
 
-    if (exists(target%output_log_file)) then
+character(4), parameter :: fortran_suffixes(2) = [".f90", &
+                                                  ".f  "]
 
-        open(newunit=fh,file=target%output_log_file,status='old')
-        do
-            call getline(fh, line, ios)
-            if (ios /= 0) exit
-            write(*,'(A)') trim(line)
-        end do
-        close(fh)
+contains
 
-    else
+!> Wrapper to source parsing routines.
+!> Selects parsing routine based on source file name extension
+function parse_source(source_file_path,error) result(source)
+    character(*), intent(in) :: source_file_path
+    type(error_t), allocatable, intent(out) :: error
+    type(srcfile_t)  :: source
 
-        write(stderr,'(*(g0:,1x))') '<ERROR> Unable to find build log "',basename(target%output_log_file),'"'
+    if (str_ends_with(lower(source_file_path), fortran_suffixes)) then
+
+        source = parse_f_source(source_file_path, error)
+
+        if (source%unit_type == FPM_UNIT_PROGRAM) then
+            source%exe_name = basename(source_file_path,suffix=.false.)
+        end if
+
+    else if (str_ends_with(lower(source_file_path), [".c", ".h"])) then
+
+        source = parse_c_source(source_file_path,error)
 
     end if
 
-end subroutine print_build_log
+    if (allocated(error)) then
+        return
+    end if
 
-end module fpm_backend
- 
- 
+end function parse_source
+
+!> Add to `sources` by looking for source files in `directory`
+subroutine add_sources_from_dir(sources,directory,scope,with_executables,recurse,error)
+    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
+    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
+    !> Directory in which to search for source files
+    character(*), intent(in) :: directory
+    !> Scope to apply to the discovered sources, see [[fpm_model]] for enumeration
+    integer, intent(in) :: scope
+    !> Executable sources (fortran `program`s) are ignored unless `with_executables=.true.`
+    logical, intent(in), optional :: with_executables
+    !> Whether to recursively search subdirectories, default is `.true.`
+    logical, intent(in), optional :: recurse
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: i
+    logical, allocatable :: is_source(:), exclude_source(:)
+    type(string_t), allocatable :: file_names(:)
+    type(string_t), allocatable :: src_file_names(:)
+    type(string_t), allocatable :: existing_src_files(:)
+    type(srcfile_t), allocatable :: dir_sources(:)
+
+    ! Scan directory for sources
+    call list_files(directory, file_names,recurse=merge(recurse,.true.,present(recurse)))
+
+    if (allocated(sources)) then
+        allocate(existing_src_files(size(sources)))
+        do i=1,size(sources)
+            existing_src_files(i)%s = canon_path(sources(i)%file_name)
+        end do
+    else
+        allocate(existing_src_files(0))
+    end if
+
+    is_source = [(.not.(canon_path(file_names(i)%s) .in. existing_src_files) .and. &
+                  (str_ends_with(lower(file_names(i)%s), fortran_suffixes) .or. &
+                   str_ends_with(lower(file_names(i)%s),[".c",".h"]) ),i=1,size(file_names))]
+    src_file_names = pack(file_names,is_source)
+
+    allocate(dir_sources(size(src_file_names)))
+    allocate(exclude_source(size(src_file_names)))
+
+    do i = 1, size(src_file_names)
+
+        dir_sources(i) = parse_source(src_file_names(i)%s,error)
+        if (allocated(error)) return
+
+        dir_sources(i)%unit_scope = scope
+
+        ! Exclude executables unless specified otherwise
+        exclude_source(i) = (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM)
+        if (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM .and. &
+            & present(with_executables)) then
+            if (with_executables) then
+
+                exclude_source(i) = .false.
+
+            end if
+        end if
+
+    end do
+
+    if (.not.allocated(sources)) then
+        sources = pack(dir_sources,.not.exclude_source)
+    else
+        sources = [sources, pack(dir_sources,.not.exclude_source)]
+    end if
+
+end subroutine add_sources_from_dir
+
+
+!> Add to `sources` using the executable and test entries in the manifest and
+!> applies any executable-specific overrides such as `executable%name`.
+!> Adds all sources (including modules) from each `executable%source_dir`
+subroutine add_executable_sources(sources,executables,scope,auto_discover,error)
+    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
+    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
+    !> List of `[[executable_config_t]]` entries from manifest
+    class(executable_config_t), intent(in) :: executables(:)
+    !> Scope to apply to the discovered sources: either `FPM_SCOPE_APP` or `FPM_SCOPE_TEST`, see [[fpm_model]]
+    integer, intent(in) :: scope
+    !> If `.false.` only executables and tests specified in the manifest are added to `sources`
+    logical, intent(in) :: auto_discover
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: i, j
+
+    type(string_t), allocatable :: exe_dirs(:)
+    type(srcfile_t) :: exe_source
+
+    call get_executable_source_dirs(exe_dirs,executables)
+
+    do i=1,size(exe_dirs)
+        call add_sources_from_dir(sources,exe_dirs(i)%s, scope, &
+                     with_executables=auto_discover, recurse=.false., error=error)
+
+        if (allocated(error)) then
+            return
+        end if
+    end do
+
+    exe_loop: do i=1,size(executables)
+
+        ! Check if executable already discovered automatically
+        !  and apply any overrides
+        do j=1,size(sources)
+
+            if (basename(sources(j)%file_name,suffix=.true.) == executables(i)%main .and.&
+                 canon_path(dirname(sources(j)%file_name)) == &
+                 canon_path(executables(i)%source_dir) ) then
+
+                sources(j)%exe_name = executables(i)%name
+                if (allocated(executables(i)%link)) then
+                    sources(j)%link_libraries = executables(i)%link
+                end if
+                cycle exe_loop
+
+            end if
+
+        end do
+
+        ! Add if not already discovered (auto_discovery off)
+        exe_source = parse_source(join_path(executables(i)%source_dir,executables(i)%main),error)
+        exe_source%exe_name = executables(i)%name
+        if (allocated(executables(i)%link)) then
+            exe_source%link_libraries = executables(i)%link
+        end if
+        exe_source%unit_scope = scope
+
+        if (allocated(error)) return
+
+        if (.not.allocated(sources)) then
+            sources = [exe_source]
+        else
+            sources = [sources, exe_source]
+        end if
+
+    end do exe_loop
+
+end subroutine add_executable_sources
+
+!> Build a list of unique source directories
+!>  from executables specified in manifest
+subroutine get_executable_source_dirs(exe_dirs,executables)
+    type(string_t), allocatable, intent(inout) :: exe_dirs(:)
+    class(executable_config_t), intent(in) :: executables(:)
+
+    type(string_t) :: dirs_temp(size(executables))
+
+    integer :: i, n
+
+    n = 0
+
+    do i=1,size(executables)
+       dirs_temp(i)%s=' '
+    enddo
+
+    do i=1,size(executables)
+        if (.not.(executables(i)%source_dir .in. dirs_temp)) then
+
+            n = n + 1
+            dirs_temp(n)%s = executables(i)%source_dir
+
+        end if
+    end do
+
+    if (.not.allocated(exe_dirs)) then
+        exe_dirs = dirs_temp(1:n)
+    else
+        exe_dirs = [exe_dirs,dirs_temp(1:n)]
+    end if
+
+end subroutine get_executable_source_dirs
+
+end module fpm_sources
+
+
 !>>>>> ././src/fpm.f90
 module fpm
-use fpm_strings, only: string_t, operator(.in.), glob, join, string_cat, fnv_1a, &
-                      lower, str_ends_with
+use fpm_strings, only: string_t, operator(.in.), glob, join, string_cat, fnv_1a
 use fpm_backend, only: build_package
 use fpm_command_line, only: fpm_build_settings, fpm_new_settings, &
-                      fpm_run_settings, fpm_install_settings, fpm_test_settings, &
-                      fpm_clean_settings
+                      fpm_run_settings, fpm_install_settings, fpm_test_settings
 use fpm_dependency, only : new_dependency_tree
-use fpm_environment, only: get_env
-use fpm_filesystem, only: is_dir, join_path, number_of_rows, list_files, exists, &
-                   basename, filewrite, mkdir, run, os_delete_dir
+use fpm_environment, only: run, get_env
+use fpm_filesystem, only: is_dir, join_path, number_of_rows, list_files, exists, basename, filewrite, mkdir
 use fpm_model, only: fpm_model_t, srcfile_t, show_model, &
                     FPM_SCOPE_UNKNOWN, FPM_SCOPE_LIB, FPM_SCOPE_DEP, &
                     FPM_SCOPE_APP, FPM_SCOPE_EXAMPLE, FPM_SCOPE_TEST
@@ -25000,10 +23652,9 @@ use fpm_error, only : error_t, fatal_error, fpm_stop
 use,intrinsic :: iso_fortran_env, only : stdin=>input_unit,   &
                                        & stdout=>output_unit, &
                                        & stderr=>error_unit
-use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_pointer
 implicit none
 private
-public :: cmd_build, cmd_run, cmd_clean
+public :: cmd_build, cmd_run
 public :: build_model, check_modules_for_duplicates
 
 contains
@@ -25039,10 +23690,8 @@ subroutine build_model(model, settings, package, error)
       call filewrite(join_path("build", ".gitignore"),["*"])
     end if
 
-    call new_compiler(model%compiler, settings%compiler, settings%c_compiler, &
-        & echo=settings%verbose, verbose=settings%verbose)
-    call new_archiver(model%archiver, settings%archiver, &
-        & echo=settings%verbose, verbose=settings%verbose)
+    call new_compiler(model%compiler, settings%compiler, settings%c_compiler)
+    call new_archiver(model%archiver, settings%archiver)
 
     if (settings%flag == '') then
         flags = model%compiler%get_default_flags(settings%profile == "release")
@@ -25254,7 +23903,7 @@ if (allocated(error)) then
     call fpm_stop(1,'*cmd_build*:model error:'//error%message)
 end if
 
-call targets_from_sources(targets, model, settings%prune, error)
+call targets_from_sources(targets, model, error)
 if (allocated(error)) then
     call fpm_stop(1,'*cmd_build*:target error:'//error%message)
 end if
@@ -25266,10 +23915,10 @@ if(settings%list)then
 else if (settings%show_model) then
     call show_model(model)
 else
-    call build_package(targets,model,verbose=settings%verbose)
+    call build_package(targets,model)
 endif
 
-end subroutine cmd_build
+end subroutine
 
 subroutine cmd_run(settings,test)
     class(fpm_run_settings), intent(in) :: settings
@@ -25300,7 +23949,7 @@ subroutine cmd_run(settings,test)
         call fpm_stop(1, '*cmd_run*:model error:'//error%message)
     end if
 
-    call targets_from_sources(targets, model, settings%prune, error)
+    call targets_from_sources(targets, model, error)
     if (allocated(error)) then
         call fpm_stop(1, '*cmd_run*:targets error:'//error%message)
     end if
@@ -25397,7 +24046,7 @@ subroutine cmd_run(settings,test)
 
     end if
 
-    call build_package(targets,model,verbose=settings%verbose)
+    call build_package(targets,model)
 
     if (settings%list) then
          call compact_list()
@@ -25456,7 +24105,7 @@ subroutine cmd_run(settings,test)
                 if (exe_source%unit_scope == run_scope) then
 
                     write(stderr,'(A)',advance=(merge("yes","no ",modulo(j,nCol)==0))) &
-                        & [character(len=col_width) :: basename(exe_target%output_file, suffix=.false.)]
+                                        & [character(len=col_width) :: basename(exe_target%output_file)]
                     j = j + 1
 
                 end if
@@ -25473,7 +24122,7 @@ subroutine cmd_run(settings,test)
         write(stderr,*) 'Matched names:'
         do i=1,size(executables)
             write(stderr,'(A)',advance=(merge("yes","no ",modulo(j,nCol)==0))) &
-                & [character(len=col_width) :: basename(executables(i)%s, suffix=.false.)]
+             & [character(len=col_width) :: basename(executables(i)%s)]
             j = j + 1
         enddo
         write(stderr,*)
@@ -25481,50 +24130,9 @@ subroutine cmd_run(settings,test)
 
 end subroutine cmd_run
 
-subroutine delete_skip(unix)
-    !> delete directories in the build folder, skipping dependencies
-    logical, intent(in) :: unix
-    character(len=:), allocatable :: dir
-    type(string_t), allocatable :: files(:)
-    integer :: i
-    call list_files('build', files, .false.)
-    do i = 1, size(files)
-        if (is_dir(files(i)%s)) then
-            dir = files(i)%s
-            if (.not.str_ends_with(dir,'dependencies')) call os_delete_dir(unix, dir)
-        end if
-    end do
-end subroutine delete_skip
-
-subroutine cmd_clean(settings)
-    !> fpm clean called
-    class(fpm_clean_settings), intent(in) :: settings
-    ! character(len=:), allocatable :: dir
-    ! type(string_t), allocatable :: files(:)
-    character(len=1) :: response
-    if (is_dir('build')) then
-        ! remove the entire build directory
-        if (settings%clean_call) then
-            call os_delete_dir(settings%unix, 'build')
-            return
-        end if
-        ! remove the build directory but skip dependencies
-        if (settings%clean_skip) then
-            call delete_skip(settings%unix)
-            return
-        end if
-        ! prompt to remove the build directory but skip dependencies
-        write(stdout, '(A)', advance='no') "Delete build, excluding dependencies (y/n)? "
-        read(stdin, '(A1)') response
-        if (lower(response) == 'y') call delete_skip(settings%unix)
-    else
-        write (stdout, '(A)') "fpm: No build directory found."
-    end if
-end subroutine cmd_clean
-
 end module fpm
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/install.f90
 module fpm_cmd_install
   use, intrinsic :: iso_fortran_env, only : output_unit
@@ -25566,7 +24174,7 @@ contains
     call build_model(model, settings%fpm_build_settings, package, error)
     call handle_error(error)
 
-    call targets_from_sources(targets, model, settings%prune, error)
+    call targets_from_sources(targets, model, error)
     call handle_error(error)
 
     installable = (allocated(package%library) .and. package%install%library) &
@@ -25582,7 +24190,7 @@ contains
     end if
 
     if (.not.settings%no_rebuild) then
-      call build_package(targets,model,verbose=settings%verbose)
+      call build_package(targets,model)
     end if
 
     call new_installer(installer, prefix=settings%prefix, &
@@ -25688,6 +24296,114 @@ contains
   end subroutine handle_error
 
 end module fpm_cmd_install
+
+module fpm_os
+    use, intrinsic :: iso_c_binding, only : c_char, c_int, c_null_char, c_ptr, c_associated
+    use fpm_error, only : error_t, fatal_error
+    implicit none
+    private
+    public :: change_directory, get_current_directory
+
+#ifndef _WIN32
+    character(len=*), parameter :: pwd_env = "PWD"
+#else
+    character(len=*), parameter :: pwd_env = "CD"
+#endif
+
+    interface
+        function chdir(path) result(stat) &
+#ifndef _WIN32
+                bind(C, name="chdir")
+#else
+                bind(C, name="_chdir")
+#endif
+            import :: c_char, c_int
+            character(kind=c_char, len=1), intent(in) :: path(*)
+            integer(c_int) :: stat
+        end function chdir
+
+        function getcwd(buf, bufsize) result(path) &
+#ifndef _WIN32
+                bind(C, name="getcwd")
+#else
+                bind(C, name="_getcwd")
+#endif
+            import :: c_char, c_int, c_ptr
+            character(kind=c_char, len=1), intent(in) :: buf(*)
+            integer(c_int), value, intent(in) :: bufsize
+            type(c_ptr) :: path
+        end function getcwd
+    end interface
+
+contains
+
+    subroutine change_directory(path, error)
+        character(len=*), intent(in) :: path
+        type(error_t), allocatable, intent(out) :: error
+
+        character(kind=c_char, len=1), allocatable :: cpath(:)
+        integer :: stat
+
+        allocate(cpath(len(path)+1))
+        call f_c_character(path, cpath, len(path)+1)
+
+        stat = chdir(cpath)
+
+        if (stat /= 0) then
+            call fatal_error(error, "Failed to change directory to '"//path//"'")
+        end if
+    end subroutine change_directory
+
+    subroutine get_current_directory(path, error)
+        character(len=:), allocatable, intent(out) :: path
+        type(error_t), allocatable, intent(out) :: error
+
+        character(kind=c_char, len=1), allocatable :: cpath(:)
+        integer(c_int), parameter :: buffersize = 1000_c_int
+        type(c_ptr) :: tmp
+
+        allocate(cpath(buffersize))
+
+        tmp = getcwd(cpath, buffersize)
+        if (c_associated(tmp)) then
+            call c_f_character(cpath, path)
+        else
+            call fatal_error(error, "Failed to retrieve current directory")
+        end if
+
+    end subroutine get_current_directory
+
+    subroutine f_c_character(rhs, lhs, len)
+        character(kind=c_char), intent(out) :: lhs(*)
+        character(len=*), intent(in) :: rhs
+        integer, intent(in) :: len
+        integer :: length
+        length = min(len-1, len_trim(rhs))
+
+        lhs(1:length) = transfer(rhs(1:length), lhs(1:length))
+        lhs(length+1:length+1) = c_null_char
+
+    end subroutine f_c_character
+
+    subroutine c_f_character(rhs, lhs)
+        character(kind=c_char), intent(in) :: rhs(*)
+        character(len=:), allocatable, intent(out) :: lhs
+
+        integer :: ii
+
+        do ii = 1, huge(ii) - 1
+            if (rhs(ii) == c_null_char) then
+                exit
+            end if
+        end do
+        allocate(character(len=ii-1) :: lhs)
+        lhs = transfer(rhs(1:ii-1), lhs)
+
+    end subroutine c_f_character
+
+end module fpm_os
+
+!>>>>> app/main.f90
 program main
 use, intrinsic :: iso_fortran_env, only : error_unit, output_unit
 use fpm_command_line, only: &
@@ -25698,11 +24414,10 @@ use fpm_command_line, only: &
         fpm_test_settings, &
         fpm_install_settings, &
         fpm_update_settings, &
-        fpm_clean_settings, &
         get_command_line_settings
 use fpm_error, only: error_t
 use fpm_filesystem, only: exists, parent_dir, join_path
-use fpm, only: cmd_build, cmd_run, cmd_clean
+use fpm, only: cmd_build, cmd_run
 use fpm_cmd_install, only: cmd_install
 use fpm_cmd_new, only: cmd_new
 use fpm_cmd_update, only : cmd_update
@@ -25764,8 +24479,6 @@ type is (fpm_install_settings)
     call cmd_install(settings)
 type is (fpm_update_settings)
     call cmd_update(settings)
-type is (fpm_clean_settings)
-    call cmd_clean(settings)
 end select
 
 if (allocated(project_root)) then
@@ -25803,4 +24516,3 @@ contains
     end subroutine get_working_dir
 
 end program main
- 

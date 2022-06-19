@@ -19055,7 +19055,7 @@ character(len=1)                      :: dlim=' '                   ! string of 
 integer                               :: icount                     ! how many tokens are found
 integer                               :: ibegin(n)                  ! starting column numbers for the tokens in INLINE
 integer                               :: iterm(n)                   ! ending column numbers for the tokens in INLINE
-integer                               :: ilen                       ! is the position of last non‐blank character in INLINE
+integer                               :: ilen                       ! is the position of last non   blank character in INLINE
 character(len=G_line_length)          :: in_filename1=''            ! input filename, default is stdin
 character(len=G_line_length)          :: in_filename2=''            ! input filename, default is stdin
 integer                               :: i, ii
@@ -19105,7 +19105,7 @@ integer,parameter                     :: n=50                    ! maximum numbe
 character(len=1)                      :: dlim=' '                ! string of single characters to use as delimiters
 integer                               :: ibegin(n)               ! starting column numbers for the tokens in G_inc_files
 integer                               :: iterm(n)                ! ending column numbers for the tokens in G_inc_files
-integer                               :: ilen                    ! is the position of last non‐blank character in G_inc_files
+integer                               :: ilen                    ! is the position of last non   blank character in G_inc_files
 
    ! G_inc_files is the array to fill with tokens
    ! G_inc_count is the number of tokens found
@@ -19124,7 +19124,7 @@ character(len=1)                      :: dlim=' '                ! string of sin
 integer                               :: icount                  ! how many tokens are found
 integer                               :: ibegin(n)               ! starting column numbers for the tokens in INLINE
 integer                               :: iterm(n)                ! ending column numbers for the tokens in INLINE
-integer                               :: ilen                    ! is the position of last non‐blank character in INLINE
+integer                               :: ilen                    ! is the position of last non   blank character in INLINE
 character(len=G_line_length)          :: in_define1=''           ! variable definition from environment variable
 character(len=G_line_length)          :: in_define2=''           ! variable definition from environment variable and command
 integer                               :: i

@@ -17545,7 +17545,7 @@ textblock=[character(len=256) :: &
 'Results:', &
 '', &
 '        abcdefghijklmnopqrstuvwxyz', &
-'        Hello World and Ni Hao -- 你好', &
+'        Hello World and Ni Hao --       ', &
 '', &
 'STANDARD', &
 '', &
