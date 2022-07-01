@@ -74,7 +74,7 @@ subroutine console_write_line(console,str,line,advance)
     if (present(line)) then
         line = console%n_line
     end if
-    
+
     write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
 
     if (adv=="yes") then
@@ -112,8 +112,8 @@ subroutine console_update_line(console,line_no,str)
 
 end subroutine console_update_line
 
-end module fpm_backend_console 
- 
+end module fpm_backend_console
+
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -1230,8 +1230,8 @@ integer                       :: iade         ! ADE (ASCII Decimal Equivalent) o
 end subroutine notabs
 
 end module fpm_strings
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/constants.f90
 ! This file is part of toml-f.
 !
@@ -1378,8 +1378,8 @@ module tomlf_constants
       & TOML_LETTERS//TOML_DIGITS//'_-+.'
 
 end module tomlf_constants
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/version.f90
 ! This file is part of toml-f.
 !
@@ -1456,8 +1456,8 @@ end subroutine get_tomlf_version
 
 
 end module tomlf_version
- 
- 
+
+
 !>>>>> build/dependencies/M_CLI2/src/M_CLI2.f90
 !VERSION 1.0 20200115
 !VERSION 2.0 20200802
@@ -7580,8 +7580,8 @@ end module M_CLI2
 ! to
 !       strings=[character(len=len(strings)) ::]
 !===================================================================================================================================
- 
- 
+
+
 !>>>>> ././src/fpm/error.f90
 !> Implementation of basic error handling.
 module fpm_error
@@ -7762,8 +7762,8 @@ contains
     end subroutine fpm_stop
 
 end module fpm_error
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/datetime.f90
 ! This file is part of toml-f.
 !
@@ -7867,8 +7867,8 @@ end subroutine datetime_to_string
 
 
 end module tomlf_datetime
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/error.f90
 ! This file is part of toml-f.
 !
@@ -8116,8 +8116,8 @@ end subroutine add_context
 
 
 end module tomlf_error
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/verify.f90
 ! This file is part of toml-f.
 !
@@ -8344,8 +8344,8 @@ end function toml_raw_verify_time
 
 
 end module tomlf_utils_verify
- 
- 
+
+
 !>>>>> ././src/fpm_environment.f90
 !> This module contains procedures that interact with the programming environment.
 !!
@@ -8668,8 +8668,8 @@ character(len=:),allocatable :: fname
    !*ifort_bug*!sep_cache=sep
 end function separator
 end module fpm_environment
- 
- 
+
+
 !>>>>> ././src/fpm_os.F90
 module fpm_os
     use, intrinsic :: iso_c_binding, only : c_char, c_int, c_null_char, c_ptr, c_associated
@@ -8776,8 +8776,8 @@ contains
     end subroutine c_f_character
 
 end module fpm_os
- 
- 
+
+
 !>>>>> ././src/fpm/versioning.f90
 !> Implementation of versioning data for comparing packages
 module fpm_versioning
@@ -9190,8 +9190,8 @@ contains
 
 
 end module fpm_versioning
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/convert.f90
 ! This file is part of toml-f.
 !
@@ -9494,8 +9494,8 @@ end subroutine toml_normalize_string
 
 
 end module tomlf_utils_convert
- 
- 
+
+
 !>>>>> ././src/fpm_filesystem.F90
 !> This module contains general routines for interacting with the file system
 !!
@@ -10461,8 +10461,8 @@ subroutine os_delete_dir(unix, dir, echo)
 end subroutine os_delete_dir
 
 end module fpm_filesystem
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
 ! This file is part of toml-f.
 !
@@ -10562,8 +10562,8 @@ end subroutine toml_escape_string
 
 
 end module tomlf_utils
- 
- 
+
+
 !>>>>> ././src/fpm_command_line.f90
 !># Definition of the command line interface
 !>
@@ -11860,8 +11860,8 @@ contains
     end function get_fpm_env
 
 end module fpm_command_line
- 
- 
+
+
 !>>>>> ././src/fpm_compiler.f90
 !># Define compiler command options
 !!
@@ -12520,7 +12520,7 @@ subroutine new_compiler(self, fc, cc, echo, verbose)
     logical, intent(in) :: verbose
 
     self%id = get_compiler_id(fc)
-    
+
     self%echo = echo
     self%verbose = verbose
     self%fc = fc
@@ -12709,8 +12709,8 @@ end function debug_archiver
 
 
 end module fpm_compiler
- 
- 
+
+
 !>>>>> ././src/fpm/git.f90
 !> Implementation for interacting with git repositories.
 module fpm_git
@@ -12975,8 +12975,8 @@ contains
 
 
 end module fpm_git
- 
- 
+
+
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
 !>
@@ -13288,8 +13288,8 @@ contains
   end subroutine run
 
 end module fpm_installer
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 !
@@ -13439,8 +13439,8 @@ end function match_key
 
 
 end module tomlf_type_value
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
 ! This file is part of toml-f.
 !
@@ -13518,8 +13518,8 @@ end subroutine destroy
 
 
 end module tomlf_type_keyval
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/base.f90
 ! This file is part of toml-f.
 !
@@ -13707,8 +13707,8 @@ module tomlf_structure_base
 
 
 end module tomlf_structure_base
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/vector.f90
 ! This file is part of toml-f.
 !
@@ -14059,8 +14059,8 @@ end subroutine destroy
 
 
 end module tomlf_structure_vector
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure.f90
 ! This file is part of toml-f.
 !
@@ -14153,8 +14153,8 @@ end function get_len
 
 
 end module tomlf_structure
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/array.f90
 ! This file is part of toml-f.
 !
@@ -14355,8 +14355,8 @@ end subroutine destroy
 
 
 end module tomlf_type_array
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/table.f90
 ! This file is part of toml-f.
 !
@@ -14578,8 +14578,8 @@ end subroutine destroy
 
 
 end module tomlf_type_table
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type.f90
 ! This file is part of toml-f.
 !
@@ -15016,8 +15016,8 @@ end function is_array_of_tables
 
 
 end module tomlf_type
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/ser.f90
 ! This file is part of toml-f.
 !
@@ -15362,8 +15362,8 @@ end subroutine resize
 
 
 end module tomlf_ser
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de/tokenizer.f90
 ! This file is part of toml-f.
 !
@@ -16111,8 +16111,8 @@ end subroutine next
 
 
 end module tomlf_de_tokenizer
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
 ! This file is part of toml-f.
 !
@@ -16593,8 +16593,8 @@ end subroutine set_value_string
 
 
 end module tomlf_build_keyval
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
 ! This file is part of toml-f.
 !
@@ -16713,8 +16713,8 @@ end subroutine merge_array
 
 
 end module tomlf_build_merge
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
 ! This file is part of toml-f.
 !
@@ -17019,8 +17019,8 @@ end function new_token
 
 
 end module tomlf_de_character
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
 ! This file is part of toml-f.
 !
@@ -17708,8 +17708,8 @@ end subroutine set_elem_value_bool
 
 
 end module tomlf_build_array
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/table.f90
 ! This file is part of toml-f.
 !
@@ -18480,8 +18480,8 @@ end subroutine set_child_value_string
 
 
 end module tomlf_build_table
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
 !
@@ -18513,8 +18513,8 @@ module tomlf_build
 
 
 end module tomlf_build
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de.f90
 ! This file is part of toml-f.
 !
@@ -18564,7 +18564,7 @@ subroutine toml_parse_unit(table, unit, error)
    integer :: size
    integer :: stat
    allocate(character(len=0) :: conf)
-   do 
+   do
       read(unit, '(a)', advance='no', iostat=stat, iomsg=error_msg, size=size) &
          & buffer
       if (stat > 0) exit
@@ -18623,8 +18623,8 @@ end subroutine toml_parse_string
 
 
 end module tomlf_de
- 
- 
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf.f90
 ! This file is part of toml-f.
 !
@@ -18654,8 +18654,8 @@ module tomlf
    public
 
 end module tomlf
- 
- 
+
+
 !>>>>> ././src/fpm/toml.f90
 !># Interface to TOML processing library
 !>
@@ -18772,8 +18772,8 @@ contains
 
 
 end module fpm_toml
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/build.f90
 !> Implementation of the build configuration data.
 !>
@@ -18949,8 +18949,8 @@ contains
     end subroutine info
 
 end module fpm_manifest_build
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/dependency.f90
 !> Implementation of the meta data for dependencies.
 !>
@@ -19200,8 +19200,8 @@ contains
 
 
 end module fpm_manifest_dependency
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
 !>
@@ -19311,8 +19311,8 @@ contains
   end subroutine info
 
 end module fpm_manifest_install
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/library.f90
 !> Implementation of the meta data for libraries.
 !>
@@ -19456,8 +19456,8 @@ contains
 
 
 end module fpm_manifest_library
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/executable.f90
 !> Implementation of the meta data for an executables.
 !>
@@ -19648,8 +19648,8 @@ contains
 
 
 end module fpm_manifest_executable
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
 !>
@@ -19829,8 +19829,8 @@ contains
 
 
 end module fpm_manifest_test
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/example.f90
 !> Implementation of the meta data for an example.
 !>
@@ -20010,8 +20010,8 @@ contains
 
 
 end module fpm_manifest_example
- 
- 
+
+
 !>>>>> ././src/fpm/manifest/package.f90
 !> Define the package data containing the meta data from the configuration file.
 !>
@@ -20475,8 +20475,8 @@ contains
 
 
 end module fpm_manifest_package
- 
- 
+
+
 !>>>>> ././src/fpm/manifest.f90
 !> Package configuration data.
 !>
@@ -20662,8 +20662,8 @@ contains
 
 
 end module fpm_manifest
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/new.f90
 module fpm_cmd_new
 !># Definition of the "new" subcommand
@@ -21370,8 +21370,8 @@ end subroutine validate_toml_data
 end subroutine cmd_new
 
 end module fpm_cmd_new
- 
- 
+
+
 !>>>>> ././src/fpm/dependency.f90
 !> # Dependency management
 !>
@@ -22187,8 +22187,8 @@ contains
   end subroutine resize_dependency_node
 
 end module fpm_dependency
- 
- 
+
+
 !>>>>> ././src/fpm_model.f90
 !># The fpm package model
 !>
@@ -22532,8 +22532,8 @@ subroutine show_model(model)
 end subroutine show_model
 
 end module fpm_model
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/update.f90
 module fpm_cmd_update
   use fpm_command_line, only : fpm_update_settings
@@ -22603,8 +22603,8 @@ contains
   end subroutine handle_error
 
 end module fpm_cmd_update
- 
- 
+
+
 !>>>>> ././src/fpm_source_parsing.f90
 !># Parsing of package source files
 !>
@@ -22730,7 +22730,7 @@ function parse_f_source(f_filename,error) result(f_source)
             ! Detect exported C-API via bind(C)
             if (.not.inside_interface .and. &
                 parse_subsequence(file_lines_lower(i)%s,'bind','(','c')) then
-                
+
                 do j=i,1,-1
 
                     if (index(file_lines_lower(j)%s,'function') > 0 .or. &
@@ -22909,7 +22909,7 @@ function parse_f_source(f_filename,error) result(f_source)
                     f_source%unit_type = FPM_UNIT_MODULE
                 end if
 
-                if (.not.inside_module) then    
+                if (.not.inside_module) then
                     inside_module = .true.
                 else
                     ! Must have missed an end module statement (can't assume a pure module)
@@ -22948,7 +22948,7 @@ function parse_f_source(f_filename,error) result(f_source)
                           file_lines_lower(i)%s)
                     return
                 end if
-                
+
                 if (f_source%unit_type /= FPM_UNIT_PROGRAM) then
                     f_source%unit_type = FPM_UNIT_SUBMODULE
                 end if
@@ -23010,7 +23010,7 @@ function parse_f_source(f_filename,error) result(f_source)
             !  (to check for code outside of modules)
             if (parse_sequence(file_lines_lower(i)%s,'end','module') .or. &
                 parse_sequence(file_lines_lower(i)%s,'end','submodule')) then
-                
+
                 inside_module = .false.
                 cycle
 
@@ -23176,7 +23176,7 @@ function parse_subsequence(string,t1,t2,t3,t4) result(found)
     found = .false.
     offset = 1
 
-    do 
+    do
 
         i = index(string(offset:),t1)
 
@@ -23258,8 +23258,8 @@ end function parse_sequence
 
 end module fpm_source_parsing
 
- 
- 
+
+
 !>>>>> ././src/fpm_targets.f90
 !># Build target handling
 !>
@@ -23396,7 +23396,7 @@ subroutine targets_from_sources(targets,model,prune,error)
 
     !> Enable tree-shaking/pruning of module dependencies
     logical, intent(in) :: prune
-    
+
     !> Error structure
     type(error_t), intent(out), allocatable :: error
 
@@ -23735,13 +23735,13 @@ subroutine prune_build_targets(targets, root_package)
     type(build_target_ptr), intent(inout), allocatable :: targets(:)
 
     !> Name of root package
-    character(*), intent(in) :: root_package 
+    character(*), intent(in) :: root_package
 
     integer :: i, j, nexec
     type(string_t), allocatable :: modules_used(:)
     logical :: exclude_target(size(targets))
     logical, allocatable :: exclude_from_archive(:)
-    
+
     if (size(targets) < 1) then
         return
     end if
@@ -23751,7 +23751,7 @@ subroutine prune_build_targets(targets, root_package)
 
     ! Enumerate modules used by executables, non-module subprograms and their dependencies
     do i=1,size(targets)
-            
+
         if (targets(i)%ptr%target_type == FPM_TARGET_EXECUTABLE) then
 
             nexec = nexec + 1
@@ -23772,16 +23772,16 @@ subroutine prune_build_targets(targets, root_package)
     ! If there aren't any executables, then prune
     !  based on modules used in root package
     if (nexec < 1) then
-        
+
         do i=1,size(targets)
-            
+
             if (targets(i)%ptr%package_name == root_package .and. &
                  targets(i)%ptr%target_type /= FPM_TARGET_ARCHIVE) then
-    
+
                 call collect_used_modules(targets(i)%ptr)
-    
+
             end if
-            
+
         end do
 
     end if
@@ -23803,11 +23803,11 @@ subroutine prune_build_targets(targets, root_package)
                     do j=1,size(target%source%modules_provided)
 
                         if (target%source%modules_provided(j)%s .in. modules_used) then
-                            
+
                             exclude_target(i) = .false.
                             target%skip = .false.
 
-                        end if 
+                        end if
 
                     end do
 
@@ -23819,11 +23819,11 @@ subroutine prune_build_targets(targets, root_package)
                     do j=1,size(target%source%parent_modules)
 
                         if (target%source%parent_modules(j)%s .in. modules_used) then
-                            
+
                             exclude_target(i) = .false.
                             target%skip = .false.
 
-                        end if 
+                        end if
 
                     end do
 
@@ -23836,7 +23836,7 @@ subroutine prune_build_targets(targets, root_package)
                 target%skip = .false.
             end if
 
-        end associate        
+        end associate
     end do
 
     targets = pack(targets,.not.exclude_target)
@@ -24183,8 +24183,8 @@ end subroutine filter_modules
 
 
 end module fpm_targets
- 
- 
+
+
 !>>>>> ././src/fpm_backend_output.f90
 !># Build Backend Progress Output
 !> This module provides a derived type `build_progress_t` for printing build status
@@ -24236,7 +24236,7 @@ interface build_progress_t
 end interface build_progress_t
 
 contains
-    
+
     !> Initialise a new build progress object
     function new_build_progress(target_queue,plain_mode) result(progress)
         !> The queue of scheduled targets
@@ -24309,7 +24309,7 @@ contains
         character(100) :: output_string
         character(100) :: overall_progress
 
-        !$omp critical 
+        !$omp critical
         progress%n_complete = progress%n_complete + 1
         !$omp end critical
 
@@ -24363,8 +24363,8 @@ contains
 
     end subroutine output_progress_success
 
-end module fpm_backend_output 
- 
+end module fpm_backend_output
+
 !>>>>> ././src/fpm_sources.f90
 !># Discovery of sources
 !>
@@ -24597,8 +24597,8 @@ subroutine get_executable_source_dirs(exe_dirs,executables)
 end subroutine get_executable_source_dirs
 
 end module fpm_sources
- 
- 
+
+
 !>>>>> ././src/fpm_backend.F90
 !># Build backend
 !> Uses a list of `[[build_target_ptr]]` and a valid `[[fpm_model]]` instance
@@ -24971,8 +24971,8 @@ subroutine print_build_log(target)
 end subroutine print_build_log
 
 end module fpm_backend
- 
- 
+
+
 !>>>>> ././src/fpm.f90
 module fpm
 use fpm_strings, only: string_t, operator(.in.), glob, join, string_cat, fnv_1a, &
@@ -25523,8 +25523,8 @@ subroutine cmd_clean(settings)
 end subroutine cmd_clean
 
 end module fpm
- 
- 
+
+
 !>>>>> ././src/fpm/cmd/install.f90
 module fpm_cmd_install
   use, intrinsic :: iso_fortran_env, only : output_unit
@@ -25803,4 +25803,4 @@ contains
     end subroutine get_working_dir
 
 end program main
- 
+
