@@ -1,4 +1,6 @@
 #define FPM_BOOTSTRAP
+#undef linux
+#undef unix
 !>>>>> ././src/fpm_backend_console.f90
 !># Build Backend Console
 !> This module provides a lightweight implementation for printing to the console
