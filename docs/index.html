@@ -1,0 +1,243 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125; }
+h1#pageName { line-height:1em; margin:0.2em 0 0.2em 0; padding:0; }
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<div id="Container">
+<div id="Content">
+<h1>Frequently Asked Questions About Fortran</h1>
+
+<h2>Contents</h2>
+<ul>
+
+<!--
+<li><a href="faq/hello.md">Hello World!</a></li>
+-->
+
+<li>Gotchas:
+<ul>
+   <li><a href="faq/contained.md">Gotchas: Inheritance control for CONTAIN-ed procedures in Fortran</a></li>
+   <li><a href="faq/assign_precision.md">Gotchas: significant digits and simple assigns</a></li>
+   <li><a href="faq/conform.md">Gotchas: conformance and elemental functions</a></li>
+   <li><a href="faq/avoiding_allocatables.md">Gotchas: avoiding allocatables</a></li>
+</ul>
+</li>
+
+<li>Arrays:
+<ul>
+   <li><a href="faq/row-column.md">How do I initialize an array in row-column order in Fortran?</a></li>
+   <li><a href="faq/character_array_initialization.md"> Trouble initializing character arrays in Fortran;</a>
+          or why <pre>character(len=*),parameter :: array(*)=['one','two','three']</pre> is an error
+   </li>
+   <li><a href="faq/zero_elements.md"> "array=[]" will not work in Fortran</a> </li>
+   <li><a href="faq/compare_arrays.md"> How do I compare arrays in Fortran?  </a></li>
+</ul>
+</li>
+<li><a href="faq/scratch.md">   How does Fortran handle a scratch file?                        </a></li>
+<li><a href="faq/comments.md">  How do I put block comments in Fortran source?                 </a></li>
+<li><a href="faq/file_size.md"> How do I get a file size in Fortran?                           </a></li>
+<li><a href="faq/stderr.md">    Writing to stderr                                              </a></li>
+<li><a href="faq/indent.md">    Automatically indenting a Fortran file                         </a></li>
+<li><a href="faq/system.md">    How to issue a command to the operating system                 </a></li>
+<li><a href="faq/make.md">      Build Tools                                                    </a></li>
+<li><a href="faq/gnuplot.md">   Calling gnuplot(1) from Fortran                                </a></li>
+<li><a href="faq/difflength.md">   Variable length CHARACTER arrays                            </a></li>
+
+<li><a href="faq/nonadvancing.md"> Non-advancing I/O                                           </a></li>
+<!--
+<li><a href="faq/make.md"> Stream I/O on stdin and stdout                                      </a></li>
+-->
+<li><a href="faq/list_directed.md">   Notes on list-directed output                            </a></li>
+<li><a href="faq/short-circuit.md">   Notes on compound Boolean expressions                    </a></li>
+<li><a href="faq/metadata.md">   Notes on including metadata in  programs, objects, and source </a></li>
+<li><a href="faq/procedure_pointer.md">   Procedure pointer                                    </a></li>
+<li><a href="faq/special_values.md">   Special values                                          </a></li>
+<li><a href="faq/leading_space.md">   Leading space on list-directed output                    </a></li>
+</ul>
+
+<hr />
+
+<h2>External Links</h2>
+
+<div id="Content">
+<h3>Fortran standard</h3>
+
+<p>
+   The "web home" of ISO/IEC JTC1/SC22/WG5 (the
+   international Fortran standards committee, or WG5 for short) is
+   <a href="https://wg5-fortran.org/">https://wg5-fortran.org/</a>
+</p>
+
+<p>
+   The WG5 web site is where you'll find news about what's happening with
+   the Fortran standard, and links to all WG5 documents. Information on
+   current and past standards is also available there.
+</p>
+
+
+</div>
+
+<h3>Fortran FAQs</h3>
+<ul>
+   <li><a href="http://fortranwiki.org/fortran/show/FAQ">The Fortran Wiki FAQ</a></li>
+   <li><a href="http://www.faqs.org/faqs/fortran-faq/">The Fortran FAQ</a></li>
+   <li><a href="http://www.fortran90.org/src/faq.html">Fortran90.org FAQ</a></li>
+   <li><a href="http://pages.mtu.edu/~shene/COURSES/cs201/FAQ/compile.html">pages.mtu.edu FAQ</a></li>
+</ul>
+
+<hr />
+
+<h3>Fortran Compilers</h3>
+<ul>
+<li><a href="https://gcc.gnu.org/wiki/GFortran">https://gcc.gnu.org/wiki/GFortran</a></li>
+</ul>
+
+<hr />
+
+<h3>Repositories, Discussion Groups, Reference Sites, ... </h3>
+<ul>
+   <li><a href="http://netlib.org">       netlib mathematical algorithm repository                          </a></li>
+   <li><a href="http://fortranwiki.org">  The Fortran Wiki                                                  </a></li>
+   <li><a href="https://groups.google.com/forum/#!forum/comp.lang.fortran"> comp.lang.fortran newsgroup     </a></li>
+   <li><a href="https://github.com/j3-fortran/fortran_proposals">J3 Fortran Proposals                       </a></li>
+   <li><a href="https://github.com/j3-fortran/fortran_proposals"> GitHub site for Fortran feature proposals </a></li>
+   <li><a href="https://github.com/fortran-lang/stdlib/wiki/List-of-popular-open-source-Fortran-projects">  
+        github list of open-source Fortran projects</a></li>
+   <li><a href="http://en.wikibooks.org/wiki/Fortran">Fortran Wikibook</a></li>
+</ul>
+<ul>
+<li><a href="https://fortran-lang.org/"> Fortran Language Forum</a></li>
+<li><a href="https://github.com/fortran-lang/fortran-lang.org"> https://github.com/fortran-lang/fortran-lang.org </a></li>
+<li><a href="https://fortran-lang.discourse.group"> Fortran Language Discourse </a></li>
+<li><a href="https://www.youtube.com/channel/UCTYRAlVmMCGGcrMkKxQLurw"> Fortran Language Discourse YouTube</a></li>
+<li><a href="https://github.com/CASL/Futility"> Futility</a></li>
+</ul>
+
+<hr />
+
+<h3>Fortran scientific model searches</h3>
+
+<a href="http://www.google.com/search?q=%22XGC%22%20Fortran%20code">XGC                 </a>,
+<a href="http://www.google.com/search?q=%22SPECFEM%22%20Fortran%20code">SPECFEM         </a>,
+<a href="http://www.google.com/search?q=%22ACME%22%20Fortran%20code">ACME               </a>,
+<a href="http://www.google.com/search?q=%22DIRAC%22%20Fortran%20code">DIRAC             </a>,
+<a href="http://www.google.com/search?q=%22FLASH%22%20Fortran%20code">FLASH             </a>,
+<a href="http://www.google.com/search?q=%22GTC%22%20Fortran%20code">GTC                 </a>,
+<a href="http://www.google.com/search?q=%22LS-DALTON%22%20Fortran%20code">LS-DALTON     </a>,
+<a href="http://www.google.com/search?q=%22NUCCOR%22%20Fortran%20code">NUCCOR           </a>,
+<a href="http://www.google.com/search?q=%22NWCHEM%22%20Fortran%20code">NWCHEM           </a>,
+<a href="http://www.google.com/search?q=%22RAPTOR%22%20Fortran%20code">RAPTOR           </a>,
+<a href="http://www.google.com/search?q=%22GAMESS(US)%22%20Fortran%20code">GAMESS(US)   </a>,
+<a href="http://www.google.com/search?q=%22GAMESS(UK)%22%20Fortran%20code">GAMESS(UK)   </a>,
+<a href="http://www.google.com/search?q=%22Gaussian%22%20Fortran%20code">Gaussian       </a>,
+<a href="http://www.google.com/search?q=%22VB2000%22%20Fortran%20code">VB2000           </a>,
+<a href="http://www.google.com/search?q=%22XMVB%22%20Fortran%20code">XMVB               </a>,
+<a href="http://www.google.com/search?q=%22ACES%22%20Fortran%20code">ACES               </a>,
+<a href="http://www.google.com/search?q=%22CFOUR%22%20Fortran%20code">CFOUR             </a>,
+<a href="http://www.google.com/search?q=%22MOLPRO%22%20Fortran%20code">MOLPRO           </a>,
+<a href="http://www.google.com/search?q=%22MOLCAS%22%20Fortran%20code">MOLCAS           </a>,
+
+<h3>Economic Modeling</h3>
+<a href="http://www.google.com/search?q=%2GEMPACK%22%20Fortran%20code">GEMPACK          </a>,
+
+<h3>Weather Modeling</h3>
+<a href="http://www.google.com/search?q=%2WRF%22%20Fortran%20code">WRF(Weather Research and Forecast)</a>,
+
+
+<h3>Geography</h3>
+<a href="http://www.google.com/search?q=%2geographiclib%22%20Fortran%20code">geographiclib</a>,
+<a href="http://www.google.com/search?q=%2fortranGIS%22%20Fortran%20code">fortranGIS</a>,
+
+<h2>Best Practices</h2>
+
+<ul>
+   <li><a href="https://github.com/Fortran-FOSS-Programmers/Best<em>Practices">https://github.com/Fortran-FOSS-Programmers/Best</em>Practices</a> </li>
+   <li><a href="http://www.fortran.com/Fortran<em>Style.pdf">http://www.fortran.com/Fortran</em>Style.pdf</a> </li>
+   <li><a href="http://www.fortran90.org/src/best-practices.html">http://www.fortran90.org/src/best-practices.html</a> </li>
+   <li><a href="http://research.metoffice.gov.uk/research/nwp/numerical/fortran90/f90<em>standards.html">http://research.metoffice.gov.uk/research/nwp/numerical/fortran90/f90</em>standards.html</a> </li>
+   <li><a href="https://github.com/szaghi/zen-of-fortran">https://github.com/szaghi/zen-of-fortran</a> </li>
+</ul>
+
+<h2>Fortran document generators</h2>
+
+<a href="http://www.google.com/search?q=%22fordocu%22%20Fortran%20code">    fordocu       </a>,
+<a href="http://www.google.com/search?q=%22robodoc%22%20Fortran%20code">    robodoc       </a>,
+<a href="http://www.google.com/search?q=%22understand%22%20Fortran%20code"> ($)understand </a>,
+<a href="http://www.google.com/search?q=%22doxygen%22%20Fortran%20code">     doxygen      </a>,
+
+<h2>Repositories</h2>
+<ul>
+   <li><a href="https://github.com/trending/fortran?since=monthly"> Trending Fortran on GitHub</a>
+</ul>
+
+<h2>Fortran and HPC searches</h2>
+
+<a href="http://www.google.com/search?q=%22Fortran%22%20Fortran%20code">Fortran         </a>,
+<a href="http://www.google.com/search?q=%22Coarray%22%20Fortran%20code">Coarray         </a>,
+<a href="http://www.google.com/search?q=%22MPI%22%20Fortran%20code">MPI                 </a>,
+<a href="http://www.google.com/search?q=%22OpenMP%22%20Fortran%20code">OpenMP           </a>,
+<a href="http://www.google.com/search?q=%22OpenACC%22%20Fortran%20code">OpenACC         </a>,
+<a href="http://www.google.com/search?q=%22HDF5%22%20Fortran%20code">HDF5               </a>,
+<a href="http://www.google.com/search?q=%22HPC%22%20Fortran%20code">HPC                 </a>,
+<a href="http://www.google.com/search?q=%22MPI-AMRVC%22%20Fortran%20code">MPI-AMRVAC    </a>,
+
+<h2>Sites for gathering programming idioms and programming chrestomathy</h2>
+
+<ul>
+   <li><a href="https://www.rosettacode.org">  Rosetta Code (multi-lingual code samples)                         </a></li>
+   <li><a href="http://rosettacode.org/wiki/Category:Fortran"> Fortran-specific Rosetta Code</a></li>
+   <li><a href="https://exercism.io/">Exercism</a></li>
+   <li><a href="https://www.programming-idioms.org/">Programming-idioms</a></li>
+   <li><a href="https://www.codingame.com/start">codingame</a></li>
+</ul>
+<h2>Just found</h2>
+<ul>
+   <li><a href="https://caps.gsfc.nasa.gov/simpson/software.html">Simpson software</a></li>
+   <li><a href="https://www.cmascenter.org/ioapi/documentation/all_versions/html/index.html">The EDSS/Models-3 I/O API</a>
+   <li><a href="https://http://simconglobal.com">SimCom commericial services</a>
+</ul>
+<h2>Documentation</h2>
+<ul>
+   <li><a href="http://www.archer.ac.uk/training/course-material/2018/02/oofortran-daresbury/Lectures/L05-ClassesAndVisibility.pd">lectures</a></li>
+   <li><a href="http://www.personal.psu.edu/jhm/f90/lectures">lectures<\a>
+</ul>
+
+<hr />
+
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat, Nov 18, 2017  6:28:56 PM
+  by
+  <a class="existingWikiWord" href="JSU.xhtml">JSU</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

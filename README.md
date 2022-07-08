@@ -86,15 +86,9 @@ Please provide feedback on the
 
     + [index of intrinsics](https://urbanjost.github.io/M_intrinsics/index3.html)
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
+    + [faq](https://urbanjost.github.io/index/faq/index.html)
+    + [faq](docs/faq/index.html)
 
-    + [Fortran 2018](https://j3-fortran.org/doc/year/18/18-007r1.pdf) (646 pgs)
-    + [Fortran 2008](https://wg5-fortran.org/N1751-N1800/N1791.pdf) (623 pgs)
-    + [Fortran 2003](https://wg5-fortran.org/N1601-N1650/N1601.pdf) (583 pgs)
-    + [Fortran 95](https://wg5-fortran.org/N1151-N1200/N1191.pdf) (376 pgs)
-    + [Fortran 90](https://wg5-fortran.org/N001-N1100/N692.pdf) (315 pgs)
-    + [Fortran 77](http://www.sternwarte.uni-erlangen.de/~ai05/vorlesungen/astrocomp/f77-standard.pdf) ;
-      [html](https://wg5-fortran.org/ARCHIVE/Fortran77.html) (185 pgs)
-    + [Fortran 66](https://wg5-fortran.org/ARCHIVE/Fortran66.pdf) (39 pgs)
 
 ---
 # EXTERNAL SITES OF INTEREST
@@ -106,6 +100,14 @@ Please provide feedback on the
  - [GNU gfortran intrinsic descriptions](https://gcc.gnu.org/onlinedocs/gfortran/Intrinsic-Procedures.html)
  - [Fortran 2018 Standard](https://j3-fortran.org/doc/year/18/18-007r1.pdf)
  - [Intro to Fortran](https://www.nics.tennessee.edu/files/pdf/hpcss13_14/01_21_intro_to_fortran_pt2.pdf)
+ + [Fortran 2018](https://j3-fortran.org/doc/year/18/18-007r1.pdf) (646 pgs)
+ + [Fortran 2008](https://wg5-fortran.org/N1751-N1800/N1791.pdf) (623 pgs)
+ + [Fortran 2003](https://wg5-fortran.org/N1601-N1650/N1601.pdf) (583 pgs)
+ + [Fortran 95](https://wg5-fortran.org/N1151-N1200/N1191.pdf) (376 pgs)
+ + [Fortran 90](https://wg5-fortran.org/N001-N1100/N692.pdf) (315 pgs)
+ + [Fortran 77](http://www.sternwarte.uni-erlangen.de/~ai05/vorlesungen/astrocomp/f77-standard.pdf) ;
+      [html](https://wg5-fortran.org/ARCHIVE/Fortran77.html) (185 pgs)
+ + [Fortran 66](https://wg5-fortran.org/ARCHIVE/Fortran66.pdf) (39 pgs)
 
 ## Documentation generators
 

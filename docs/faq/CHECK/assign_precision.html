@@ -1,0 +1,179 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body><a href="faq.html">[UP]</a>
+<div id="Container">
+<div id="Content">
+<h1>Gotchas: significant digits and simple assigns</h1>
+
+<p>
+   How come when I assign a simple value (or even an expression)
+   to a value I sometimes get less digits of precision than I expect?
+</p>
+
+<p>
+   In the following example program the DOUBLEPRECISION value VALUE2
+   only contains the same number of correct digits from the constant that was
+   assigned to it as the REAL value VALUE1. VALUE3 contains significantly
+   more... 
+</p>
+
+<pre><code> 
+  module M_prec
+    integer,parameter :: sp = selected_real_kind(6)
+    integer,parameter :: dp = selected_real_kind(15)
+  end module M_prec
+
+program main
+  use M_prec
+  real            :: value1=123.45678901234567890123
+  doubleprecision :: value2=123.45678901234567890123
+  doubleprecision :: value3=123.45678901234567890123d0
+  real(kind=dp)   :: value4=123.45678901234567890123_dp
+  write(*,*)value1
+  write(*,*)value2
+  write(*,*)value3
+  write(*,*)value4
+  end
+</code></pre>
+
+<h2>Typical results</h2>
+
+<pre><code>  123.456787    
+  123.45678710937500     
+            ^^^^^^^^ &lt;== Not the values you might expect
+  123.45678901234568
+  123.45678901234568
+</code></pre>
+
+<p>
+   A general principle of Fortran is that the type of the RHS (Right Hand
+   Side) of an assignment does <em>not</em> depend on the LHS (Left Hand
+   Side).  Once you understand this rule, a lot of things fall into place.
+</p>
+
+<p>
+   You must make sure the constant on the RHS is of a KIND that can hold
+   the number of digits desired, regardless of what type the LHS is.
+   "123.45678901234567890123" is a REAL expression and is evaluated
+   first. <strong>Then</strong> it is assigned to the value on the LHS,
+   which in this case promotes the REAL value to DOUBLEPRECISION. Adding
+   the "d0" suffix or specifying and using a KIND sufficiently big enough
+   to give you the accuracy you desire is required.
+</p>
+
+<p>
+   The best explanation I have seen for this is by <em>Dick
+   Hendrickson</em> on the newsgroup "comp.lang.fortran" :
+</p>
+
+<blockquote>
+<p>
+   I think the REAL reason (ho, ho, ho) is that your example is too simple.
+   In Fortran almost everything can be an expression, rather than a
+   single term.  (heck, even 29.5... is an [degenerate] expression in the
+   syntax rules) And there is no good way to push the type of the left hand
+   side into the right hand side expressions that won't surprise someone.
+   In something like
+</p>
+
+<pre><code>   double_prec_var = N/4 + MIN(M/3, 10) + 7 * user_func (6, 3.14)
+</code></pre>
+
+<p>
+   everything goes wrong if you pull the constants up to double precision
+   before evaluating the RHS.  Especially if user<em>func is generic or if it
+   returns a type that causes the asterisk in "7 * user</em>func (6, 3.14)" to
+   be a user defined function (probably also generic).
+</p>
+
+<p>
+   Rather than have two sets of rules (either for "expressions" that are
+   constants or for expressions that appear in declaration statements)
+   Fortran chose one rule for all expressions and it confuses people on
+   the simple case.  It's a pity and, IMO, compilers should be more
+   aggressive about mismatched precision with simple constant expressions.
+</p>
+</blockquote>
+
+<p>
+   Note that compilers are free to produce a warning when all the digits of a constant
+   are not stored. As an example,  if you use the <b>-Wconversion-extra</b> switch on
+   gfortran:
+</p>
+<pre>
+   + gfortran -Wconversion-extra xxx.f90
+   xxx.f90:8:52:
+   
+      real            :: value1=123.45678901234567890123
+                                                       1
+   Warning: Non-significant digits in 'REAL(4)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+   xxx.f90:9:28:
+<b>   
+      doubleprecision :: value2=123.45678901234567890123
+                               1
+   Warning: Conversion from 'REAL(4)' to 'REAL(8)' at (1) [-Wconversion-extra]
+</b>   
+   xxx.f90:9:52:
+   
+      doubleprecision :: value2=123.45678901234567890123
+                                                       1
+   Warning: Non-significant digits in 'REAL(4)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+   xxx.f90:10:54:
+   
+      doubleprecision :: value3=123.45678901234567890123d0
+                                                         1
+   Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+   xxx.f90:11:55:
+   
+      real(kind=dp)   :: value4=123.45678901234567890123_dp
+                                                          1
+   Warning: Non-significant digits in 'REAL(8)' number at (1), maybe incorrect KIND [-Wconversion-extra]
+</pre>
+
+<p>
+  <div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div>
+</p>
+
+<div class="byline">
+  Revised on Sun Dec 17 13:18:11 EST 2017
+  by
+  <a class="existingWikiWord" href="JSU.xhtml">JSU</a>
+</div>
+
+</div>
+</div>
+</body>
+</html>
+
+

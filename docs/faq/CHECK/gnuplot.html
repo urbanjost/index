@@ -1,0 +1,120 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body><a href="faq.html">[UP]</a>
+<div id="Container">
+<div id="Content">
+<h1>Calling gnuplot(1) from Fortran</h1>
+
+<p>There are other modules and libraries available for calling gnuplot(1)
+from Fortran, but I prefer to use the M_process(3f) module from the 
+<a href="http://www.urbanjost.altervista.org/LIBRARY/libGPF/GPF.html"> GPF</a>
+(General Purpose Fortran) collection, as illustrated below.</p>
+
+<p>I find that when calling a line-mode program from another program the
+most natural way is to open a process and write to it.</p>
+
+<p>Following is an example program that calls the M_process module to
+start a plotting program called gnuplot(1) and give it enough commands
+to generate a plot. It then lets you interactively interact with the
+gnuplot(1) program or continue on in the program.</p>
+
+<pre><code>program gnuplotExample
+! @(#)  Example of Fortran writing GNUPLOT command and data file.
+use M_process ,only: process_open_write, process_writeline
+use M_process ,only: streampointer, process_close
+implicit none
+character(len=4096) :: line                             !*! line of data to write (assumed long enough to hold any command line)
+type(streampointer) :: fp                               !*! C file pointer returned by process_open()
+integer :: ierr                                         !*! check status of calls to process module routines
+integer :: i                                            !*! DO loop counter
+integer,parameter   :: n=50                             !*! number of points to put into curve to be plotted
+real                :: x(n),y(n)                        !*! arrays to fill with curve data to be plotted
+integer             :: ios
+
+!*! Define sample X,Y array.
+do i=1,n                                                !*! set X() values as whole numbers 1 to N
+   x(i)=i
+   !*!
+   y(i)=(x(i)+0.5)**2
+enddo
+
+call plotit()
+
+write(*,'(a)')'RETURNED TO THE MAIN PROGRAM'
+                                                        !*! Write the GnuPlot commands
+contains
+
+subroutine plotit()
+!-----------------------------------------------------------------------------------------------------------------------------------
+call process_open_write('gnuplot',fp,ierr)              !*! open process to write to (ie. start gnuplot(1) program)
+!-----------------------------------------------------------------------------------------------------------------------------------
+call process_writeline('$SET1 &lt;&lt;EOD',fp,ierr)           !*! create in-line dataset $SET1
+do i=1,n
+   write(line,'(2(f10.3,1x))')x(i),y(i)                 !*! Write the X,Y array as coordinates to be plotted.
+   call process_writeline(line,fp,ierr)
+enddo
+
+call process_writeline([character(len=128) ::                        &amp;
+&amp;'EOD                                                             ', &amp;
+&amp;'set title " Example of GNUPlot data and command file generation"', &amp;
+&amp;'set nokey'                                                       , &amp;
+&amp;'plot $SET1 with lines'                                           , &amp;
+&amp;''],fp,ierr)
+!-----------------------------------------------------------------------------------------------------------------------------------
+write(*,'(a)')'enter gnuplot commands or "." to exit'   !*! Additional gnuplot commands; in this case interactively entered
+do
+   write(*,'(a)',advance='no')'gnu&gt;&gt;'
+   read(*,'(a)',iostat=ios)line
+   if(line.eq.'.')exit
+   call process_writeline(trim(line),fp,ierr)
+enddo
+!-----------------------------------------------------------------------------------------------------------------------------------
+call process_close(fp,ierr)                             !*! Wrap up
+write(*,*)'CLOSED THE PROCESS. RETURNING TO PROGRAM'
+!-----------------------------------------------------------------------------------------------------------------------------------
+end subroutine plotit
+
+end program gnuplotExample
+
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Fri Dec 15 21:22:29 EST 2017
+  by
+  <a class="existingWikiWord" href="JSU.xhtml">JSU</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>
