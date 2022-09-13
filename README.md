@@ -118,6 +118,7 @@ Please provide feedback on the
  - [Beliavsky's List](https://github.com/Beliavsky/Fortran-code-on-GitHub/blob/main/README.md)
  - [SAL](http://www.sai.msu.su/sal)
  - [SPDX licenses list](https://spdx.org/licenses/)
+ - [Fortran trending on github](https://github.com/trending/fortran)
 
 ## Standards
  - [J3](https://j3-fortran.org)
