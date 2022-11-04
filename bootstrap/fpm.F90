@@ -1,6 +1,6 @@
-#define FPM_BOOTSTRAP
+#undef unix 
 #undef linux
-#undef unix
+#define FPM_BOOTSTRAP
 !>>>>> ././src/fpm_backend_console.f90
 !># Build Backend Console
 !> This module provides a lightweight implementation for printing to the console
@@ -1458,7 +1458,7 @@ end subroutine get_tomlf_version
 end module tomlf_version
  
  
-!>>>>> build/dependencies/M_CLI2/src/M_CLI2.F90
+!>>>>> build/dependencies/M_CLI2/src/M_CLI2.f90
 !VERSION 1.0 20200115
 !VERSION 2.0 20200802
 !VERSION 3.0 20201021  LONG:SHORT syntax
@@ -1468,8 +1468,8 @@ end module tomlf_version
 !===================================================================================================================================
 !>
 !!##NAME
-!!     M_CLI2(3fm) - [ARGUMENTS::M_CLI2::INTRO] command line argument
-!!     parsing using a prototype command
+!!     M_CLI2(3fm) - [ARGUMENTS::M_CLI2] - command line argument parsing
+!!     using a prototype command
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -1487,40 +1487,16 @@ end module tomlf_version
 !!    parsing using a simple prototype.
 !!
 !!    Typically one call to SET_ARGS(3f) is made to define the command
-!!    arguments, set default values and parse the command line. Then a call
-!!    is made to the convenience commands based on GET_ARGS(3f) for each
-!!    command keyword to obtain the argument values.
+!!    arguments, set default values and parse the command line. Then a
+!!    call is made to GET_ARGS(3f) for each command keyword to obtain the
+!!    argument values.
 !!
 !!    The documentation for SET_ARGS(3f) and GET_ARGS(3f) provides further
 !!    details.
 !!
 !!##EXAMPLE
 !!
-!!
-!! Sample typical minimal usage
-!!
-!!     program minimal
-!!     use M_CLI2,  only : set_args, lget, rget, filenames=>unnamed
-!!     implicit none
-!!     real    :: x, y
-!!     integer :: i
-!!        call set_args(' -y 0.0 -x 0.0 -v F')
-!!        x=rget('x')
-!!        y=rget('y')
-!!        if(lget('v'))then
-!!           write(*,*)'X=',x
-!!           write(*,*)'Y=',y
-!!           write(*,*)'ATAN2(Y,X)=',atan2(x=x,y=y)
-!!        else
-!!           write(*,*)atan2(x=x,y=y)
-!!        endif
-!!        if(size(filenames).gt.0)then
-!!           write(*,'(g0)')'filenames:'
-!!           write(*,'(i6.6,3a)')(i,'[',filenames(i),']',i=1,size(filenames))
-!!        endif
-!!     end program minimal
-!!
-!! Sample program using type get_args() and variants
+!! Sample program using type conversion routines
 !!
 !!     program demo_M_CLI2
 !!     use M_CLI2,  only : set_args, get_args
@@ -1552,8 +1528,8 @@ end module tomlf_version
 !!             & --title "my title" -l F -L F  &
 !!             & --logicals  F F F F F         &
 !!             & -logi F T F                   &
-!!             & --label " " &
 !!             ! note space between quotes is required
+!!             & --label " " &
 !!             & ')
 !!     ! ASSIGN VALUES TO ELEMENTS
 !!     call get_args('x',x)         ! SCALARS
@@ -1599,14 +1575,13 @@ end module tomlf_version
 !!     Public Domain
 !===================================================================================================================================
 module M_CLI2
-use, intrinsic :: iso_fortran_env, only : stderr=>ERROR_UNIT, stdin=>INPUT_UNIT, stdout=>OUTPUT_UNIT, warn=>OUTPUT_UNIT
-
-! copied to M_CLI2 for a stand-alone version
+!use, intrinsic :: iso_fortran_env, only : stderr=>ERROR_UNIT
+!use, intrinsic :: iso_fortran_env, only : stdin=>INPUT_UNIT
+use, intrinsic :: iso_fortran_env, only : warn=>OUTPUT_UNIT ! ERROR_UNIT
 !use M_strings,                     only : upper, lower, quote, replace_str=>replace, unquote, split, string_to_value, atleast
 !use M_list,                        only : insert, locate, remove, replace
 !use M_args,                        only : longest_command_argument
 !use M_journal,                     only : journal
-
 implicit none
 integer,parameter,private :: dp=kind(0.0d0)
 integer,parameter,private :: sp=kind(0.0)
@@ -1660,9 +1635,8 @@ character(len=:),allocatable,save :: G_remaining
 character(len=:),allocatable,save :: G_subcommand              ! possible candidate for a subcommand
 character(len=:),allocatable,save :: G_STOP_MESSAGE
 integer,save                      :: G_STOP
-logical,save                      :: G_QUIET
+logical,save                      :: G_STOPON
 logical,save                      :: G_STRICT                  ! strict short and long rules or allow -longname and --shortname
-character(len=:),allocatable,save :: G_PREFIX
 !----------------------------------------------
 ! try out response files
 logical,save                      :: CLI_RESPONSE_FILE=.false. ! allow @name abbreviations
@@ -1706,7 +1680,7 @@ interface   get_args_fixed_length;  module  procedure  get_args_fixed_length_sca
 !intrinsic findloc
 !===================================================================================================================================
 
-! ident_1="@(#) M_CLI2 str(3f) {msg_scalar msg_one}"
+! ident_1="@(#)M_CLI2::str(3f): {msg_scalar,msg_one}"
 
 private str
 interface str
@@ -1756,8 +1730,8 @@ contains
 !!
 !!      subroutine check_commandline(help_text,version_text,ierr,errmsg)
 !!
-!!       character(len=*),intent(in),optional :: help_text(:)
-!!       character(len=*),intent(in),optional :: version_text(:)
+!!       character(len=:),allocatable,intent(in),optional :: help_text(:)
+!!       character(len=:),allocatable,intent(in),optional :: version_text(:)
 !!
 !!##DESCRIPTION
 !!     Checks the commandline  and processes the implicit --help, --version,
@@ -1798,8 +1772,7 @@ contains
 !!      real               :: x, y, z
 !!      character(len=*),parameter :: cmd='-x 1 -y 2 -z 3'
 !!         version_text=[character(len=80) :: "version 1.0","author: me"]
-!!         help_text=[character(len=80) :: &
-!!                 & "wish I put instructions","here","I suppose?"]
+!!         help_text=[character(len=80) :: "wish I put instructions","here","I suppose?"]
 !!         call set_args(cmd,help_text,version_text)
 !!         call get_args('x',x,'y',y,'z',z)
 !!         ! All done cracking the command line. Use the values in your program.
@@ -1813,12 +1786,12 @@ contains
 !!      end program check_commandline
 !===================================================================================================================================
 subroutine check_commandline(help_text,version_text)
-character(len=*),intent(in),optional :: help_text(:)
-character(len=*),intent(in),optional :: version_text(:)
-character(len=:),allocatable         :: line
-integer                              :: i
-integer                              :: istart
-integer                              :: iback
+character(len=:),allocatable,intent(in),optional :: help_text(:)
+character(len=:),allocatable,intent(in),optional :: version_text(:)
+character(len=:),allocatable                     :: line
+integer                                          :: i
+integer                                          :: istart
+integer                                          :: iback
    if(get('usage').eq.'T')then
       call print_dictionary('USAGE:')
       !x!call default_help()
@@ -1848,6 +1821,12 @@ integer                              :: iback
                iback=1
             endif
          endif
+         if(debug_m_cli2)write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:ALLOCATED',allocated(version_text)
+         if(allocated(version_text).and.debug_m_cli2)then
+            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:LEN',len(version_text)
+            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:SIZE',size(version_text)
+            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:LEN',version_text
+         endif
          do i=1,size(version_text)
             !xINTEL BUG*!call journal('sc',version_text(i)(istart:len_trim(version_text(i))-iback))
             line=version_text(i)(istart:len_trim(version_text(i))-iback)
@@ -1857,12 +1836,7 @@ integer                              :: iback
          return
       endif
    elseif(get('version').eq.'T')then
-
-      if(G_QUIET)then
-         G_STOP_MESSAGE = 'no version text'
-      else
-         call journal('sc','*check_commandline* no version text')
-      endif
+      call journal('sc','*check_commandline* no version text')
       call mystop(4,'displayed default version text')
       return
    endif
@@ -1876,9 +1850,7 @@ integer :: ilength
    call get_command_argument(number=0,value=cmd_name)
    G_passed_in=G_passed_in//repeat(' ',len(G_passed_in))
    call substitute(G_passed_in,' --',NEW_LINE('A')//' --')
-   if(.not.G_QUIET)then
-      call journal('sc',cmd_name,G_passed_in) ! no help text, echo command and default options
-   endif
+   call journal('sc',cmd_name,G_passed_in) ! no help text, echo command and default options
    deallocate(cmd_name)
 end subroutine default_help
 end subroutine check_commandline
@@ -1895,8 +1867,8 @@ end subroutine check_commandline
 !!     subroutine set_args(definition,help_text,version_text,ierr,errmsg)
 !!
 !!      character(len=*),intent(in),optional              :: definition
-!!      character(len=*),intent(in),optional              :: help_text(:)
-!!      character(len=*),intent(in),optional              :: version_text(:)
+!!      character(len=:),intent(in),allocatable,optional  :: help_text
+!!      character(len=:),intent(in),allocatable,optional  :: version_text
 !!      integer,intent(out),optional                      :: ierr
 !!      character(len=:),intent(out),allocatable,optional :: errmsg
 !!##DESCRIPTION
@@ -1910,26 +1882,26 @@ end subroutine check_commandline
 !!
 !!##OPTIONS
 !!
-!!    DEFINITION  composed of all command arguments concatenated
-!!                into a Unix-like command prototype string. For
-!!                example:
+!!      DESCRIPTION   composed of all command arguments concatenated
+!!                    into a Unix-like command prototype string. For
+!!                    example:
 !!
-!!                 call set_args('-L F -ints 10,20,30 -title "my title" -R 10.3')
+!!                      call set_args('-L F -ints 10,20,30 -title "my title" -R 10.3')
 !!
-!!                DEFINITION is pre-defined to act as if started with
-!!                the reserved options '--verbose F --usage F --help
-!!                F --version F'. The --usage option is processed when
-!!                the set_args(3f) routine is called. The same is true
-!!                for --help and --version if the optional help_text
-!!                and version_text options are provided.
+!!                    DESCRIPTION is pre-defined to act as if started with
+!!                    the reserved options '--verbose F --usage F --help
+!!                    F --version F'. The --usage option is processed when
+!!                    the set_args(3f) routine is called. The same is true
+!!                    for --help and --version if the optional help_text
+!!                    and version_text options are provided.
 !!
-!!                see "DEFINING THE PROTOTYPE" in the next section for
-!!                further details.
+!!                    see "DEFINING THE PROTOTYPE" in the next section for
+!!                    further details.
 !!
-!!    HELP_TEXT   if present, will be displayed if program is called with
-!!                --help switch, and then the program will terminate. If
-!!                not supplied, the command line initialization string
-!!                will be shown when --help is used on the commandline.
+!!      HELP_TEXT     if present, will be displayed if program is called with
+!!                    --help switch, and then the program will terminate. If
+!!                    not supplied, the command line initialization string
+!!                    will be shown when --help is used on the commandline.
 !!
 !!      VERSION_TEXT  if present, will be displayed if program is called with
 !!                    --version switch, and then the program will terminate.
@@ -2028,7 +2000,7 @@ end subroutine check_commandline
 !! Sample program:
 !!
 !!     program demo_set_args
-!!     use M_CLI2,  only : filenames=>unnamed, set_args, get_args
+!!     use M_CLI2,  only : filenames=>unnamed, set_args, get_args, unnamed
 !!     use M_CLI2,  only : get_args_fixed_size
 !!     implicit none
 !!     integer                      :: i
@@ -2192,9 +2164,6 @@ end subroutine check_commandline
 !!                o give a blank string value as " ".
 !!                o use F|T for lists of logicals,
 !!                o lists of numbers should be comma-delimited.
-!!                o --usage, --help, --version, --verbose, and unknown
-!!                  options are ignored.
-!!
 !!    comment|#  Line is a comment line
 !!    system|!   System command.
 !!               System commands are executed as a simple call to
@@ -2202,8 +2171,6 @@ end subroutine check_commandline
 !!               would not effect subsequent lines, for example)
 !!    print|>    Message to screen
 !!    stop       display message and stop program.
-!!
-!!
 !!
 !!  So if a program that does nothing but echos its parameters
 !!
@@ -2269,7 +2236,7 @@ end subroutine check_commandline
 !!
 !!  is searched for in simple or compound files. If found subsequent lines
 !!  will be ignored that start with "@" until a line not starting with
-!!  "@" is encountered. Lines will then be processed until another line
+!!  "@" is encountered.  Lines will then be processed until another line
 !!  starting with "@" is found or end-of-file is encountered.
 !!
 !!   COMPOUND RESPONSE FILE EXAMPLE
@@ -2299,7 +2266,7 @@ end subroutine check_commandline
 !!    # install executables in directory (assuming install(1) exists)
 !!    #
 !!    system mkdir -p ~/.local/bin
-!!    options run --release T --runner "install -vbp -m 0711 -t ~/.local/bin"
+!!    options run --release T --compiler gfortran --runner "install -vbp -m 0711 -t ~/.local/bin"
 !!    @install
 !!    STOP INSTALL NOT SUPPORTED ON THIS PLATFORM OR $OSTYPE NOT SET
 !!    #
@@ -2323,8 +2290,8 @@ end subroutine check_commandline
 !!
 !!    The intel Fortran compiler now calls the response files "indirect
 !!    files" and does not add the implied suffix ".rsp" to the files
-!!    anymore. It also allows the @NAME syntax anywhere on the command line,
-!!    not just at the beginning. -- 20201212
+!!    anymore. It also allows the @NAME syntax anywhere on the command
+!!    line, not just at the beginning. --  20201212
 !!
 !!##AUTHOR
 !!      John S. Urban, 2019
@@ -2335,15 +2302,14 @@ end subroutine check_commandline
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine set_args(prototype,help_text,version_text,string,prefix,ierr,errmsg)
+subroutine set_args(prototype,help_text,version_text,string,ierr,errmsg)
 
-! ident_2="@(#) M_CLI2 set_args(3f) parse prototype string"
+! ident_2="@(#)M_CLI2::set_args(3f): parse prototype string"
 
 character(len=*),intent(in)                       :: prototype
-character(len=*),intent(in),optional              :: help_text(:)
-character(len=*),intent(in),optional              :: version_text(:)
+character(len=:),intent(in),allocatable,optional  :: help_text(:)
+character(len=:),intent(in),allocatable,optional  :: version_text(:)
 character(len=*),intent(in),optional              :: string
-character(len=*),intent(in),optional              :: prefix
 integer,intent(out),optional                      :: ierr
 character(len=:),intent(out),allocatable,optional :: errmsg
 character(len=:),allocatable                      :: hold               ! stores command line argument
@@ -2354,19 +2320,14 @@ integer                                           :: ibig
    G_passed_in=''
    G_STOP=0
    G_STOP_MESSAGE=''
-   if(present(prefix))then
-      G_PREFIX=prefix
-   else
-      G_PREFIX=''
-   endif
    if(present(ierr))then
-      G_QUIET=.true.
+      G_STOPON=.false.
    else
-      G_QUIET=.false.
+      G_STOPON=.true.
    endif
    ibig=longest_command_argument() ! bug in gfortran. len=0 should be fine
-   IF(ALLOCATED(UNNAMED)) DEALLOCATE(UNNAMED)
-   ALLOCATE(CHARACTER(LEN=IBIG) :: UNNAMED(0))
+   if(allocated(unnamed)) deallocate(unnamed)
+   allocate(character(len=ibig) :: unnamed(0))
    if(allocated(args)) deallocate(args)
    allocate(character(len=ibig) :: args(0))
 
@@ -2528,7 +2489,7 @@ end subroutine set_args
 !===================================================================================================================================
 function get_subcommand() result(sub)
 
-! ident_3="@(#) M_CLI2 get_subcommand(3f) parse prototype string to get subcommand allowing for response files"
+! ident_3="@(#)M_CLI2::get_subcommand(3f): parse prototype string to get subcommand, allowing for response files"
 
 character(len=:),allocatable  :: sub
 character(len=:),allocatable  :: cmdarg
@@ -2539,7 +2500,6 @@ integer                       :: i
 integer                       :: j
    G_subcommand=''
    G_options_only=.true.
-   sub=''
 
    if(.not.allocated(unnamed))then
       allocate(character(len=0) :: unnamed(0))
@@ -2606,6 +2566,7 @@ end subroutine set_usage
 !!
 !!##SYNOPSIS
 !!
+!!
 !!     recursive subroutine prototype_to_dictionary(string)
 !!
 !!      character(len=*),intent(in)     ::  string
@@ -2651,7 +2612,7 @@ end subroutine set_usage
 recursive subroutine prototype_to_dictionary(string)
 implicit none
 
-! ident_4="@(#) M_CLI2 prototype_to_dictionary(3f) parse user command and store tokens into dictionary"
+! ident_4="@(#)M_CLI2::prototype_to_dictionary(3f): parse user command and store tokens into dictionary"
 
 character(len=*),intent(in)       :: string ! string is character input string of options and values
 
@@ -2744,7 +2705,7 @@ integer                           :: place
 
       else       ! currnt is not one of the special characters
          ! the space after a keyword before the value
-         if(currnt == " " .and. itype  ==  KEYW)then
+         if(currnt == " ".and.itype  ==  KEYW)then
             ! switch from building a keyword string to building a value string
             itype=VAL
             ! beginning of a delimited value
@@ -2834,36 +2795,38 @@ end subroutine prototype_to_dictionary
 !!
 !!    ! IT IS A BAD IDEA TO NOT HAVE THE SAME DEFAULT VALUE FOR ALIASED
 !!    ! NAMES BUT CURRENTLY YOU STILL SPECIFY THEM
-!!     call set_args('-flag 1 -f 1 -ints 1,2,3 -i 1,2,3 -twonames 11.3 -T 11.3')
+!!       call set_args(' -flag 1 -f 1 -ints 1,2,3 -i 1,2,3 -twonames 11.3 -T 11.3')
 !!
 !!    ! ASSIGN VALUES TO ELEMENTS CONDITIONALLY CALLING WITH SHORT NAME
-!!     call get_args('flag',flag)
-!!     if(specified('f'))call get_args('f',flag)
-!!     call get_args('ints',ints)
-!!     if(specified('i'))call get_args('i',ints)
-!!     call get_args('twonames',twonames)
-!!     if(specified('T'))call get_args('T',twonames)
+!!       call get_args('flag',flag)
+!!       if(specified('f'))call get_args('f',flag)
+!!       call get_args('ints',ints)
+!!       if(specified('i'))call get_args('i',ints)
+!!       call get_args('twonames',twonames)
+!!       if(specified('T'))call get_args('T',twonames)
 !!
-!!     ! IF YOU WANT TO KNOW IF GROUPS OF PARAMETERS WERE SPECIFIED USE
-!!     ! ANY(3f) and ALL(3f)
-!!     write(*,*)specified(['twonames','T       '])
-!!     write(*,*)'ANY:',any(specified(['twonames','T       ']))
-!!     write(*,*)'ALL:',all(specified(['twonames','T       ']))
+!!       ! IF YOU WANT TO KNOW IF GROUPS OF PARAMETERS WERE SPECIFIED USE
+!!       ! ANY(3f) and ALL(3f)
+!!       write(*,*)specified(['twonames','T       '])
+!!       write(*,*)'ANY:',any(specified(['twonames','T       ']))
+!!       write(*,*)'ALL:',all(specified(['twonames','T       ']))
 !!
-!!     ! FOR MUTUALLY EXCLUSIVE
-!!     if (all(specified(['twonames','T       '])))then
-!!         write(*,*)'You specified both names -T and -twonames'
-!!     endif
+!!       ! FOR MUTUALLY EXCLUSIVE
+!!       if (all(specified(['twonames','T       '])))then
+!!           write(*,*)'You specified both names -T and -twonames'
+!!       endif
 !!
-!!     ! FOR REQUIRED PARAMETER
-!!     if (.not.any(specified(['twonames','T       '])))then
-!!         write(*,*)'You must specify -T or -twonames'
-!!     endif
-!!     ! USE VALUES
+!!       ! FOR REQUIRED PARAMETER
+!!       if (.not.any(specified(['twonames','T       '])))then
+!!           write(*,*)'You must specify -T or -twonames'
+!!       endif
+!!
+!!    ! USE VALUES
 !!       write(*,*)'flag=',flag
 !!       write(*,*)'ints=',ints
 !!       write(*,*)'twonames=',twonames
-!!     end program demo_specified
+!!    end program demo_specified
+!!
 !!
 !!##AUTHOR
 !!      John S. Urban, 2019
@@ -2891,6 +2854,8 @@ end function specified
 !!      keyword and value
 !!      (LICENSE:PD)
 !!##SYNOPSIS
+!!
+!!
 !!
 !!     subroutine update(key,val)
 !!
@@ -2927,14 +2892,12 @@ logical                               :: set_mandatory
    call split(trim(key),long_short,':',nulls='return') ! split long:short keyname or long:short:: or long:: or short::
    ! check for :: on end
    isize=size(long_short)
-
    if(isize.gt.0)then                     ! very special-purpose syntax where if ends in :: next field is a value even
       if(long_short(isize).eq.'')then     ! if it starts with a dash, for --flags option on fpm(1).
          set_mandatory=.true.
          long_short=long_short(:isize-1)
       endif
    endif
-
    select case(size(long_short))
    case(0)
       long=''
@@ -2960,7 +2923,6 @@ logical                               :: set_mandatory
       long=trim(long_short(1))
       short=trim(long_short(2))
    end select
-
    if(present(val))then
       val_local=val
       iilen=len_trim(val_local)
@@ -3005,10 +2967,10 @@ end subroutine update
 !===================================================================================================================================
 !>
 !!##NAME
-!!      wipe_dictionary(3fp) - [ARGUMENTS:M_CLI2] reset private M_CLI2(3fm)
-!!      dictionary to empty
+!!      wipe_dictionary(3fp) - [ARGUMENTS:M_CLI2] reset private M_CLI2(3fm) dictionary to empty
 !!      (LICENSE:PD)
 !!##SYNOPSIS
+!!
 !!
 !!      subroutine wipe_dictionary()
 !!##DESCRIPTION
@@ -3045,14 +3007,12 @@ end subroutine wipe_dictionary
 !===================================================================================================================================
 !>
 !!##NAME
-!!    get(3f) - [ARGUMENTS:M_CLI2] get dictionary value associated with
-!!    key name in private M_CLI2(3fm) dictionary
+!!      get(3f) - [ARGUMENTS:M_CLI2] get dictionary value associated with key name in private M_CLI2(3fm) dictionary
 !!##SYNOPSIS
 !!
 !!
 !!##DESCRIPTION
-!!    Get dictionary value associated with key name in private M_CLI2(3fm)
-!!    dictionary.
+!!      Get dictionary value associated with key name in private M_CLI2(3fm) dictionary.
 !!##OPTIONS
 !!##RETURNS
 !!##EXAMPLE
@@ -3075,10 +3035,10 @@ end function get
 !===================================================================================================================================
 !>
 !!##NAME
-!!      prototype_and_cmd_args_to_nlist(3f) - [ARGUMENTS:M_CLI2] convert
-!!      Unix-like command arguments to table
+!!      prototype_and_cmd_args_to_nlist(3f) - [ARGUMENTS:M_CLI2] convert Unix-like command arguments to table
 !!      (LICENSE:PD)
 !!##SYNOPSIS
+!!
 !!
 !!     subroutine prototype_and_cmd_args_to_nlist(prototype)
 !!
@@ -3089,6 +3049,7 @@ end function get
 !!##OPTIONS
 !!      prototype
 !!##EXAMPLE
+!!
 !!
 !! Sample program
 !!
@@ -3109,16 +3070,14 @@ end function get
 !!
 !!      ! uppercase keywords get an underscore to make it easier o remember
 !!      logical            :: l_,h_,v_
-!!      ! character variables must be long enough to hold returned value
-!!      character(len=256) :: a_,b_
+!!      character(len=256) :: a_,b_                  ! character variables must be long enough to hold returned value
 !!      integer            :: c_(3)
 !!
 !!         ! give command template with default values
 !!         ! all values except logicals get a value.
 !!         ! strings must be delimited with double quotes
 !!         ! A string has to have at least one character as for -A
-!!         ! lists of numbers should be comma-delimited.
-!!         ! No spaces are allowed in lists of numbers
+!!         ! lists of numbers should be comma-delimited. No spaces are allowed in lists of numbers
 !!         call prototype_and_cmd_args_to_nlist('&
 !!         & -l -v -h -LVH -x 0 -y 0.0 -z 0.0d0 -p 0,0 &
 !!         & -A " " -B "Value B" -C 10,20,30 -c (-123,-456)',readme)
@@ -3139,7 +3098,7 @@ end function get
 subroutine prototype_and_cmd_args_to_nlist(prototype,string)
 implicit none
 
-! ident_5="@(#) M_CLI2 prototype_and_cmd_args_to_nlist create dictionary from prototype if not null and update from command line"
+! ident_5="@(#)M_CLI2::prototype_and_cmd_args_to_nlist: create dictionary from prototype if not null and update from command line"
 
 character(len=*),intent(in)           :: prototype
 character(len=*),intent(in),optional  :: string
@@ -3153,8 +3112,8 @@ integer                               :: iused
 
    ibig=longest_command_argument()                  ! bug in gfortran. len=0 should be fine
    ibig=max(ibig,1)
-   IF(ALLOCATED(UNNAMED))DEALLOCATE(UNNAMED)
-   ALLOCATE(CHARACTER(LEN=IBIG) :: UNNAMED(0))
+   if(allocated(unnamed))deallocate(unnamed)
+   allocate(character(len=ibig) :: unnamed(0))
    if(allocated(args))deallocate(args)
    allocate(character(len=ibig) :: args(0))
 
@@ -3198,7 +3157,7 @@ integer                               :: iused
       call prototype_to_dictionary(string)          ! build dictionary from prototype
    else
       if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_NLIST:CALL CMD_ARGS_TO_DICTIONARY:CHECK=',.true.
-      call cmd_args_to_dictionary()
+      call cmd_args_to_dictionary(check=.true.)
    endif
 
    if(len(G_remaining).gt.1)then                    ! if -- was in prototype then after -- on input return rest in this string
@@ -3279,7 +3238,7 @@ integer                                  :: lines_processed
 contains
 !===================================================================================================================================
 subroutine find_and_read_response_file(rname)
-! search for a simple file named the same as the @NAME field with one entry assumed in it
+! seach for a simple file named the same as the @NAME field with one entry assumed in it
 character(len=*),intent(in)  :: rname
 character(len=:),allocatable :: paths(:)
 character(len=:),allocatable :: testpath
@@ -3288,18 +3247,7 @@ integer                      :: i
 integer                      :: ios
    prototype=''
    ! look for NAME.rsp
-   ! assume if have / or \ a full filename was supplied to support ifort(1)
-   if((index(rname,'/').ne.0.or.index(rname,'\').ne.0) .and. len(rname).gt.1 )then
-      filename=rname
-      lun=fileopen(filename,message)
-      if(lun.ne.-1)then
-         call process_response()
-         close(unit=lun,iostat=ios)
-      endif
-      return
-   else
-      filename=rname//'.rsp'
-   endif
+   filename=rname//'.rsp'
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:FILENAME=',filename
 
    ! look for name.rsp in directories from environment variable assumed to be a colon-separated list of directories
@@ -3342,8 +3290,6 @@ integer :: ios
 end subroutine position_response
 !===================================================================================================================================
 subroutine process_response()
-character(len=:),allocatable :: padded
-character(len=:),allocatable :: temp
    line=''
    lines_processed=0
       INFINITE: do
@@ -3355,54 +3301,37 @@ character(len=:),allocatable :: temp
          write(*,gen)'<ERROR>*process_response*:'//trim(message)
          exit INFINITE
       endif
-      line=trim(adjustl(line))
-      temp=line
-      if(index(temp//' ','#').eq.1)cycle
-      if(temp.ne.'')then
+      line=adjustl(line)
+      if(index(line//' ','#').eq.1)cycle
+      if(line.ne.'')then
 
-         if(index(temp,'@').eq.1.and.lines_processed.ne.0)exit INFINITE
+         if(index(line,'@').eq.1.and.lines_processed.ne.0)exit INFINITE
 
-         call split(temp,array) ! get first word
+         call split(line,array) ! get first word
          itrim=len_trim(array(1))+2
-         temp=temp(itrim:)
+         line=line(itrim:)
 
          PROCESS: select case(lower(array(1)))
          case('comment','#','')
          case('system','!','$')
             if(G_options_only)exit PROCESS
             lines_processed= lines_processed+1
-            call execute_command_line(temp)
+            call execute_command_line(line)
          case('options','option','-')
             lines_processed= lines_processed+1
-            prototype=prototype//' '//trim(temp)
+            prototype=prototype//' '//trim(line)
          case('print','>','echo')
             if(G_options_only)exit PROCESS
             lines_processed= lines_processed+1
-            write(*,'(a)')trim(temp)
+            write(*,'(a)')trim(line)
          case('stop')
             if(G_options_only)exit PROCESS
-            write(*,'(a)')trim(temp)
+            write(*,'(a)')trim(line)
             stop
          case default
-            if(array(1)(1:1).eq.'-')then
-               ! assume these are simply options to support ifort(1)
-               ! if starts with a single dash must assume a single argument
-               ! and rest is value to support -Dname and -Ifile option
-               ! which currently is not supported, so multiple short keywords
-               ! does not work. Just a ifort(1) test at this point, so do not document
-               if(G_options_only)exit PROCESS
-               padded=trim(line)//'  '
-               if(padded(2:2).eq.'-')then
-                  prototype=prototype//' '//trim(line)
-               else
-                  prototype=prototype//' '//padded(1:2)//' '//trim(padded(3:))
-               endif
-               lines_processed= lines_processed+1
-            else
-               if(array(1)(1:1).eq.'@')cycle INFINITE !skip adjacent @ lines from first
-               lines_processed= lines_processed+1
-               write(*,'(*(g0))')'unknown response keyword [',array(1),'] with options of [',trim(temp),']'
-            endif
+            if(array(1)(1:1).eq.'@')cycle INFINITE !skip adjacent @ lines from first
+            lines_processed= lines_processed+1
+            write(*,'(*(g0))')'unknown response keyword [',array(1),'] with options of [',trim(line),']'
          end select PROCESS
 
       endif
@@ -3687,8 +3616,10 @@ end function separator
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine cmd_args_to_dictionary()
+subroutine cmd_args_to_dictionary(check)
 ! convert command line arguments to dictionary entries
+logical,intent(in),optional  :: check
+logical                      :: check_local
 !x!logical                      :: guess_if_value
 integer                      :: pointer
 character(len=:),allocatable :: lastkeyword
@@ -3703,6 +3634,11 @@ logical                      :: nomore
 logical                      :: next_mandatory
    if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:START'
    next_mandatory=.false.
+   if(present(check))then
+      check_local=check
+   else
+      check_local=.false.
+   endif
    nomore=.false.
    pointer=0
    lastkeyword=' '
@@ -3721,7 +3657,7 @@ logical                      :: next_mandatory
          if(G_remaining_option_allowed)then
             G_remaining_on=.true.
          endif
-         cycle GET_ARGS
+         cycle
       endif
 
       dummy=current_argument//'   '
@@ -3735,12 +3671,7 @@ logical                      :: next_mandatory
             call ifnull()
          endif
          call locate_key(current_argument_padded(3:),pointer)
-         if(pointer.le.0)then
-            if(G_QUIET)then
-               lastkeyword="UNKNOWN"
-               pointer=0
-               cycle GET_ARGS
-            endif
+         if(pointer.le.0.and.check_local)then
             call print_dictionary('UNKNOWN LONG KEYWORD: '//current_argument)
             call mystop(1)
             return
@@ -3757,7 +3688,7 @@ logical                      :: next_mandatory
             call ifnull()
          endif
          call locate_key(current_argument_padded(2:),pointer)
-         if(pointer.le.0)then
+         if(pointer.le.0.and.check_local)then
             jj=len(current_argument)
             if(G_STRICT.and.jj.gt.2)then  ! in strict mode this might be multiple single-character values
               do kk=2,jj
@@ -3767,11 +3698,6 @@ logical                      :: next_mandatory
                     call update(keywords(pointer),'T')
                  else
                     call print_dictionary('UNKNOWN COMPOUND SHORT KEYWORD:'//letter//' in '//current_argument)
-                    if(G_QUIET)then
-                       lastkeyword="UNKNOWN"
-                       pointer=0
-                       cycle GET_ARGS
-                    endif
                     call mystop(2)
                     return
                  endif
@@ -3779,11 +3705,6 @@ logical                      :: next_mandatory
               enddo
             else
                call print_dictionary('UNKNOWN SHORT KEYWORD: '//current_argument)
-               if(G_QUIET)then
-                  lastkeyword="UNKNOWN"
-                  pointer=0
-                  cycle GET_ARGS
-               endif
                call mystop(2)
                return
             endif
@@ -3972,10 +3893,11 @@ end subroutine cmd_args_to_dictionary
 !===================================================================================================================================
 !>
 !!##NAME
-!!     print_dictionary(3f) - [ARGUMENTS:M_CLI2] print internal dictionary
-!!     created by calls to set_args(3f)
+!!     print_dictionary(3f) - [ARGUMENTS:M_CLI2] print internal dictionary created by calls to set_args(3f)
 !!     (LICENSE:PD)
 !!##SYNOPSIS
+!!
+!!
 !!
 !!     subroutine print_dictionary(header,stop)
 !!
@@ -4030,7 +3952,6 @@ subroutine print_dictionary(header,stop)
 character(len=*),intent(in),optional :: header
 logical,intent(in),optional          :: stop
 integer          :: i
-   if(G_QUIET)return
    if(present(header))then
       if(header.ne.'')then
          write(warn,'(a)')header
@@ -4069,7 +3990,7 @@ end subroutine print_dictionary
 FUNCTION strtok(source_string,itoken,token_start,token_end,delimiters) result(strtok_status)
 ! JSU- 20151030
 
-! ident_6="@(#) M_CLI2 strtok(3f) Tokenize a string"
+! ident_6="@(#)M_CLI2::strtok(3f): Tokenize a string"
 
 character(len=*),intent(in)  :: source_string    ! Source string to tokenize.
 character(len=*),intent(in)  :: delimiters       ! list of separator characters. May change between calls
@@ -4124,13 +4045,10 @@ end function strtok
 !==================================================================================================================================!
 !>
 !!##NAME
-!!     get_args(3f) - [ARGUMENTS:M_CLI2] return keyword values when parsing
-!!     command line arguments
+!!     get_args(3f) - [ARGUMENTS:M_CLI2] return keyword values when parsing command line arguments
 !!     (LICENSE:PD)
 !!
 !!##SYNOPSIS
-!!
-!!   get_args(3f) and its convenience functions:
 !!
 !!     use M_CLI2, only : get_args
 !!     ! convenience functions
@@ -4141,14 +4059,16 @@ end function strtok
 !!
 !!      character(len=*),intent(in) :: name
 !!
-!!      type(${TYPE}),allocatable,intent(out) :: value(:)
+!!      character(len=:),allocatable :: value
 !!      ! or
-!!      type(${TYPE}),allocatable,intent(out) :: value
+!!      character(len=:),allocatable :: value(:)
+!!      ! or
+!!      [real|doubleprecision|integer|logical|complex] :: value
+!!      ! or
+!!      [real|doubleprecision|integer|logical|complex],allocatable :: value(:)
 !!
 !!      character(len=*),intent(in),optional :: delimiters
 !!
-!!      where ${TYPE} may be from the set
-!!              {real,doubleprecision,integer,logical,complex,character(len=:)}
 !!##DESCRIPTION
 !!
 !!    GET_ARGS(3f) returns the value of keywords after SET_ARGS(3f)
@@ -4237,8 +4157,7 @@ end function strtok
 !===================================================================================================================================
 !>
 !!##NAME
-!!    get_args_fixed_length(3f) - [ARGUMENTS:M_CLI2] return keyword values
-!!    for fixed-length string when parsing command line
+!!    get_args_fixed_length(3f) - [ARGUMENTS:M_CLI2] return keyword values for fixed-length string when parsing command line
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -4290,8 +4209,7 @@ end function strtok
 !===================================================================================================================================
 !>
 !!##NAME
-!!    get_args_fixed_size(3f) - [ARGUMENTS:M_CLI2] return keyword values
-!!    for fixed-size array when parsing command line arguments
+!!    get_args_fixed_size(3f) - [ARGUMENTS:M_CLI2] return keyword values for fixed-size array when parsing command line arguments
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -4392,7 +4310,7 @@ end subroutine get_fixedarray_class
 !===================================================================================================================================
 subroutine get_anyarray_l(keyword,larray,delimiters)
 
-! ident_7="@(#) M_CLI2 get_anyarray_l(3f) given keyword fetch logical array from string in dictionary(F on err)"
+! ident_7="@(#)M_CLI2::get_anyarray_l(3f): given keyword fetch logical array from string in dictionary(F on err)"
 
 character(len=*),intent(in)  :: keyword                    ! the dictionary keyword (in form VERB_KEYWORD) to retrieve
 logical,allocatable          :: larray(:)                  ! convert value to an array
@@ -4439,7 +4357,7 @@ end subroutine get_anyarray_l
 !===================================================================================================================================
 subroutine get_anyarray_d(keyword,darray,delimiters)
 
-! ident_8="@(#) M_CLI2 get_anyarray_d(3f) given keyword fetch dble value array from Language Dictionary (0 on err)"
+! ident_8="@(#)M_CLI2::get_anyarray_d(3f): given keyword fetch dble value array from Language Dictionary (0 on err)"
 
 character(len=*),intent(in)           :: keyword      ! keyword to retrieve value from dictionary
 real(kind=dp),allocatable,intent(out) :: darray(:)    ! function type
@@ -4544,7 +4462,7 @@ end subroutine get_anyarray_c
 !===================================================================================================================================
 subroutine get_args_fixed_length_a_array(keyword,strings,delimiters)
 
-! ident_9="@(#) M_CLI2 get_args_fixed_length_a_array(3f) Fetch strings value for specified KEYWORD from the lang. dictionary"
+! ident_9="@(#)M_CLI2::get_args_fixed_length_a_array(3f): Fetch strings value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)          :: keyword       ! name to look up in dictionary
@@ -4676,7 +4594,7 @@ end subroutine get_fixedarray_l
 !===================================================================================================================================
 subroutine get_fixedarray_fixed_length_c(keyword,strings,delimiters)
 
-! ident_10="@(#) M_CLI2 get_fixedarray_fixed_length_c(3f) Fetch strings value for specified KEYWORD from the lang. dictionary"
+! ident_10="@(#)M_CLI2::get_fixedarray_fixed_length_c(3f): Fetch strings value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*)                     :: strings(:)
@@ -4741,7 +4659,7 @@ end subroutine get_scalar_i
 !===================================================================================================================================
 subroutine get_scalar_anylength_c(keyword,string)
 
-! ident_11="@(#) M_CLI2 get_scalar_anylength_c(3f) Fetch string value for specified KEYWORD from the lang. dictionary"
+! ident_11="@(#)M_CLI2::get_scalar_anylength_c(3f): Fetch string value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)   :: keyword              ! name to look up in dictionary
@@ -4759,7 +4677,7 @@ end subroutine get_scalar_anylength_c
 !===================================================================================================================================
 elemental impure subroutine get_args_fixed_length_scalar_c(keyword,string)
 
-! ident_12="@(#) M_CLI2 get_args_fixed_length_scalar_c(3f) Fetch string value for specified KEYWORD from the lang. dictionary"
+! ident_12="@(#)M_CLI2::get_args_fixed_length_scalar_c(3f): Fetch string value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)   :: keyword              ! name to look up in dictionary
@@ -4826,8 +4744,7 @@ end subroutine get_scalar_logical
 !===================================================================================================================================
 !>
 !!##NAME
-!!    longest_command_argument(3f) - [ARGUMENTS:M_args] length of longest
-!!    argument on command line
+!!    longest_command_argument(3f) - [ARGUMENTS:M_args] length of longest argument on command line
 !!    (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -4836,8 +4753,7 @@ end subroutine get_scalar_logical
 !!     integer :: ilongest
 !!
 !!##DESCRIPTION
-!!    length of longest argument on command line. Useful when allocating
-!!    storage for holding arguments.
+!!    length of longest argument on command line. Useful when allocating storage for holding arguments.
 !!##RESULT
 !!    longest_command_argument  length of longest command argument
 !!##EXAMPLE
@@ -4875,7 +4791,7 @@ end function longest_command_argument
 subroutine journal(where, g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, ga, gb, gc, gd, ge, gf, gg, gh, gi, gj, sep)
 implicit none
 
-! ident_13="@(#) M_CLI2 journal(3f) writes a message to a string composed of any standard scalar types"
+! ident_13="@(#)M_CLI2::journal(3f): writes a message to a string composed of any standard scalar types"
 
 character(len=*),intent(in)   :: where
 class(*),intent(in)           :: g0
@@ -4929,8 +4845,7 @@ end subroutine journal
 !!       character(len=:),allocatable :: frmt
 !!       integer                      :: biggest
 !!
-!!       pr=str('HUGE(3f) integers',huge(0),'and real',&
-!!               & huge(0.0),'and double',huge(0.0d0))
+!!       pr=str('HUGE(3f) integers',huge(0),'and real',huge(0.0),'and double',huge(0.0d0))
 !!       write(*,'(a)')pr
 !!       pr=str('real            :',huge(0.0),0.0,12345.6789,tiny(0.0) )
 !!       write(*,'(a)')pr
@@ -4944,21 +4859,18 @@ end subroutine journal
 !!       frmt=str('(*(i',int(log10(real(biggest))),':,1x))',sep=' ')
 !!       write(*,*)'format=',frmt
 !!
-!!       ! although it will often work, using str(3f) in an I/O statement
-!!       ! is not recommended because if an error occurs str(3f) will try
-!!       ! to write while part of an I/O statement which not all compilers
-!!       ! can handle and is currently non-standard
+!!       ! although it will often work, using str(3f) in an I/O statement is not recommended
+!!       ! because if an error occurs str(3f) will try to write while part of an I/O statement
+!!       ! which not all compilers can handle and is currently non-standard
 !!       write(*,*)str('program will now stop')
 !!
 !!       end program demo_msg
 !!
 !!  Output
 !!
-!!     HUGE(3f) integers 2147483647 and real 3.40282347E+38 and
-!!     double 1.7976931348623157E+308
+!!     HUGE(3f) integers 2147483647 and real 3.40282347E+38 and double 1.7976931348623157E+308
 !!     real            : 3.40282347E+38 0.00000000 12345.6787 1.17549435E-38
-!!     doubleprecision : 1.7976931348623157E+308 0.0000000000000000
-!!     12345.678900000001 2.2250738585072014E-308
+!!     doubleprecision : 1.7976931348623157E+308 0.0000000000000000 12345.678900000001 2.2250738585072014E-308
 !!     complex         : (3.40282347E+38,1.17549435E-38)
 !!      format=(*(i9:,1x))
 !!      program will now stop
@@ -4972,7 +4884,7 @@ function msg_scalar(generic0, generic1, generic2, generic3, generic4, generic5, 
                   & sep)
 implicit none
 
-! ident_14="@(#) M_CLI2 msg_scalar(3fp) writes a message to a string composed of any standard scalar types"
+! ident_14="@(#)M_CLI2::msg_scalar(3fp): writes a message to a string composed of any standard scalar types"
 
 class(*),intent(in),optional  :: generic0, generic1, generic2, generic3, generic4
 class(*),intent(in),optional  :: generic5, generic6, generic7, generic8, generic9
@@ -5057,7 +4969,7 @@ end function msg_scalar
 function msg_one(generic0,generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9,sep)
 implicit none
 
-! ident_15="@(#) M_CLI2 msg_one(3fp) writes a message to a string composed of any standard one dimensional types"
+! ident_15="@(#)M_CLI2::msg_one(3fp): writes a message to a string composed of any standard one dimensional types"
 
 class(*),intent(in)           :: generic0(:)
 class(*),intent(in),optional  :: generic1(:), generic2(:), generic3(:), generic4(:), generic5(:)
@@ -5123,7 +5035,7 @@ end function msg_one
 !===================================================================================================================================
 function upper(str) result (string)
 
-! ident_16="@(#) M_CLI2 upper(3f) Changes a string to uppercase"
+! ident_16="@(#)M_CLI2::upper(3f): Changes a string to uppercase"
 
 character(*), intent(in)      :: str
 character(:),allocatable      :: string
@@ -5141,7 +5053,7 @@ end function upper
 !===================================================================================================================================
 function lower(str) result (string)
 
-! ident_17="@(#) M_CLI2 lower(3f) Changes a string to lowercase over specified range"
+! ident_17="@(#)M_CLI2::lower(3f): Changes a string to lowercase over specified range"
 
 character(*), intent(In)     :: str
 character(:),allocatable     :: string
@@ -5159,7 +5071,7 @@ end function lower
 !===================================================================================================================================
 subroutine a2i(chars,valu,ierr)
 
-! ident_18="@(#) M_CLI2 a2i(3fp) subroutine returns integer value from string"
+! ident_18="@(#)M_CLI2::a2i(3fp): subroutine returns integer value from string"
 
 character(len=*),intent(in) :: chars                      ! input string
 integer,intent(out)         :: valu                       ! value read from input string
@@ -5180,7 +5092,7 @@ end subroutine a2i
 !----------------------------------------------------------------------------------------------------------------------------------
 subroutine a2d(chars,valu,ierr,onerr)
 
-! ident_19="@(#) M_CLI2 a2d(3fp) subroutine returns double value from string"
+! ident_19="@(#)M_CLI2::a2d(3fp): subroutine returns double value from string"
 
 !     1989,2016 John S. Urban.
 !
@@ -5248,7 +5160,7 @@ character(len=3),save        :: nan_string='NaN'
             valu=onerr
          end select
       else                                                      ! set return value to NaN
-         read(nan_string,'(f3.3)')valu
+         read(nan_string,'(g3.3)')valu
       endif
       if(local_chars.ne.'eod')then                           ! print warning message except for special value "eod"
          call journal('sc','*a2d* - cannot produce number from string ['//trim(chars)//']')
@@ -5263,8 +5175,7 @@ end subroutine a2d
 !===================================================================================================================================
 !>
 !!##NAME
-!!    split(3f) - [M_CLI2:TOKENS] parse string into an array using specified
-!!    delimiters
+!!    split(3f) - [M_CLI2:TOKENS] parse string into an array using specified delimiters
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -5404,7 +5315,7 @@ end subroutine a2d
 subroutine split(input_line,array,delimiters,order,nulls)
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! ident_20="@(#) M_CLI2 split(3f) parse string on delimiter characters and store tokens into an allocatable array"
+! ident_20="@(#)M_CLI2::split(3f): parse string on delimiter characters and store tokens into an allocatable array"
 
 !  John S. Urban
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -5524,8 +5435,7 @@ integer                       :: imax                   ! length of longest toke
 !===================================================================================================================================
 !>
 !!##NAME
-!!    replace_str(3f) - [M_CLI2:EDITING] function globally replaces one
-!!    substring for another in string
+!!    replace_str(3f) - [M_CLI2:EDITING] function globally replaces one substring for another in string
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -5551,8 +5461,7 @@ integer                       :: imax                   ! length of longest toke
 !!     cmd         alternate way to specify old and new string, in
 !!                 the form c/old/new/; where "/" can be any character
 !!                 not in "old" or "new"
-!!     range       if present, only change range(1) to range(2) of
-!!                 occurrences of old string
+!!     range       if present, only change range(1) to range(2) of occurrences of old string
 !!     ierr        error code. iF ier = -1 bad directive, >= 0 then
 !!                 count of changes made
 !!     clip        whether to return trailing spaces or not. Defaults to .false.
@@ -5589,8 +5498,7 @@ integer                       :: imax                   ! length of longest toke
 !!       targetline=replace_str('a b ab baaa aaaa','a','',range=[3,5])
 !!       write(*,*)'replace a with null instances 3 to 5 ['//targetline//']'
 !!
-!!       targetline=replace_str('a b ab baaa aaaa aa aa a a a aa aaaaaa',&
-!!        & 'aa','CCCC',range=[3,5])
+!!       targetline=replace_str('a b ab baaa aaaa aa aa a a a aa aaaaaa','aa','CCCC',range=[3,5])
 !!       write(*,*)'replace aa with CCCC instances 3 to 5 ['//targetline//']'
 !!
 !!       contains
@@ -5631,8 +5539,7 @@ integer                       :: imax                   ! length of longest toke
 !!     replace a with A [A b Ab bAAA AAAA]
 !!     replace a with A instances 3 to 5 [a b ab bAAA aaaa]
 !!     replace a with null instances 3 to 5 [a b ab b aaaa]
-!!     replace aa with CCCC instances 3 to 5 [a b ab baaa aaCCCC CCCC CCCC
-!!     a a a aa aaaaaa]
+!!     replace aa with CCCC instances 3 to 5 [a b ab baaa aaCCCC CCCC CCCC a a a aa aaaaaa]
 !!
 !!##AUTHOR
 !!    John S. Urban
@@ -5685,7 +5592,7 @@ end subroutine crack_cmd
 !===================================================================================================================================
 function replace_str(targetline,old,new,ierr,cmd,range) result (newline)
 
-! ident_21="@(#) M_CLI2 replace_str(3f) Globally replace one substring for another in string"
+! ident_21="@(#)M_CLI2::replace_str(3f): Globally replace one substring for another in string"
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! parameters
@@ -5799,8 +5706,7 @@ end function replace_str
 !===================================================================================================================================
 !>
 !!##NAME
-!!     quote(3f) - [M_CLI2:QUOTES] add quotes to string as if written with
-!!     list-directed input
+!!     quote(3f) - [M_CLI2:QUOTES] add quotes to string as if written with list-directed input
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -5817,16 +5723,13 @@ end function replace_str
 !!
 !!##OPTIONS
 !!    str         input string to add quotes to, using the rules of
-!!                list-directed input (single quotes are replaced by two
-!!                adjacent quotes)
+!!                list-directed input (single quotes are replaced by two adjacent quotes)
 !!    mode        alternate quoting methods are supported:
 !!
 !!                   DOUBLE   default. replace quote with double quotes
-!!                   ESCAPE   replace quotes with backslash-quote instead
-!!                            of double quotes
+!!                   ESCAPE   replace quotes with backslash-quote instead of double quotes
 !!
-!!    clip        default is to trim leading and trailing spaces from the
-!!                string. If CLIP
+!!    clip        default is to trim leading and trailing spaces from the string. If CLIP
 !!                is .FALSE. spaces are not trimmed
 !!
 !!##RESULT
@@ -5906,8 +5809,7 @@ end function quote
 !===================================================================================================================================
 !>
 !!##NAME
-!!     unquote(3f) - [M_CLI2:QUOTES] remove quotes from string as if read
-!!     with list-directed input
+!!     unquote(3f) - [M_CLI2:QUOTES] remove quotes from string as if read with list-directed input
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -5934,8 +5836,7 @@ end function quote
 !!                character from being processed as a quote, but simply as
 !!                a plain character.
 !!##RESULT
-!!    unquoted_str  The output string, which is based on removing quotes
-!!                  from quoted_str.
+!!    unquoted_str  The output string, which is based on removing quotes from quoted_str.
 !!##EXAMPLE
 !!
 !! Sample program:
@@ -6049,7 +5950,7 @@ end function unquote
 !===================================================================================================================================
 function i2s(ivalue,fmt) result(outstr)
 
-! ident_22="@(#) M_CLI2 i2s(3fp) private function returns string given integer value"
+! ident_22="@(#)M_CLI2::i2s(3fp): private function returns string given integer value"
 
 integer,intent(in)           :: ivalue                         ! input value to convert to a string
 character(len=*),intent(in),optional :: fmt
@@ -6067,8 +5968,7 @@ end function i2s
 !===================================================================================================================================
 !>
 !!##NAME
-!!    merge_str(3f) - [M_CLI2:LENGTH] pads strings to same length and then
-!!                    calls MERGE(3f)
+!!    merge_str(3f) - [M_CLI2:LENGTH] pads strings to same length and then calls MERGE(3f)
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6127,7 +6027,7 @@ function merge_str(str1,str2,expr) result(strout)
 ! for some reason the MERGE(3f) intrinsic requires the strings it compares to be of equal length
 ! make an alias for MERGE(3f) that makes the lengths the same before doing the comparison by padding the shorter one with spaces
 
-! ident_23="@(#) M_CLI2 merge_str(3f) pads first and second arguments to MERGE(3f) to same length"
+! ident_23="@(#)M_CLI2::merge_str(3f): pads first and second arguments to MERGE(3f) to same length"
 
 character(len=*),intent(in),optional :: str1
 character(len=*),intent(in),optional :: str2
@@ -6156,8 +6056,7 @@ end function merge_str
 !>
 !!##NAME
 !!
-!!    decodebase(3f) - [M_CLI2:BASE] convert whole number string in base
-!!                     [2-36] to base 10 number
+!!    decodebase(3f) - [M_CLI2:BASE] convert whole number string in base [2-36] to base 10 number
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6230,7 +6129,7 @@ end function merge_str
 logical function decodebase(string,basein,out_baseten)
 implicit none
 
-! ident_24="@(#) M_CLI2 decodebase(3f) convert whole number string in base [2-36] to base 10 number"
+! ident_24="@(#)M_CLI2::decodebase(3f): convert whole number string in base [2-36] to base 10 number"
 
 character(len=*),intent(in)  :: string
 integer,intent(in)           :: basein
@@ -6275,7 +6174,7 @@ integer           :: ierr
      do i=1, long
         k=long+1-i
         ch=string_local(k:k)
-        IF(CH.EQ.'-'.AND.K.EQ.1)THEN
+        if(ch.eq.'-'.and.k.eq.1)then
            out_sign=-1
            cycle
         endif
@@ -6306,8 +6205,7 @@ end function decodebase
 !===================================================================================================================================
 !>
 !!##NAME
-!!    lenset(3f) - [M_CLI2:LENGTH] return string trimmed or padded to
-!!                 specified length
+!!    lenset(3f) - [M_CLI2:LENGTH] return string trimmed or padded to specified length
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6351,7 +6249,7 @@ end function decodebase
 !!    Public Domain
 function lenset(line,length) result(strout)
 
-! ident_25="@(#) M_CLI2 lenset(3f) return string trimmed or padded to specified length"
+! ident_25="@(#)M_CLI2::lenset(3f): return string trimmed or padded to specified length"
 
 character(len=*),intent(in)  ::  line
 integer,intent(in)           ::  length
@@ -6363,8 +6261,7 @@ end function lenset
 !===================================================================================================================================
 !>
 !!##NAME
-!!      value_to_string(3f) - [M_CLI2:NUMERIC] return numeric string from
-!!                            a numeric value
+!!      value_to_string(3f) - [M_CLI2:NUMERIC] return numeric string from a numeric value
 !!      (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6402,10 +6299,8 @@ end function lenset
 !!
 !!##RETURNS
 !!       CHARS   returned string representing input value, must be at least
-!!               23 characters long; or what is required by optional FMT
-!!               if longer.
-!!       IILEN   position of last non-blank character in returned string;
-!!               optional.
+!!               23 characters long; or what is required by optional FMT if longer.
+!!       IILEN   position of last non-blank character in returned string; optional.
 !!       IERR    If not zero, error occurred; optional.
 !!##EXAMPLE
 !!
@@ -6447,7 +6342,7 @@ end function lenset
 !!    Public Domain
 subroutine value_to_string(gval,chars,length,err,fmt,trimz)
 
-! ident_26="@(#) M_CLI2 value_to_string(3fp) subroutine returns a string from a value"
+! ident_26="@(#)M_CLI2::value_to_string(3fp): subroutine returns a string from a value"
 
 class(*),intent(in)                      :: gval
 character(len=*),intent(out)             :: chars
@@ -6530,8 +6425,7 @@ end subroutine value_to_string
 !===================================================================================================================================
 !>
 !!##NAME
-!!    trimzeros_(3fp) - [M_CLI2:NUMERIC] Delete trailing zeros from numeric
-!!                      `decimal string
+!!    trimzeros_(3fp) - [M_CLI2:NUMERIC] Delete trailing zeros from numeric decimal string
 !!    (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -6543,8 +6437,8 @@ end subroutine value_to_string
 !!    number. If the resulting string would end in a decimal point, one
 !!    trailing zero is added.
 !!##OPTIONS
-!!    str   input string will be assumed to be a numeric value and have
-!!          trailing zeros removed
+!!    str   input string will be assumed to be a numeric value and have trailing
+!!          zeros removed
 !!##EXAMPLES
 !!
 !! Sample program:
@@ -6564,7 +6458,7 @@ end subroutine value_to_string
 !!    Public Domain
 subroutine trimzeros_(string)
 
-! ident_27="@(#) M_CLI2 trimzeros_(3fp) Delete trailing zeros from numeric decimal string"
+! ident_27="@(#)M_CLI2::trimzeros_(3fp): Delete trailing zeros from numeric decimal string"
 
 ! if zero needs added at end assumes input string has room
 character(len=*)             :: string
@@ -6609,8 +6503,7 @@ end subroutine trimzeros_
 !===================================================================================================================================
 !>
 !!##NAME
-!!    substitute(3f) - [M_CLI2:EDITING] subroutine globally substitutes
-!!                     one substring for another in string
+!!    substitute(3f) - [M_CLI2:EDITING] subroutine globally substitutes one substring for another in string
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6679,7 +6572,7 @@ end subroutine trimzeros_
 !!    Public Domain
 subroutine substitute(targetline,old,new,ierr,start,end)
 
-! ident_28="@(#) M_CLI2 substitute(3f) Globally substitute one substring for another in string"
+! ident_28="@(#)M_CLI2::substitute(3f): Globally substitute one substring for another in string"
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 character(len=*)               :: targetline         ! input line to be changed
@@ -6803,8 +6696,7 @@ end subroutine substitute
 !===================================================================================================================================
 !>
 !!##NAME
-!!    locate(3f) - [M_CLI2] finds the index where a string is found or
-!!                 should be in a sorted array
+!!    locate(3f) - [M_CLI2] finds the index where a string is found or should be in a sorted array
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6924,7 +6816,7 @@ end subroutine substitute
 !!    Public Domain
 subroutine locate_c(list,value,place,ier,errmsg)
 
-! ident_29="@(#) M_CLI2 locate_c(3f) find PLACE in sorted character array LIST where VALUE can be found or should be placed"
+! ident_29="@(#)M_CLI2::locate_c(3f): find PLACE in sorted character array where VALUE can be found or should be placed"
 
 character(len=*),intent(in)             :: value
 integer,intent(out)                     :: place
@@ -7062,7 +6954,7 @@ end subroutine locate_c
 !!    Public Domain
 subroutine remove_c(list,place)
 
-! ident_30="@(#) M_CLI2 remove_c(3fp) remove string from allocatable string array at specified position"
+! ident_30="@(#)M_CLI2::remove_c(3fp): remove string from allocatable string array at specified position"
 
 character(len=:),allocatable :: list(:)
 integer,intent(in)           :: place
@@ -7081,7 +6973,7 @@ integer                      :: ii, end
 end subroutine remove_c
 subroutine remove_l(list,place)
 
-! ident_31="@(#) M_CLI2 remove_l(3fp) remove value from allocatable array at specified position"
+! ident_31="@(#)M_CLI2::remove_l(3fp): remove value from allocatable array at specified position"
 
 logical,allocatable    :: list(:)
 integer,intent(in)     :: place
@@ -7101,7 +6993,7 @@ integer                :: end
 end subroutine remove_l
 subroutine remove_i(list,place)
 
-! ident_32="@(#) M_CLI2 remove_i(3fp) remove value from allocatable array at specified position"
+! ident_32="@(#)M_CLI2::remove_i(3fp): remove value from allocatable array at specified position"
 integer,allocatable    :: list(:)
 integer,intent(in)     :: place
 integer                :: end
@@ -7216,7 +7108,7 @@ end subroutine remove_i
 !!    Public Domain
 subroutine replace_c(list,value,place)
 
-! ident_33="@(#) M_CLI2 replace_c(3fp) replace string in allocatable string array at specified position"
+! ident_33="@(#)M_CLI2::replace_c(3fp): replace string in allocatable string array at specified position"
 
 character(len=*),intent(in)  :: value
 character(len=:),allocatable :: list(:)
@@ -7243,7 +7135,7 @@ integer                      :: end
 end subroutine replace_c
 subroutine replace_l(list,value,place)
 
-! ident_34="@(#) M_CLI2 replace_l(3fp) place value into allocatable array at specified position"
+! ident_34="@(#)M_CLI2::replace_l(3fp): place value into allocatable array at specified position"
 
 logical,allocatable   :: list(:)
 logical,intent(in)    :: value
@@ -7263,7 +7155,7 @@ integer               :: end
 end subroutine replace_l
 subroutine replace_i(list,value,place)
 
-! ident_35="@(#) M_CLI2 replace_i(3fp) place value into allocatable array at specified position"
+! ident_35="@(#)M_CLI2::replace_i(3fp): place value into allocatable array at specified position"
 
 integer,intent(in)    :: value
 integer,allocatable   :: list(:)
@@ -7370,7 +7262,7 @@ end subroutine replace_i
 !!    Public Domain
 subroutine insert_c(list,value,place)
 
-! ident_36="@(#) M_CLI2 insert_c(3fp) place string into allocatable string array at specified position"
+! ident_36="@(#)M_CLI2::insert_c(3fp): place string into allocatable string array at specified position"
 
 character(len=*),intent(in)  :: value
 character(len=:),allocatable :: list(:)
@@ -7404,7 +7296,7 @@ integer                      :: end
 end subroutine insert_c
 subroutine insert_l(list,value,place)
 
-! ident_37="@(#) M_CLI2 insert_l(3fp) place value into allocatable array at specified position"
+! ident_37="@(#)M_CLI2::insert_l(3fp): place value into allocatable array at specified position"
 
 logical,allocatable   :: list(:)
 logical,intent(in)    :: value
@@ -7429,7 +7321,7 @@ integer               :: end
 end subroutine insert_l
 subroutine insert_i(list,value,place)
 
-! ident_38="@(#) M_CLI2 insert_i(3fp) place value into allocatable array at specified position"
+! ident_38="@(#)M_CLI2::insert_i(3fp): place value into allocatable array at specified position"
 
 integer,allocatable   :: list(:)
 integer,intent(in)    :: value
@@ -7459,7 +7351,7 @@ subroutine many_args(n0,g0, n1,g1, n2,g2, n3,g3, n4,g4, n5,g5, n6,g6, n7,g7, n8,
                    & na,ga, nb,gb, nc,gc, nd,gd, ne,ge, nf,gf, ng,gg, nh,gh, ni,gi, nj,gj )
 implicit none
 
-! ident_39="@(#) M_CLI2 many_args(3fp) allow for multiple calls to get_args(3f)"
+! ident_39="@(#)M_CLI2::many_args(3fp): allow for multiple calls to get_args(3f)"
 
 character(len=*),intent(in)          :: n0, n1
 character(len=*),intent(in),optional ::         n2, n3, n4, n5, n6, n7, n8, n9, na, nb, nc, nd, ne, nf, ng, nh, ni, nj
@@ -7531,12 +7423,7 @@ function lget(n); logical                      :: lget; character(len=*),intent(
 function igs(n); integer,allocatable          :: igs(:); character(len=*),intent(in) :: n; call get_args(n,igs); end function igs
 function rgs(n); real,allocatable             :: rgs(:); character(len=*),intent(in) :: n; call get_args(n,rgs); end function rgs
 function dgs(n); real(kind=dp),allocatable    :: dgs(:); character(len=*),intent(in) :: n; call get_args(n,dgs); end function dgs
-function sgs(n,delims)
-character(len=:),allocatable         :: sgs(:)
-character(len=*),optional,intent(in) :: delims
-character(len=*),intent(in)          :: n
-   call get_args(n,sgs,delims)
-end function sgs
+function sgs(n); character(len=:),allocatable :: sgs(:); character(len=*),intent(in) :: n; call get_args(n,sgs); end function sgs
 function cgs(n); complex,allocatable          :: cgs(:); character(len=*),intent(in) :: n; call get_args(n,cgs); end function cgs
 function lgs(n); logical,allocatable          :: lgs(:); character(len=*),intent(in) :: n; call get_args(n,lgs); end function lgs
 !===================================================================================================================================
@@ -7604,25 +7491,18 @@ real(kind=dp)       :: rc, ic
    enddo
 end function cg
 !===================================================================================================================================
-! Does not work with gcc 5.3
-!function sg()
-!character(len=:),allocatable :: sg(:)
-!   sg=unnamed
-!end function sg
-
 function sg()
 character(len=:),allocatable :: sg(:)
-   if(allocated(sg))deallocate(sg)
-   allocate(sg,source=unnamed)
+   sg=unnamed
 end function sg
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
 subroutine mystop(sig,msg)
 ! negative signal means always stop program
-! else do not stop and set G_STOP_MESSAGE if G_QUIET is true
+! else do not stop and set G_STOP_MESSAGE if G_STOPON is false
 ! or
-! print message and stop if G_QUIET is false
+! print message and stop if G_STOPON is true
 ! the MSG is NOT for displaying except for internal errors when the program will be stopped.
 ! It is for returning a value when the stop is being ignored
 !
@@ -7633,7 +7513,7 @@ character(len=*),intent(in),optional :: msg
       if(present(msg))call journal('sc',msg)
       !x!stop abs(sig)
       stop 1
-   elseif(.not.G_QUIET)then
+   elseif(G_STOPON)then
       stop
    else
       if(present(msg)) then
@@ -7650,7 +7530,7 @@ end subroutine mystop
 !===================================================================================================================================
 function atleast(line,length,pattern) result(strout)
 
-! ident_40="@(#) M_strings atleast(3f) return string padded to at least specified length"
+! ident_40="@(#)M_strings::atleast(3f): return string padded to at least specified length"
 
 character(len=*),intent(in)                :: line
 integer,intent(in)                         :: length
@@ -7667,7 +7547,7 @@ end function atleast
 !===================================================================================================================================
 subroutine locate_key(value,place)
 
-! ident_41="@(#) M_CLI2 locate_key(3f) find PLACE in sorted character array where VALUE can be found or should be placed"
+! ident_41="@(#)M_CLI2::locate_key(3f): find PLACE in sorted character array where VALUE can be found or should be placed"
 
 character(len=*),intent(in)             :: value
 integer,intent(out)                     :: place
@@ -10865,6 +10745,8 @@ character(len=80), parameter :: help_text_compiler(*) = [character(len=80) :: &
     '                    unless set by the environment variable FPM_FC.              ',&
     ' --c-compiler NAME  Specify the C compiler name. Automatically determined by    ',&
     '                    default unless set by the environment variable FPM_CC.      ',&
+    ' --cxx-compiler NAME  Specify the C++ compiler name. Automatically determined by',&
+    '                    default unless set by the environment variable FPM_CXX.     ',&
     ' --archiver NAME    Specify the archiver name. Automatically determined by      ',&
     '                    default unless set by the environment variable FPM_AR.      '&
     ]
@@ -10879,6 +10761,9 @@ character(len=80), parameter :: help_text_flag(*) = [character(len=80) :: &
     ' --c-flag CFLAGS   selects compile arguments specific for C source in the build.',&
     '                   The default value is set by the FPM_CFLAGS environment       ',&
     '                   variable.                                                    ',&
+    ' --cxx-flag CFLAGS selects compile arguments specific for C++ source in the     ',&
+    '                   build. The default value is set by the FPM_CXXFLAGS          ',&
+    '                   environment variable.                                        ',&
     ' --link-flag LDFLAGS  select arguments passed to the linker for the build. The  ',&
     '                   default value is set by the FPM_LDFLAGS environment variable.'&
     ]
@@ -10897,6 +10782,12 @@ character(len=80), parameter :: help_text_environment(*) = [character(len=80) ::
     '', &
     ' FPM_CFLAGS        sets the arguments for the C compiler', &
     '                   will be overwritten by --c-flag command line option', &
+    '', &
+    ' FPM_CXX           sets the path to the C++ compiler used for the build,', &
+    '                   will be overwritten by --cxx-compiler command line option', &
+    '', &
+    ' FPM_CXXFLAGS      sets the arguments for the C++ compiler', &
+    '                   will be overwritten by --cxx-flag command line option', &
     '', &
     ' FPM_AR            sets the path to the archiver used for the build,', &
     '                   will be overwritten by --archiver command line option', &
@@ -10940,7 +10831,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.6.0, alpha',                               &
+         &  'Version:     0.7.0, alpha',                               &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -12762,6 +12653,84 @@ end function match_key
 end module tomlf_type_value
  
  
+!>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> TOML key-value pair
+module tomlf_type_keyval
+   use tomlf_constants, only : tfc
+   use tomlf_type_value, only : toml_value, toml_visitor
+   implicit none
+   private
+
+   public :: toml_keyval, new_keyval, new
+
+
+   !> TOML key-value pair
+   type, extends(toml_value) :: toml_keyval
+
+      !> Raw content of the TOML value
+      character(kind=tfc, len=:), allocatable :: raw
+
+   contains
+
+      !> Release allocation hold by TOML key-value pair
+      procedure :: destroy
+
+   end type toml_keyval
+
+
+   !> Overloaded constructor for TOML values
+   interface new
+      module procedure :: new_keyval
+   end interface
+
+
+contains
+
+
+!> Constructor to create a new TOML key-value pair
+subroutine new_keyval(self)
+
+   !> Instance of the TOML key-value pair
+   type(toml_keyval), intent(out) :: self
+
+   associate(self => self); end associate
+
+end subroutine new_keyval
+
+
+!> Deconstructor to cleanup allocations (optional)
+subroutine destroy(self)
+
+   !> Instance of the TOML key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   if (allocated(self%key)) then
+      deallocate(self%key)
+   end if
+
+   if (allocated(self%raw)) then
+      deallocate(self%raw)
+   end if
+
+end subroutine destroy
+
+
+end module tomlf_type_keyval
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/base.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -12948,84 +12917,6 @@ module tomlf_structure_base
 
 
 end module tomlf_structure_base
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> TOML key-value pair
-module tomlf_type_keyval
-   use tomlf_constants, only : tfc
-   use tomlf_type_value, only : toml_value, toml_visitor
-   implicit none
-   private
-
-   public :: toml_keyval, new_keyval, new
-
-
-   !> TOML key-value pair
-   type, extends(toml_value) :: toml_keyval
-
-      !> Raw content of the TOML value
-      character(kind=tfc, len=:), allocatable :: raw
-
-   contains
-
-      !> Release allocation hold by TOML key-value pair
-      procedure :: destroy
-
-   end type toml_keyval
-
-
-   !> Overloaded constructor for TOML values
-   interface new
-      module procedure :: new_keyval
-   end interface
-
-
-contains
-
-
-!> Constructor to create a new TOML key-value pair
-subroutine new_keyval(self)
-
-   !> Instance of the TOML key-value pair
-   type(toml_keyval), intent(out) :: self
-
-   associate(self => self); end associate
-
-end subroutine new_keyval
-
-
-!> Deconstructor to cleanup allocations (optional)
-subroutine destroy(self)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   if (allocated(self%key)) then
-      deallocate(self%key)
-   end if
-
-   if (allocated(self%raw)) then
-      deallocate(self%raw)
-   end if
-
-end subroutine destroy
-
-
-end module tomlf_type_keyval
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/sort.f90
@@ -14821,604 +14712,6 @@ end subroutine resize
 end module tomlf_ser
  
  
-!>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Functions to build a TOML values
-!>
-!> The build module defines an interface to work with TOML values instead
-!> of accessing the raw value directly. Both setter and getter routines defined
-!> here are rarely needed in any user context, but serve as a basic building
-!> block to define uniform access methods for TOML tables and arrays.
-module tomlf_build_keyval
-   use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
-      & tf_sp, tf_dp, TOML_NEWLINE
-   use tomlf_error, only : toml_stat
-   use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
-      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
-   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
-      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp, &
-      & toml_raw_verify_string, toml_escape_string
-   implicit none
-   private
-
-   public :: get_value, set_value
-
-
-   !> Setter functions to manipulate TOML values
-   interface set_value
-      module procedure :: set_value_float_sp
-      module procedure :: set_value_float_dp
-      module procedure :: set_value_integer_i1
-      module procedure :: set_value_integer_i2
-      module procedure :: set_value_integer_i4
-      module procedure :: set_value_integer_i8
-      module procedure :: set_value_bool
-      module procedure :: set_value_string
-   end interface set_value
-
-
-   !> Getter functions to manipulate TOML values
-   interface get_value
-      module procedure :: get_value_float_sp
-      module procedure :: get_value_float_dp
-      module procedure :: get_value_integer_i1
-      module procedure :: get_value_integer_i2
-      module procedure :: get_value_integer_i4
-      module procedure :: get_value_integer_i8
-      module procedure :: get_value_bool
-      module procedure :: get_value_string
-   end interface get_value
-
-
-   !> Length for the static character variables
-   integer, parameter :: buffersize = 128
-
-
-contains
-
-
-!> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_value_float_sp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Real value
-   real(tf_sp), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   real(tfr) :: dummy
-
-   istat = toml_raw_to_float(self%raw, dummy)
-   if (istat) then
-      val = real(dummy, tf_sp)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_float_sp
-
-
-!> Retrieve TOML value as double precision float
-subroutine get_value_float_dp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Real value
-   real(tf_dp), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   real(tfr) :: dummy
-
-   istat = toml_raw_to_float(self%raw, dummy)
-   if (istat) then
-      val = real(dummy, tf_dp)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_float_dp
-
-
-!> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_value_integer_i1(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i1), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i1)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i1
-
-
-!> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_value_integer_i2(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i2), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i2)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i2
-
-
-!> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_value_integer_i4(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i4), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i4)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i4
-
-
-!> Retrieve TOML value as eight byte integer
-subroutine get_value_integer_i8(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i8), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i8)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i8
-
-
-!> Retrieve TOML value as logical
-subroutine get_value_bool(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Boolean value
-   logical, intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-
-   istat = toml_raw_to_bool(self%raw, val)
-   if (istat) then
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_bool
-
-
-!> Retrieve TOML value as deferred-length character
-subroutine get_value_string(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> String value
-   character(kind=tfc, len=:), allocatable, intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-
-   istat = toml_raw_to_string(self%raw, val)
-   if (istat) then
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_string
-
-
-!> Set TOML value to single precision float
-subroutine set_value_float_sp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Real value
-   real(tf_sp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(es30.6)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_float_sp
-
-
-!> Set TOML value to double precision float
-subroutine set_value_float_dp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Real value
-   real(tf_dp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(es30.16)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_float_dp
-
-
-!> Set TOML value to one byte integer
-subroutine set_value_integer_i1(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i1), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i1
-
-
-!> Set TOML value to two byte integer
-subroutine set_value_integer_i2(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i2), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i2
-
-
-!> Set TOML value to four byte integer
-subroutine set_value_integer_i4(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i4), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i4
-
-
-!> Set TOML value to eight byte integer
-subroutine set_value_integer_i8(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i8), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i8
-
-
-!> Set TOML value to logical
-subroutine set_value_bool(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Boolean value
-   logical, intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   if (val) then
-      self%raw = 'true'
-   else
-      self%raw = 'false'
-   end if
-
-   if (present(stat)) stat = toml_stat%success
-
-end subroutine set_value_bool
-
-
-!> Set TOML value to deferred-length character
-subroutine set_value_string(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> String value
-   character(kind=tfc, len=*), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(len=:), allocatable :: escaped
-
-   if (toml_raw_verify_string(val)) then
-      self%raw = val
-   else
-      call toml_escape_string(val, self%raw, .true.)
-   end if
-
-   if (present(stat)) stat = toml_stat%success
-
-end subroutine set_value_string
-
-
-end module tomlf_build_keyval
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Merge TOML data structures.
-!>
-!> Merge policy:
-!> - copy key-value pair in case it is not present in table
-!> - copy subtable in case it is not present in table
-!> - copy array in case it is not present in table
-!> - merge subtable in case it is present in table
-!> - append array in case it is present in table
-module tomlf_build_merge
-   use tomlf_constants, only : tfc
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
-      & toml_key, len
-   implicit none
-   private
-
-   public :: merge_table, merge_array
-
-
-contains
-
-
-!> Merge TOML tables by appending their values
-recursive subroutine merge_table(lhs, rhs)
-
-   !> Instance of table to merge into
-   class(toml_table), intent(inout) :: lhs
-
-   !> Instance of table to be merged
-   class(toml_table), intent(inout) :: rhs
-
-   type(toml_key), allocatable :: list(:)
-   class(toml_value), pointer :: ptr1, ptr2
-   class(toml_value), allocatable :: tmp
-   logical :: has_key
-   integer :: i, n, stat
-
-   call rhs%get_keys(list)
-   n = size(list, 1)
-
-   do i = 1, n
-      if (allocated(tmp)) deallocate(tmp)
-      call rhs%get(list(i)%key, ptr1)
-      has_key = lhs%has_key(list(i)%key)
-      select type(ptr1)
-      class is(toml_keyval)
-         if (.not.has_key) then
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_array)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_array)
-               call merge_array(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_table)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_table)
-               call merge_table(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      end select
-   end do
-
-end subroutine merge_table
-
-
-!> Append values from one TOML array to another
-recursive subroutine merge_array(lhs, rhs)
-
-   !> Instance of array to merge into
-   class(toml_array), intent(inout) :: lhs
-
-   !> Instance of array to be merged
-   class(toml_array), intent(inout) :: rhs
-
-   class(toml_value), pointer :: ptr
-   class(toml_value), allocatable :: tmp
-   integer :: n, i, stat
-
-   n = len(rhs)
-
-   do i = 1, n
-      call rhs%get(i, ptr)
-      if (allocated(tmp)) deallocate(tmp)
-      allocate(tmp, source=ptr)
-      call lhs%push_back(tmp, stat)
-   end do
-
-end subroutine merge_array
-
-
-end module tomlf_build_merge
- 
- 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/tokenizer.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -16165,6 +15458,909 @@ end subroutine next
 
 
 end module tomlf_de_tokenizer
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Functions to build a TOML values
+!>
+!> The build module defines an interface to work with TOML values instead
+!> of accessing the raw value directly. Both setter and getter routines defined
+!> here are rarely needed in any user context, but serve as a basic building
+!> block to define uniform access methods for TOML tables and arrays.
+module tomlf_build_keyval
+   use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
+      & tf_sp, tf_dp, TOML_NEWLINE
+   use tomlf_error, only : toml_stat
+   use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
+      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
+   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
+      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp, &
+      & toml_raw_verify_string, toml_escape_string
+   implicit none
+   private
+
+   public :: get_value, set_value
+
+
+   !> Setter functions to manipulate TOML values
+   interface set_value
+      module procedure :: set_value_float_sp
+      module procedure :: set_value_float_dp
+      module procedure :: set_value_integer_i1
+      module procedure :: set_value_integer_i2
+      module procedure :: set_value_integer_i4
+      module procedure :: set_value_integer_i8
+      module procedure :: set_value_bool
+      module procedure :: set_value_string
+   end interface set_value
+
+
+   !> Getter functions to manipulate TOML values
+   interface get_value
+      module procedure :: get_value_float_sp
+      module procedure :: get_value_float_dp
+      module procedure :: get_value_integer_i1
+      module procedure :: get_value_integer_i2
+      module procedure :: get_value_integer_i4
+      module procedure :: get_value_integer_i8
+      module procedure :: get_value_bool
+      module procedure :: get_value_string
+   end interface get_value
+
+
+   !> Length for the static character variables
+   integer, parameter :: buffersize = 128
+
+
+contains
+
+
+!> Retrieve TOML value as single precision float (might lose accuracy)
+subroutine get_value_float_sp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Real value
+   real(tf_sp), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   real(tfr) :: dummy
+
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
+      val = real(dummy, tf_sp)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_float_sp
+
+
+!> Retrieve TOML value as double precision float
+subroutine get_value_float_dp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Real value
+   real(tf_dp), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   real(tfr) :: dummy
+
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
+      val = real(dummy, tf_dp)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_float_dp
+
+
+!> Retrieve TOML value as one byte integer (might loose precision)
+subroutine get_value_integer_i1(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i1), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i1)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i1
+
+
+!> Retrieve TOML value as two byte integer (might loose precision)
+subroutine get_value_integer_i2(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i2), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i2)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i2
+
+
+!> Retrieve TOML value as four byte integer (might loose precision)
+subroutine get_value_integer_i4(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i4), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i4)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i4
+
+
+!> Retrieve TOML value as eight byte integer
+subroutine get_value_integer_i8(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i8), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i8)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i8
+
+
+!> Retrieve TOML value as logical
+subroutine get_value_bool(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Boolean value
+   logical, intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+
+   istat = toml_raw_to_bool(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_bool
+
+
+!> Retrieve TOML value as deferred-length character
+subroutine get_value_string(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> String value
+   character(kind=tfc, len=:), allocatable, intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+
+   istat = toml_raw_to_string(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_string
+
+
+!> Set TOML value to single precision float
+subroutine set_value_float_sp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Real value
+   real(tf_sp), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(es30.6)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_float_sp
+
+
+!> Set TOML value to double precision float
+subroutine set_value_float_dp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Real value
+   real(tf_dp), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(es30.16)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_float_dp
+
+
+!> Set TOML value to one byte integer
+subroutine set_value_integer_i1(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i1), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i1
+
+
+!> Set TOML value to two byte integer
+subroutine set_value_integer_i2(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i2), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i2
+
+
+!> Set TOML value to four byte integer
+subroutine set_value_integer_i4(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i4), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i4
+
+
+!> Set TOML value to eight byte integer
+subroutine set_value_integer_i8(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i8), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i8
+
+
+!> Set TOML value to logical
+subroutine set_value_bool(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Boolean value
+   logical, intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   if (val) then
+      self%raw = 'true'
+   else
+      self%raw = 'false'
+   end if
+
+   if (present(stat)) stat = toml_stat%success
+
+end subroutine set_value_bool
+
+
+!> Set TOML value to deferred-length character
+subroutine set_value_string(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> String value
+   character(kind=tfc, len=*), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(len=:), allocatable :: escaped
+
+   if (toml_raw_verify_string(val)) then
+      self%raw = val
+   else
+      call toml_escape_string(val, self%raw, .true.)
+   end if
+
+   if (present(stat)) stat = toml_stat%success
+
+end subroutine set_value_string
+
+
+end module tomlf_build_keyval
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Merge TOML data structures.
+!>
+!> Merge policy:
+!> - copy key-value pair in case it is not present in table
+!> - copy subtable in case it is not present in table
+!> - copy array in case it is not present in table
+!> - merge subtable in case it is present in table
+!> - append array in case it is present in table
+module tomlf_build_merge
+   use tomlf_constants, only : tfc
+   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
+      & toml_key, len
+   implicit none
+   private
+
+   public :: merge_table, merge_array
+
+
+contains
+
+
+!> Merge TOML tables by appending their values
+recursive subroutine merge_table(lhs, rhs)
+
+   !> Instance of table to merge into
+   class(toml_table), intent(inout) :: lhs
+
+   !> Instance of table to be merged
+   class(toml_table), intent(inout) :: rhs
+
+   type(toml_key), allocatable :: list(:)
+   class(toml_value), pointer :: ptr1, ptr2
+   class(toml_value), allocatable :: tmp
+   logical :: has_key
+   integer :: i, n, stat
+
+   call rhs%get_keys(list)
+   n = size(list, 1)
+
+   do i = 1, n
+      if (allocated(tmp)) deallocate(tmp)
+      call rhs%get(list(i)%key, ptr1)
+      has_key = lhs%has_key(list(i)%key)
+      select type(ptr1)
+      class is(toml_keyval)
+         if (.not.has_key) then
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_array)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_array)
+               call merge_array(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_table)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_table)
+               call merge_table(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      end select
+   end do
+
+end subroutine merge_table
+
+
+!> Append values from one TOML array to another
+recursive subroutine merge_array(lhs, rhs)
+
+   !> Instance of array to merge into
+   class(toml_array), intent(inout) :: lhs
+
+   !> Instance of array to be merged
+   class(toml_array), intent(inout) :: rhs
+
+   class(toml_value), pointer :: ptr
+   class(toml_value), allocatable :: tmp
+   integer :: n, i, stat
+
+   n = len(rhs)
+
+   do i = 1, n
+      call rhs%get(i, ptr)
+      if (allocated(tmp)) deallocate(tmp)
+      allocate(tmp, source=ptr)
+      call lhs%push_back(tmp, stat)
+   end do
+
+end subroutine merge_array
+
+
+end module tomlf_build_merge
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Implementation of a tokenizer for character variables
+module tomlf_de_character
+   use tomlf_constants
+   use tomlf_error, only : syntax_error
+   use tomlf_de_tokenizer
+   use tomlf_utils
+   implicit none
+   private
+
+   public :: toml_character_tokenizer, new_character_tokenizer, new
+
+
+   !> Tokenizer for a sequence of characters
+   type, extends(toml_tokenizer) :: toml_character_tokenizer
+
+      !> Link to the input configuration.
+      character(len=:), pointer :: conf
+
+   contains
+
+      !> Return next token
+      procedure :: next_token
+
+   end type toml_character_tokenizer
+
+
+   interface new
+      module procedure :: new_character_tokenizer
+   end interface new
+
+
+contains
+
+
+!> Constructor for the deserializer implementation.
+subroutine new_character_tokenizer(de, conf)
+   type(toml_character_tokenizer), intent(out) :: de
+   character(len=*), intent(in), target :: conf
+   !> connect deserializer to configuration
+   de%conf => conf
+   de%line%ptr => conf
+   de%line%num = 1
+   !> first token is an artifical newline
+   de%tok = new_token(toml_tokentype%newline, de%conf, 0)
+end subroutine new_character_tokenizer
+
+
+!> Return next token
+subroutine next_token(de, dot_is_token)
+
+   !> Instance of the tokenizer
+   class(toml_character_tokenizer), intent(inout) :: de
+
+   !> Dot should be handled as token
+   logical, intent(in) :: dot_is_token
+
+   character(len=:), pointer :: ptr
+   integer :: i, skip
+   if (de%finished) return
+   ptr => de%tok%ptr
+
+   !> consume token
+   do i = 1, de%tok%len
+      de%line%pos = de%line%pos + 1
+      if (ptr(i:i) == TOML_NEWLINE) then
+         de%line%ptr => ptr(min(i+1, len(ptr)):)
+         de%line%num = de%line%num+1
+         de%line%pos = 1
+      end if
+   end do
+   ptr => ptr(de%tok%len+1:)
+
+   !> make next token
+   do while(len(ptr) > 0)
+      select case(ptr(1:1))
+      case('#')
+         i = index(ptr, TOML_NEWLINE)
+         if (i > 0) then
+            ptr => ptr(i:)
+            cycle
+         end if
+         exit
+      case('.')
+         if (dot_is_token) then
+            de%tok = new_token(toml_tokentype%dot, ptr, 1)
+            return
+         end if
+      case(','); de%tok = new_token(toml_tokentype%comma, ptr, 1); return
+      case('='); de%tok = new_token(toml_tokentype%equal, ptr, 1); return
+      case('{'); de%tok = new_token(toml_tokentype%lbrace, ptr, 1); return
+      case('}'); de%tok = new_token(toml_tokentype%rbrace, ptr, 1); return
+      case('['); de%tok = new_token(toml_tokentype%lbracket, ptr, 1); return
+      case(']'); de%tok = new_token(toml_tokentype%rbracket, ptr, 1); return
+      case(TOML_NEWLINE); de%tok = new_token(toml_tokentype%newline, ptr, 1); return
+      case(' ', char(9));
+         skip = verify(ptr, TOML_WHITESPACE)-1
+         de%tok = new_token(toml_tokentype%whitespace, ptr, skip)
+         return
+      end select
+
+      call scan_string(de, ptr, dot_is_token)
+      return
+   end do
+
+   !> return with EOF token
+   de%finished = .true.
+   de%tok = new_token(toml_tokentype%newline, ptr, 0)
+
+contains
+
+   subroutine scan_string(de, ptr, dot_is_token)
+   class(toml_character_tokenizer), intent(inout) :: de
+   character(len=:), pointer, intent(inout) :: ptr
+   logical, intent(in) :: dot_is_token
+   character(len=:), pointer :: orig
+   integer :: i, skip
+   integer :: hexreq
+   integer :: qcount
+   logical :: escape
+   orig => ptr
+
+   if (len(ptr) >= 6) then
+      if (ptr(1:3) == repeat(TOML_SQUOTE, 3)) then
+         ptr => ptr(4:)
+         i = index(ptr, repeat(TOML_SQUOTE, 3))
+         if (i == 0) then
+            call syntax_error(de%error, de%line, "unterminated triple-s-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, i+5)
+         return
+      end if
+
+      if (ptr(1:3) == repeat(TOML_DQUOTE, 3)) then
+         ptr => ptr(4:)
+         escape = .false.
+         hexreq = 0
+         qcount = 0
+         do i = 1, len(ptr)
+            if (escape) then
+               escape = .false.
+               if (ptr(i:i) == 'u') then
+                  hexreq = 4
+                  cycle
+               end if
+               if (ptr(i:i) == 'U') then
+                  hexreq = 8
+                  cycle
+               end if
+               if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+               ! allow for line ending backslash
+               skip = verify(ptr(i:), TOML_WHITESPACE)-1
+               if (ptr(i+skip:i+skip) == TOML_NEWLINE) cycle
+               call syntax_error(de%error, de%line, "bad escape char")
+               return
+            end if
+            if (hexreq > 0) then
+               hexreq = hexreq - 1
+               if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+               call syntax_error(de%error, de%line, "expect hex char")
+               return
+            end if
+            if (ptr(i:i) == TOML_DQUOTE) then
+               if (qcount < 5) then
+                  qcount = qcount + 1
+               else
+                  call syntax_error(de%error, de%line, "too many quotation marks")
+                  return
+               end if
+            else
+               if (qcount >= 3) then
+                  ptr => ptr(i:)
+                  exit
+               end if
+               qcount = 0
+            end if
+            if (ptr(i:i) == '\') then
+               escape = .true.
+               cycle
+            end if
+         end do
+         if (qcount < 3) then
+            call syntax_error(de%error, de%line, "unterminated triple-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr))
+         return
+      end if
+   end if
+
+   if (ptr(1:1) == TOML_SQUOTE) then
+      ptr => ptr(2:)
+      i = index(ptr, TOML_NEWLINE)
+      if (i == 0) i = len(ptr)
+      i = index(ptr(:i), TOML_SQUOTE)
+      if (i == 0) then
+         call syntax_error(de%error, de%line, "unterminated s-quote")
+         return
+      end if
+
+      de%tok = new_token(toml_tokentype%string, orig, i+1)
+      return
+   end if
+
+   if (ptr(1:1) == TOML_DQUOTE) then
+      ptr => ptr(2:)
+      escape = .false.
+      hexreq = 0
+      do i = 1, len(ptr)
+         if (escape) then
+            escape = .false.
+            if (ptr(i:i) == 'u') then
+               hexreq = 4
+               cycle
+            end if
+            if (ptr(i:i) == 'U') then
+               hexreq = 8
+               cycle
+            end if
+            if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+            call syntax_error(de%error, de%line, "bad escape char")
+            return
+         end if
+         if (hexreq > 0) then
+            hexreq = hexreq - 1
+            if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+            call syntax_error(de%error, de%line, "expect hex char")
+            return
+         end if
+         if (ptr(i:i) == '\') then
+            escape = .true.
+            cycle
+         end if
+         if (ptr(i:i) == TOML_NEWLINE) then
+            ptr => ptr(i:)
+            exit
+         end if
+         if (ptr(i:i) == TOML_DQUOTE) then
+            ptr => ptr(i:)
+            exit
+         end if
+      end do
+      if (ptr(1:1) /= TOML_DQUOTE) then
+            call syntax_error(de%error, de%line, "expect hex char")
+         return
+      end if
+
+      de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr)+1)
+      return
+   end if
+
+   if (toml_raw_verify_date(ptr) .or. toml_raw_verify_time(ptr)) then
+      i = verify(ptr, TOML_TIMESTAMP)-1
+      if (i < 0) i = len(ptr)
+      de%tok = new_token(toml_tokentype%string, orig, i)
+      return
+   end if
+
+   do i = 1, len(ptr)
+      if (ptr(i:i) == '.' .and. dot_is_token) then
+         ptr => ptr(i:)
+         exit
+      end if
+      if (verify(ptr(i:i), TOML_LITERALS) == 0) cycle
+      ptr => ptr(i:)
+      exit
+   end do
+
+   de%tok = new_token(toml_tokentype%string, orig, len(orig) - len(ptr))
+
+end subroutine scan_string
+
+end subroutine next_token
+
+
+!> custom constructor to get pointer assignment right
+type(toml_token) function new_token(tok, ptr, len)
+   integer, intent(in) :: tok
+   character(len=:), pointer, intent(in) :: ptr
+   integer, intent(in) :: len
+   new_token%tok = tok
+   new_token%ptr => ptr
+   new_token%len = len
+end function new_token
+
+
+end module tomlf_de_character
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
@@ -18056,311 +18252,6 @@ end subroutine set_child_value_string
 end module tomlf_build_table
  
  
-!>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Implementation of a tokenizer for character variables
-module tomlf_de_character
-   use tomlf_constants
-   use tomlf_error, only : syntax_error
-   use tomlf_de_tokenizer
-   use tomlf_utils
-   implicit none
-   private
-
-   public :: toml_character_tokenizer, new_character_tokenizer, new
-
-
-   !> Tokenizer for a sequence of characters
-   type, extends(toml_tokenizer) :: toml_character_tokenizer
-
-      !> Link to the input configuration.
-      character(len=:), pointer :: conf
-
-   contains
-
-      !> Return next token
-      procedure :: next_token
-
-   end type toml_character_tokenizer
-
-
-   interface new
-      module procedure :: new_character_tokenizer
-   end interface new
-
-
-contains
-
-
-!> Constructor for the deserializer implementation.
-subroutine new_character_tokenizer(de, conf)
-   type(toml_character_tokenizer), intent(out) :: de
-   character(len=*), intent(in), target :: conf
-   !> connect deserializer to configuration
-   de%conf => conf
-   de%line%ptr => conf
-   de%line%num = 1
-   !> first token is an artifical newline
-   de%tok = new_token(toml_tokentype%newline, de%conf, 0)
-end subroutine new_character_tokenizer
-
-
-!> Return next token
-subroutine next_token(de, dot_is_token)
-
-   !> Instance of the tokenizer
-   class(toml_character_tokenizer), intent(inout) :: de
-
-   !> Dot should be handled as token
-   logical, intent(in) :: dot_is_token
-
-   character(len=:), pointer :: ptr
-   integer :: i, skip
-   if (de%finished) return
-   ptr => de%tok%ptr
-
-   !> consume token
-   do i = 1, de%tok%len
-      de%line%pos = de%line%pos + 1
-      if (ptr(i:i) == TOML_NEWLINE) then
-         de%line%ptr => ptr(min(i+1, len(ptr)):)
-         de%line%num = de%line%num+1
-         de%line%pos = 1
-      end if
-   end do
-   ptr => ptr(de%tok%len+1:)
-
-   !> make next token
-   do while(len(ptr) > 0)
-      select case(ptr(1:1))
-      case('#')
-         i = index(ptr, TOML_NEWLINE)
-         if (i > 0) then
-            ptr => ptr(i:)
-            cycle
-         end if
-         exit
-      case('.')
-         if (dot_is_token) then
-            de%tok = new_token(toml_tokentype%dot, ptr, 1)
-            return
-         end if
-      case(','); de%tok = new_token(toml_tokentype%comma, ptr, 1); return
-      case('='); de%tok = new_token(toml_tokentype%equal, ptr, 1); return
-      case('{'); de%tok = new_token(toml_tokentype%lbrace, ptr, 1); return
-      case('}'); de%tok = new_token(toml_tokentype%rbrace, ptr, 1); return
-      case('['); de%tok = new_token(toml_tokentype%lbracket, ptr, 1); return
-      case(']'); de%tok = new_token(toml_tokentype%rbracket, ptr, 1); return
-      case(TOML_NEWLINE); de%tok = new_token(toml_tokentype%newline, ptr, 1); return
-      case(' ', char(9));
-         skip = verify(ptr, TOML_WHITESPACE)-1
-         de%tok = new_token(toml_tokentype%whitespace, ptr, skip)
-         return
-      end select
-
-      call scan_string(de, ptr, dot_is_token)
-      return
-   end do
-
-   !> return with EOF token
-   de%finished = .true.
-   de%tok = new_token(toml_tokentype%newline, ptr, 0)
-
-contains
-
-   subroutine scan_string(de, ptr, dot_is_token)
-   class(toml_character_tokenizer), intent(inout) :: de
-   character(len=:), pointer, intent(inout) :: ptr
-   logical, intent(in) :: dot_is_token
-   character(len=:), pointer :: orig
-   integer :: i, skip
-   integer :: hexreq
-   integer :: qcount
-   logical :: escape
-   orig => ptr
-
-   if (len(ptr) >= 6) then
-      if (ptr(1:3) == repeat(TOML_SQUOTE, 3)) then
-         ptr => ptr(4:)
-         i = index(ptr, repeat(TOML_SQUOTE, 3))
-         if (i == 0) then
-            call syntax_error(de%error, de%line, "unterminated triple-s-quote")
-            return
-         end if
-
-         de%tok = new_token(toml_tokentype%string, orig, i+5)
-         return
-      end if
-
-      if (ptr(1:3) == repeat(TOML_DQUOTE, 3)) then
-         ptr => ptr(4:)
-         escape = .false.
-         hexreq = 0
-         qcount = 0
-         do i = 1, len(ptr)
-            if (escape) then
-               escape = .false.
-               if (ptr(i:i) == 'u') then
-                  hexreq = 4
-                  cycle
-               end if
-               if (ptr(i:i) == 'U') then
-                  hexreq = 8
-                  cycle
-               end if
-               if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
-               ! allow for line ending backslash
-               skip = verify(ptr(i:), TOML_WHITESPACE)-1
-               if (ptr(i+skip:i+skip) == TOML_NEWLINE) cycle
-               call syntax_error(de%error, de%line, "bad escape char")
-               return
-            end if
-            if (hexreq > 0) then
-               hexreq = hexreq - 1
-               if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
-               call syntax_error(de%error, de%line, "expect hex char")
-               return
-            end if
-            if (ptr(i:i) == TOML_DQUOTE) then
-               if (qcount < 5) then
-                  qcount = qcount + 1
-               else
-                  call syntax_error(de%error, de%line, "too many quotation marks")
-                  return
-               end if
-            else
-               if (qcount >= 3) then
-                  ptr => ptr(i:)
-                  exit
-               end if
-               qcount = 0
-            end if
-            if (ptr(i:i) == '\') then
-               escape = .true.
-               cycle
-            end if
-         end do
-         if (qcount < 3) then
-            call syntax_error(de%error, de%line, "unterminated triple-quote")
-            return
-         end if
-
-         de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr))
-         return
-      end if
-   end if
-
-   if (ptr(1:1) == TOML_SQUOTE) then
-      ptr => ptr(2:)
-      i = index(ptr, TOML_NEWLINE)
-      if (i == 0) i = len(ptr)
-      i = index(ptr(:i), TOML_SQUOTE)
-      if (i == 0) then
-         call syntax_error(de%error, de%line, "unterminated s-quote")
-         return
-      end if
-
-      de%tok = new_token(toml_tokentype%string, orig, i+1)
-      return
-   end if
-
-   if (ptr(1:1) == TOML_DQUOTE) then
-      ptr => ptr(2:)
-      escape = .false.
-      hexreq = 0
-      do i = 1, len(ptr)
-         if (escape) then
-            escape = .false.
-            if (ptr(i:i) == 'u') then
-               hexreq = 4
-               cycle
-            end if
-            if (ptr(i:i) == 'U') then
-               hexreq = 8
-               cycle
-            end if
-            if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
-            call syntax_error(de%error, de%line, "bad escape char")
-            return
-         end if
-         if (hexreq > 0) then
-            hexreq = hexreq - 1
-            if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
-            call syntax_error(de%error, de%line, "expect hex char")
-            return
-         end if
-         if (ptr(i:i) == '\') then
-            escape = .true.
-            cycle
-         end if
-         if (ptr(i:i) == TOML_NEWLINE) then
-            ptr => ptr(i:)
-            exit
-         end if
-         if (ptr(i:i) == TOML_DQUOTE) then
-            ptr => ptr(i:)
-            exit
-         end if
-      end do
-      if (ptr(1:1) /= TOML_DQUOTE) then
-            call syntax_error(de%error, de%line, "expect hex char")
-         return
-      end if
-
-      de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr)+1)
-      return
-   end if
-
-   if (toml_raw_verify_date(ptr) .or. toml_raw_verify_time(ptr)) then
-      i = verify(ptr, TOML_TIMESTAMP)-1
-      if (i < 0) i = len(ptr)
-      de%tok = new_token(toml_tokentype%string, orig, i)
-      return
-   end if
-
-   do i = 1, len(ptr)
-      if (ptr(i:i) == '.' .and. dot_is_token) then
-         ptr => ptr(i:)
-         exit
-      end if
-      if (verify(ptr(i:i), TOML_LITERALS) == 0) cycle
-      ptr => ptr(i:)
-      exit
-   end do
-
-   de%tok = new_token(toml_tokentype%string, orig, len(orig) - len(ptr))
-
-end subroutine scan_string
-
-end subroutine next_token
-
-
-!> custom constructor to get pointer assignment right
-type(toml_token) function new_token(tok, ptr, len)
-   integer, intent(in) :: tok
-   character(len=:), pointer, intent(in) :: ptr
-   integer, intent(in) :: len
-   new_token%tok = tok
-   new_token%ptr => ptr
-   new_token%len = len
-end function new_token
-
-
-end module tomlf_de_character
- 
- 
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -19578,9 +19469,10 @@ end module fpm_mainfest_preprocess
 !>
 !> Each of the subtables currently supports the following fields:
 !>```toml
-!>[profile.debug.gfortran.linux]
+!>[profiles.debug.gfortran.linux]
 !> flags="-Wall -g -Og"
 !> c-flags="-g O1"
+!> cxx-flags="-g O1"
 !> link-time-flags="-xlinkopt"
 !> files={"hello_world.f90"="-Wall -O3"}
 !>```
@@ -19629,6 +19521,9 @@ module fpm_manifest_profile
       !> C compiler flags
       character(len=:), allocatable :: c_flags
 
+      !> C++ compiler flags
+      character(len=:), allocatable :: cxx_flags
+
       !> Link time compiler flags
       character(len=:), allocatable :: link_time_flags
 
@@ -19648,7 +19543,8 @@ module fpm_manifest_profile
     contains
 
       !> Construct a new profile configuration from a TOML data structure
-      function new_profile(profile_name, compiler, os_type, flags, c_flags, link_time_flags, file_scope_flags, is_built_in) &
+      function new_profile(profile_name, compiler, os_type, flags, c_flags, cxx_flags, &
+                           link_time_flags, file_scope_flags, is_built_in) &
                       & result(profile)
         
         !> Name of the profile
@@ -19665,6 +19561,9 @@ module fpm_manifest_profile
 
         !> C compiler flags
         character(len=*), optional, intent(in) :: c_flags
+
+        !> C++ compiler flags
+        character(len=*), optional, intent(in) :: cxx_flags
 
         !> Link time compiler flags
         character(len=*), optional, intent(in) :: link_time_flags
@@ -19689,6 +19588,11 @@ module fpm_manifest_profile
           profile%c_flags = c_flags
         else
           profile%c_flags = ""
+        end if
+        if (present(cxx_flags)) then
+          profile%cxx_flags = cxx_flags
+        else
+          profile%cxx_flags = ""
         end if
         if (present(link_time_flags)) then
           profile%link_time_flags = link_time_flags
@@ -19784,7 +19688,7 @@ module fpm_manifest_profile
         !> Was called with valid operating system
         logical, intent(in) :: os_valid
 
-        character(len=:), allocatable :: flags, c_flags, link_time_flags, key_name, file_name, file_flags, err_message
+        character(len=:), allocatable :: flags, c_flags, cxx_flags, link_time_flags, key_name, file_name, file_flags, err_message
         type(toml_table), pointer :: files
         type(toml_key), allocatable :: file_list(:)
         integer :: ikey, ifile, stat
@@ -19803,6 +19707,12 @@ module fpm_manifest_profile
               call get_value(table, 'c-flags', c_flags, stat=stat)
               if (stat /= toml_stat%success) then
                 call syntax_error(error, "c-flags has to be a key-value pair")
+                return
+              end if
+            else if (key_name.eq.'cxx-flags') then
+              call get_value(table, 'cxx-flags', cxx_flags, stat=stat)
+              if (stat /= toml_stat%success) then
+                call syntax_error(error, "cxx-flags has to be a key-value pair")
                 return
               end if
             else if (key_name.eq.'link-time-flags') then
@@ -19869,7 +19779,7 @@ module fpm_manifest_profile
         !> Was called with valid operating system
         logical, intent(in) :: os_valid
 
-        character(len=:), allocatable :: flags, c_flags, link_time_flags, key_name, file_name, file_flags, err_message
+        character(len=:), allocatable :: flags, c_flags, cxx_flags, link_time_flags, key_name, file_name, file_flags, err_message
         type(toml_table), pointer :: files
         type(toml_key), allocatable :: file_list(:)
         type(file_scope_flag), allocatable :: file_scope_flags(:)
@@ -19878,6 +19788,7 @@ module fpm_manifest_profile
 
         call get_value(table, 'flags', flags)
         call get_value(table, 'c-flags', c_flags)
+        call get_value(table, 'cxx-flags', cxx_flags)
         call get_value(table, 'link-time-flags', link_time_flags)
         call get_value(table, 'files', files)
         if (associated(files)) then
@@ -19895,7 +19806,7 @@ module fpm_manifest_profile
         end if
 
         profiles(profindex) = new_profile(profile_name, compiler_name, os_type, &
-                 & flags, c_flags, link_time_flags, file_scope_flags)
+                 & flags, c_flags, cxx_flags, link_time_flags, file_scope_flags)
         profindex = profindex + 1
       end subroutine get_flags
       
@@ -20201,6 +20112,8 @@ module fpm_manifest_profile
                         & " "//profiles(iprof)%flags
                 profiles(profindex)%c_flags=profiles(profindex)%c_flags// &
                         & " "//profiles(iprof)%c_flags
+                profiles(profindex)%cxx_flags=profiles(profindex)%cxx_flags// &
+                        & " "//profiles(iprof)%cxx_flags
                 profiles(profindex)%link_time_flags=profiles(profindex)%link_time_flags// &
                         & " "//profiles(iprof)%link_time_flags
               end if
@@ -20406,6 +20319,7 @@ module fpm_manifest_profile
         end select
         if (allocated(profile%flags)) s = s // ', flags="' // profile%flags // '"'
         if (allocated(profile%c_flags)) s = s // ', c_flags="' // profile%c_flags // '"'
+        if (allocated(profile%cxx_flags)) s = s // ', cxx_flags="' // profile%cxx_flags // '"'
         if (allocated(profile%link_time_flags)) s = s // ', link_time_flags="' // profile%link_time_flags // '"'
         if (allocated(profile%file_scope_flags)) then
           do i=1,size(profile%file_scope_flags)
@@ -20671,187 +20585,6 @@ contains
 end module fpm_manifest_executable
  
  
-!>>>>> ././src/fpm/manifest/example.f90
-!> Implementation of the meta data for an example.
-!>
-!> The example data structure is effectively a decorated version of an executable
-!> and shares most of its properties, except for the defaults and can be
-!> handled under most circumstances just like any other executable.
-!>
-!> A example table can currently have the following fields
-!>
-!>```toml
-!>[[ example ]]
-!>name = "string"
-!>source-dir = "path"
-!>main = "file"
-!>link = ["lib"]
-!>[example.dependencies]
-!>```
-module fpm_manifest_example
-    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies
-    use fpm_manifest_executable, only : executable_config_t
-    use fpm_error, only : error_t, syntax_error, bad_name_error
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-    implicit none
-    private
-
-    public :: example_config_t, new_example
-
-
-    !> Configuation meta data for an example
-    type, extends(executable_config_t) :: example_config_t
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type example_config_t
-
-
-contains
-
-
-    !> Construct a new example configuration from a TOML data structure
-    subroutine new_example(self, table, error)
-
-        !> Instance of the example configuration
-        type(example_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_table), pointer :: child
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call get_value(table, "name", self%name)
-        if (.not.allocated(self%name)) then
-           call syntax_error(error, "Could not retrieve example name")
-           return
-        end if
-        if (bad_name_error(error,'example',self%name))then
-           return
-        endif
-        call get_value(table, "source-dir", self%source_dir, "example")
-        call get_value(table, "main", self%main, "main.f90")
-
-        call get_value(table, "dependencies", child, requested=.false.)
-        if (associated(child)) then
-            call new_dependencies(self%dependency, child, error=error)
-            if (allocated(error)) return
-        end if
-
-        call get_list(table, "link", self%link, error)
-        if (allocated(error)) return
-
-    end subroutine new_example
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_key), allocatable :: list(:)
-        logical :: name_present
-        integer :: ikey
-
-        name_present = .false.
-
-        call table%get_keys(list)
-
-        if (size(list) < 1) then
-            call syntax_error(error, "Example section does not provide sufficient entries")
-            return
-        end if
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in example entry")
-                exit
-
-            case("name")
-                name_present = .true.
-
-            case("source-dir", "main", "dependencies", "link")
-                continue
-
-            end select
-        end do
-        if (allocated(error)) return
-
-        if (.not.name_present) then
-            call syntax_error(error, "Example name is not provided, please add a name entry")
-        end if
-
-    end subroutine check
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the example configuration
-        class(example_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr, ii
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)', &
-            & fmti = '("#", 1x, a, t30, i0)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Example target"
-        if (allocated(self%name)) then
-            write(unit, fmt) "- name", self%name
-        end if
-        if (allocated(self%source_dir)) then
-            if (self%source_dir /= "example" .or. pr > 2) then
-                write(unit, fmt) "- source directory", self%source_dir
-            end if
-        end if
-        if (allocated(self%main)) then
-            if (self%main /= "main.f90" .or. pr > 2) then
-                write(unit, fmt) "- example source", self%main
-            end if
-        end if
-
-        if (allocated(self%dependency)) then
-            if (size(self%dependency) > 1 .or. pr > 2) then
-                write(unit, fmti) "- dependencies", size(self%dependency)
-            end if
-            do ii = 1, size(self%dependency)
-                call self%dependency(ii)%info(unit, pr - 1)
-            end do
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_example
- 
- 
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
 !>
@@ -21031,6 +20764,187 @@ contains
 
 
 end module fpm_manifest_test
+ 
+ 
+!>>>>> ././src/fpm/manifest/example.f90
+!> Implementation of the meta data for an example.
+!>
+!> The example data structure is effectively a decorated version of an executable
+!> and shares most of its properties, except for the defaults and can be
+!> handled under most circumstances just like any other executable.
+!>
+!> A example table can currently have the following fields
+!>
+!>```toml
+!>[[ example ]]
+!>name = "string"
+!>source-dir = "path"
+!>main = "file"
+!>link = ["lib"]
+!>[example.dependencies]
+!>```
+module fpm_manifest_example
+    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies
+    use fpm_manifest_executable, only : executable_config_t
+    use fpm_error, only : error_t, syntax_error, bad_name_error
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+    implicit none
+    private
+
+    public :: example_config_t, new_example
+
+
+    !> Configuation meta data for an example
+    type, extends(executable_config_t) :: example_config_t
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type example_config_t
+
+
+contains
+
+
+    !> Construct a new example configuration from a TOML data structure
+    subroutine new_example(self, table, error)
+
+        !> Instance of the example configuration
+        type(example_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_table), pointer :: child
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call get_value(table, "name", self%name)
+        if (.not.allocated(self%name)) then
+           call syntax_error(error, "Could not retrieve example name")
+           return
+        end if
+        if (bad_name_error(error,'example',self%name))then
+           return
+        endif
+        call get_value(table, "source-dir", self%source_dir, "example")
+        call get_value(table, "main", self%main, "main.f90")
+
+        call get_value(table, "dependencies", child, requested=.false.)
+        if (associated(child)) then
+            call new_dependencies(self%dependency, child, error=error)
+            if (allocated(error)) return
+        end if
+
+        call get_list(table, "link", self%link, error)
+        if (allocated(error)) return
+
+    end subroutine new_example
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_key), allocatable :: list(:)
+        logical :: name_present
+        integer :: ikey
+
+        name_present = .false.
+
+        call table%get_keys(list)
+
+        if (size(list) < 1) then
+            call syntax_error(error, "Example section does not provide sufficient entries")
+            return
+        end if
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in example entry")
+                exit
+
+            case("name")
+                name_present = .true.
+
+            case("source-dir", "main", "dependencies", "link")
+                continue
+
+            end select
+        end do
+        if (allocated(error)) return
+
+        if (.not.name_present) then
+            call syntax_error(error, "Example name is not provided, please add a name entry")
+        end if
+
+    end subroutine check
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the example configuration
+        class(example_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr, ii
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)', &
+            & fmti = '("#", 1x, a, t30, i0)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Example target"
+        if (allocated(self%name)) then
+            write(unit, fmt) "- name", self%name
+        end if
+        if (allocated(self%source_dir)) then
+            if (self%source_dir /= "example" .or. pr > 2) then
+                write(unit, fmt) "- source directory", self%source_dir
+            end if
+        end if
+        if (allocated(self%main)) then
+            if (self%main /= "main.f90" .or. pr > 2) then
+                write(unit, fmt) "- example source", self%main
+            end if
+        end if
+
+        if (allocated(self%dependency)) then
+            if (size(self%dependency) > 1 .or. pr > 2) then
+                write(unit, fmti) "- dependencies", size(self%dependency)
+            end if
+            do ii = 1, size(self%dependency)
+                call self%dependency(ii)%info(unit, pr - 1)
+            end do
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_example
  
  
 !>>>>> ././src/fpm/manifest/package.f90
@@ -22824,18 +22738,10 @@ subroutine get_debug_compile_flags(id, flags)
     end select
 end subroutine get_debug_compile_flags
 
-subroutine set_preprocessor_flags (id, flags, package)
+pure subroutine set_cpp_preprocessor_flags(id, flags)
     integer(compiler_enum), intent(in) :: id
     character(len=:), allocatable, intent(inout) :: flags
-    type(package_config_t), intent(in) :: package
     character(len=:), allocatable :: flag_cpp_preprocessor
-    
-    integer :: i
-
-    !> Check if there is a preprocess table
-    if (.not.allocated(package%preprocess)) then
-        return
-    end if
 
     !> Modify the flag_cpp_preprocessor on the basis of the compiler.
     select case(id)
@@ -22851,16 +22757,9 @@ subroutine set_preprocessor_flags (id, flags, package)
         flag_cpp_preprocessor = "--cpp"
     end select
 
-    do i = 1, size(package%preprocess)
-        if (package%preprocess(i)%name == "cpp") then
-            flags = flag_cpp_preprocessor// flags
-            exit
-        else
-            write(stderr, '(a)') 'Warning: preprocessor ' // package%preprocess(i)%name // ' is not supported; will ignore it'
-        end if
-    end do
+    flags = flag_cpp_preprocessor// flags
 
-end subroutine set_preprocessor_flags
+end subroutine set_cpp_preprocessor_flags
 
 !> This function will parse and read the macros list and 
 !> return them as defined flags.
@@ -23044,7 +22943,7 @@ subroutine get_default_cxx_compiler(f_compiler, cxx_compiler)
         cxx_compiler = 'icpx'
 
     case(id_flang, id_flang_new, id_f18)
-        cxx_compiler='clang'
+        cxx_compiler='clang++'
 
     case(id_ibmxl)
         cxx_compiler='xlc++'
@@ -25651,7 +25550,8 @@ subroutine build_target_list(targets,model)
 
                     call add_target(targets,package=model%packages(j)%name,type = exe_type,&
                                 output_name = get_object_name(sources(i)), &
-                                source = sources(i) &
+                                source = sources(i), &
+                                macros = model%packages(j)%macros &
                                 )
 
                     if (sources(i)%unit_scope == FPM_SCOPE_APP) then
@@ -27216,7 +27116,7 @@ use fpm_filesystem, only: is_dir, join_path, list_files, exists, &
 use fpm_model, only: fpm_model_t, srcfile_t, show_model, &
                     FPM_SCOPE_UNKNOWN, FPM_SCOPE_LIB, FPM_SCOPE_DEP, &
                     FPM_SCOPE_APP, FPM_SCOPE_EXAMPLE, FPM_SCOPE_TEST
-use fpm_compiler, only: new_compiler, new_archiver, set_preprocessor_flags
+use fpm_compiler, only: new_compiler, new_archiver, set_cpp_preprocessor_flags
 
 
 use fpm_sources, only: add_executable_sources, add_sources_from_dir
@@ -27249,6 +27149,7 @@ subroutine build_model(model, settings, package, error)
     type(package_config_t) :: dependency
     character(len=:), allocatable :: manifest, lib_dir, flags, cflags, cxxflags, ldflags
     character(len=:), allocatable :: version
+    logical :: has_cpp
 
     logical :: duplicates_found = .false.
     type(string_t) :: include_dir
@@ -27283,8 +27184,6 @@ subroutine build_model(model, settings, package, error)
         end select
     end if
 
-    call set_preprocessor_flags(model%compiler%id, flags, package)
-
     cflags = trim(settings%cflag)
     cxxflags = trim(settings%cxxflag)
     ldflags = trim(settings%ldflag)
@@ -27296,15 +27195,11 @@ subroutine build_model(model, settings, package, error)
     end if
     model%build_prefix = join_path("build", basename(model%compiler%fc))
 
-    model%fortran_compile_flags = flags
-    model%c_compile_flags = cflags
-    model%cxx_compile_flags = cxxflags
-    model%link_flags = ldflags
-
     model%include_tests = settings%build_tests
 
     allocate(model%packages(model%deps%ndep))
 
+    has_cpp = .false.
     do i = 1, model%deps%ndep
         associate(dep => model%deps%dep(i))
             manifest = join_path(dep%proj_dir, "fpm.toml")
@@ -27319,8 +27214,14 @@ subroutine build_model(model, settings, package, error)
             
             if (allocated(dependency%preprocess)) then
                 do j = 1, size(dependency%preprocess)
-                    if (package%preprocess(j)%name == "cpp" .and. allocated(dependency%preprocess(j)%macros)) then
+                    if (dependency%preprocess(j)%name == "cpp") then
+                        if (.not. has_cpp) has_cpp = .true.
+                        if (allocated(dependency%preprocess(j)%macros)) then
                         model%packages(i)%macros = dependency%preprocess(j)%macros
+                        end if
+                    else
+                        write(stderr, '(a)') 'Warning: Preprocessor ' // package%preprocess(i)%name // &
+                            ' is not supported; will ignore it'
                     end if
                 end do
             end if
@@ -27359,6 +27260,12 @@ subroutine build_model(model, settings, package, error)
         end associate
     end do
     if (allocated(error)) return
+
+    if (has_cpp) call set_cpp_preprocessor_flags(model%compiler%id, flags)
+    model%fortran_compile_flags = flags
+    model%c_compile_flags = cflags
+    model%cxx_compile_flags = cxxflags
+    model%link_flags = ldflags
 
     ! Add sources from executable directories
     if (is_dir('app') .and. package%build%auto_executables) then
