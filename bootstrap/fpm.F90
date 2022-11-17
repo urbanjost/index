@@ -1,121 +1,6 @@
 #undef unix 
 #undef linux
 #define FPM_BOOTSTRAP
-!>>>>> ././src/fpm_backend_console.f90
-!># Build Backend Console
-!> This module provides a lightweight implementation for printing to the console
-!> and updating previously-printed console lines. It used by `[[fpm_backend_output]]`
-!> for pretty-printing build status and progress.
-!>
-!> @note The implementation for updating previous lines relies on no other output
-!> going to `stdout`/`stderr` except through the `console_t` object provided.
-!>
-!> @note All write statements to `stdout` are enclosed within OpenMP `critical` regions
-!>
-module fpm_backend_console
-use iso_fortran_env, only: stdout=>output_unit
-implicit none
-
-private
-public :: console_t
-public :: LINE_RESET
-public :: COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-
-character(len=*), parameter :: ESC = char(27)
-!> Escape code for erasing current line
-character(len=*), parameter :: LINE_RESET = ESC//"[2K"//ESC//"[1G"
-!> Escape code for moving up one line
-character(len=*), parameter :: LINE_UP = ESC//"[1A"
-!> Escape code for moving down one line
-character(len=*), parameter :: LINE_DOWN = ESC//"[1B"
-!> Escape code for red foreground color
-character(len=*), parameter :: COLOR_RED = ESC//"[31m"
-!> Escape code for green foreground color
-character(len=*), parameter :: COLOR_GREEN = ESC//"[32m"
-!> Escape code for yellow foreground color
-character(len=*), parameter :: COLOR_YELLOW = ESC//"[93m"
-!> Escape code to reset foreground color
-character(len=*), parameter :: COLOR_RESET = ESC//"[0m"
-
-!> Console object
-type console_t
-    !> Number of lines printed
-    integer :: n_line = 1
-
-contains
-    !> Write a single line to the console
-    procedure :: write_line => console_write_line
-    !> Update a previously-written console line
-    procedure :: update_line => console_update_line
-end type console_t
-
-contains
-
-!> Write a single line to the standard output
-subroutine console_write_line(console,str,line,advance)
-    !> Console object
-    class(console_t), intent(inout) :: console
-    !> String to write
-    character(*), intent(in) :: str
-    !> Integer needed to later update console line
-    integer, intent(out), optional :: line
-    !> Advancing output (print newline?)
-    logical, intent(in), optional :: advance
-
-    character(3) :: adv
-
-    adv = "yes"
-    if (present(advance)) then
-        if (.not.advance) then
-            adv = "no"
-        end if
-    end if
-
-    !$omp critical
-
-    if (present(line)) then
-        line = console%n_line
-    end if
-    
-    write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
-
-    if (adv=="yes") then
-        console%n_line = console%n_line + 1
-    end if
-
-    !$omp end critical
-
-end subroutine console_write_line
-
-!> Overwrite a previously-written line in standard output
-subroutine console_update_line(console,line_no,str)
-    !> Console object
-    class(console_t), intent(in) :: console
-    !> Integer output from `[[console_write_line]]`
-    integer, intent(in) :: line_no
-    !> New string to overwrite line
-    character(*), intent(in) :: str
-
-    integer :: n
-
-    !$omp critical
-
-    n = console%n_line - line_no
-
-    ! Step back to line
-    write(stdout,'(A)',advance="no") repeat(LINE_UP,n)//LINE_RESET
-
-    write(stdout,'(A)',advance="no") str
-
-    ! Step forward to end
-    write(stdout,'(A)',advance="no") repeat(LINE_DOWN,n)//LINE_RESET
-
-    !$omp end critical
-
-end subroutine console_update_line
-
-end module fpm_backend_console 
- 
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -1234,6 +1119,121 @@ end subroutine notabs
 end module fpm_strings
  
  
+!>>>>> ././src/fpm_backend_console.f90
+!># Build Backend Console
+!> This module provides a lightweight implementation for printing to the console
+!> and updating previously-printed console lines. It used by `[[fpm_backend_output]]`
+!> for pretty-printing build status and progress.
+!>
+!> @note The implementation for updating previous lines relies on no other output
+!> going to `stdout`/`stderr` except through the `console_t` object provided.
+!>
+!> @note All write statements to `stdout` are enclosed within OpenMP `critical` regions
+!>
+module fpm_backend_console
+use iso_fortran_env, only: stdout=>output_unit
+implicit none
+
+private
+public :: console_t
+public :: LINE_RESET
+public :: COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
+
+character(len=*), parameter :: ESC = char(27)
+!> Escape code for erasing current line
+character(len=*), parameter :: LINE_RESET = ESC//"[2K"//ESC//"[1G"
+!> Escape code for moving up one line
+character(len=*), parameter :: LINE_UP = ESC//"[1A"
+!> Escape code for moving down one line
+character(len=*), parameter :: LINE_DOWN = ESC//"[1B"
+!> Escape code for red foreground color
+character(len=*), parameter :: COLOR_RED = ESC//"[31m"
+!> Escape code for green foreground color
+character(len=*), parameter :: COLOR_GREEN = ESC//"[32m"
+!> Escape code for yellow foreground color
+character(len=*), parameter :: COLOR_YELLOW = ESC//"[93m"
+!> Escape code to reset foreground color
+character(len=*), parameter :: COLOR_RESET = ESC//"[0m"
+
+!> Console object
+type console_t
+    !> Number of lines printed
+    integer :: n_line = 1
+
+contains
+    !> Write a single line to the console
+    procedure :: write_line => console_write_line
+    !> Update a previously-written console line
+    procedure :: update_line => console_update_line
+end type console_t
+
+contains
+
+!> Write a single line to the standard output
+subroutine console_write_line(console,str,line,advance)
+    !> Console object
+    class(console_t), intent(inout) :: console
+    !> String to write
+    character(*), intent(in) :: str
+    !> Integer needed to later update console line
+    integer, intent(out), optional :: line
+    !> Advancing output (print newline?)
+    logical, intent(in), optional :: advance
+
+    character(3) :: adv
+
+    adv = "yes"
+    if (present(advance)) then
+        if (.not.advance) then
+            adv = "no"
+        end if
+    end if
+
+    !$omp critical
+
+    if (present(line)) then
+        line = console%n_line
+    end if
+    
+    write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
+
+    if (adv=="yes") then
+        console%n_line = console%n_line + 1
+    end if
+
+    !$omp end critical
+
+end subroutine console_write_line
+
+!> Overwrite a previously-written line in standard output
+subroutine console_update_line(console,line_no,str)
+    !> Console object
+    class(console_t), intent(in) :: console
+    !> Integer output from `[[console_write_line]]`
+    integer, intent(in) :: line_no
+    !> New string to overwrite line
+    character(*), intent(in) :: str
+
+    integer :: n
+
+    !$omp critical
+
+    n = console%n_line - line_no
+
+    ! Step back to line
+    write(stdout,'(A)',advance="no") repeat(LINE_UP,n)//LINE_RESET
+
+    write(stdout,'(A)',advance="no") str
+
+    ! Step forward to end
+    write(stdout,'(A)',advance="no") repeat(LINE_DOWN,n)//LINE_RESET
+
+    !$omp end critical
+
+end subroutine console_update_line
+
+end module fpm_backend_console 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/constants.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -1458,7 +1458,7 @@ end subroutine get_tomlf_version
 end module tomlf_version
  
  
-!>>>>> build/dependencies/M_CLI2/src/M_CLI2.f90
+!>>>>> build/dependencies/M_CLI2/src/M_CLI2.F90
 !VERSION 1.0 20200115
 !VERSION 2.0 20200802
 !VERSION 3.0 20201021  LONG:SHORT syntax
@@ -1468,8 +1468,8 @@ end module tomlf_version
 !===================================================================================================================================
 !>
 !!##NAME
-!!     M_CLI2(3fm) - [ARGUMENTS::M_CLI2] - command line argument parsing
-!!     using a prototype command
+!!     M_CLI2(3fm) - [ARGUMENTS::M_CLI2::INTRO] command line argument
+!!     parsing using a prototype command
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -1487,16 +1487,40 @@ end module tomlf_version
 !!    parsing using a simple prototype.
 !!
 !!    Typically one call to SET_ARGS(3f) is made to define the command
-!!    arguments, set default values and parse the command line. Then a
-!!    call is made to GET_ARGS(3f) for each command keyword to obtain the
-!!    argument values.
+!!    arguments, set default values and parse the command line. Then a call
+!!    is made to the convenience commands based on GET_ARGS(3f) for each
+!!    command keyword to obtain the argument values.
 !!
 !!    The documentation for SET_ARGS(3f) and GET_ARGS(3f) provides further
 !!    details.
 !!
 !!##EXAMPLE
 !!
-!! Sample program using type conversion routines
+!!
+!! Sample typical minimal usage
+!!
+!!     program minimal
+!!     use M_CLI2,  only : set_args, lget, rget, filenames=>unnamed
+!!     implicit none
+!!     real    :: x, y
+!!     integer :: i
+!!        call set_args(' -y 0.0 -x 0.0 -v F')
+!!        x=rget('x')
+!!        y=rget('y')
+!!        if(lget('v'))then
+!!           write(*,*)'X=',x
+!!           write(*,*)'Y=',y
+!!           write(*,*)'ATAN2(Y,X)=',atan2(x=x,y=y)
+!!        else
+!!           write(*,*)atan2(x=x,y=y)
+!!        endif
+!!        if(size(filenames) > 0)then
+!!           write(*,'(g0)')'filenames:'
+!!           write(*,'(i6.6,3a)')(i,'[',filenames(i),']',i=1,size(filenames))
+!!        endif
+!!     end program minimal
+!!
+!! Sample program using type get_args() and variants
 !!
 !!     program demo_M_CLI2
 !!     use M_CLI2,  only : set_args, get_args
@@ -1528,8 +1552,8 @@ end module tomlf_version
 !!             & --title "my title" -l F -L F  &
 !!             & --logicals  F F F F F         &
 !!             & -logi F T F                   &
-!!             ! note space between quotes is required
 !!             & --label " " &
+!!             ! note space between quotes is required
 !!             & ')
 !!     ! ASSIGN VALUES TO ELEMENTS
 !!     call get_args('x',x)         ! SCALARS
@@ -1563,7 +1587,7 @@ end module tomlf_version
 !!     !
 !!     ! unnamed strings
 !!     !
-!!     if(size(filenames).gt.0)then
+!!     if(size(filenames) > 0)then
 !!        write(*,'(i6.6,3a)')(i,'[',filenames(i),']',i=1,size(filenames))
 !!     endif
 !!     !
@@ -1575,13 +1599,14 @@ end module tomlf_version
 !!     Public Domain
 !===================================================================================================================================
 module M_CLI2
-!use, intrinsic :: iso_fortran_env, only : stderr=>ERROR_UNIT
-!use, intrinsic :: iso_fortran_env, only : stdin=>INPUT_UNIT
-use, intrinsic :: iso_fortran_env, only : warn=>OUTPUT_UNIT ! ERROR_UNIT
+use, intrinsic :: iso_fortran_env, only : stderr=>ERROR_UNIT, stdin=>INPUT_UNIT, stdout=>OUTPUT_UNIT, warn=>OUTPUT_UNIT
+
+! copied to M_CLI2 for a stand-alone version
 !use M_strings,                     only : upper, lower, quote, replace_str=>replace, unquote, split, string_to_value, atleast
 !use M_list,                        only : insert, locate, remove, replace
 !use M_args,                        only : longest_command_argument
 !use M_journal,                     only : journal
+
 implicit none
 integer,parameter,private :: dp=kind(0.0d0)
 integer,parameter,private :: sp=kind(0.0)
@@ -1635,8 +1660,9 @@ character(len=:),allocatable,save :: G_remaining
 character(len=:),allocatable,save :: G_subcommand              ! possible candidate for a subcommand
 character(len=:),allocatable,save :: G_STOP_MESSAGE
 integer,save                      :: G_STOP
-logical,save                      :: G_STOPON
+logical,save                      :: G_QUIET
 logical,save                      :: G_STRICT                  ! strict short and long rules or allow -longname and --shortname
+character(len=:),allocatable,save :: G_PREFIX
 !----------------------------------------------
 ! try out response files
 logical,save                      :: CLI_RESPONSE_FILE=.false. ! allow @name abbreviations
@@ -1680,7 +1706,7 @@ interface   get_args_fixed_length;  module  procedure  get_args_fixed_length_sca
 !intrinsic findloc
 !===================================================================================================================================
 
-! ident_1="@(#)M_CLI2::str(3f): {msg_scalar,msg_one}"
+! ident_1="@(#) M_CLI2 str(3f) {msg_scalar msg_one}"
 
 private str
 interface str
@@ -1730,8 +1756,8 @@ contains
 !!
 !!      subroutine check_commandline(help_text,version_text,ierr,errmsg)
 !!
-!!       character(len=:),allocatable,intent(in),optional :: help_text(:)
-!!       character(len=:),allocatable,intent(in),optional :: version_text(:)
+!!       character(len=*),intent(in),optional :: help_text(:)
+!!       character(len=*),intent(in),optional :: version_text(:)
 !!
 !!##DESCRIPTION
 !!     Checks the commandline  and processes the implicit --help, --version,
@@ -1772,60 +1798,55 @@ contains
 !!      real               :: x, y, z
 !!      character(len=*),parameter :: cmd='-x 1 -y 2 -z 3'
 !!         version_text=[character(len=80) :: "version 1.0","author: me"]
-!!         help_text=[character(len=80) :: "wish I put instructions","here","I suppose?"]
+!!         help_text=[character(len=80) :: &
+!!                 & "wish I put instructions","here","I suppose?"]
 !!         call set_args(cmd,help_text,version_text)
 !!         call get_args('x',x,'y',y,'z',z)
 !!         ! All done cracking the command line. Use the values in your program.
 !!         write (*,*)x,y,z
 !!         ! the optional unnamed values on the command line are
 !!         ! accumulated in the character array "UNNAMED"
-!!         if(size(unnamed).gt.0)then
+!!         if(size(unnamed) > 0)then
 !!            write (*,'(a)')'files:'
 !!            write (*,'(i6.6,3a)') (i,'[',unnamed(i),']',i=1,size(unnamed))
 !!         endif
 !!      end program check_commandline
 !===================================================================================================================================
 subroutine check_commandline(help_text,version_text)
-character(len=:),allocatable,intent(in),optional :: help_text(:)
-character(len=:),allocatable,intent(in),optional :: version_text(:)
-character(len=:),allocatable                     :: line
-integer                                          :: i
-integer                                          :: istart
-integer                                          :: iback
-   if(get('usage').eq.'T')then
+character(len=*),intent(in),optional :: help_text(:)
+character(len=*),intent(in),optional :: version_text(:)
+character(len=:),allocatable         :: line
+integer                              :: i
+integer                              :: istart
+integer                              :: iback
+   if(get('usage') == 'T')then
       call print_dictionary('USAGE:')
       !x!call default_help()
       call mystop(32)
       return
    endif
    if(present(help_text))then
-      if(get('help').eq.'T')then
+      if(get('help') == 'T')then
          do i=1,size(help_text)
             call journal('sc',help_text(i))
          enddo
          call mystop(1,'displayed help text')
          return
       endif
-   elseif(get('help').eq.'T')then
+   elseif(get('help') == 'T')then
       call default_help()
       call mystop(2,'displayed default help text')
       return
    endif
    if(present(version_text))then
-      if(get('version').eq.'T')then
+      if(get('version') == 'T')then
          istart=1
          iback=0
-         if(size(version_text).gt.0)then
-            if(index(version_text(1),'@'//'(#)').eq.1)then ! allow for what(1) syntax
+         if(size(version_text) > 0)then
+            if(index(version_text(1),'@'//'(#)') == 1)then ! allow for what(1) syntax
                istart=5
                iback=1
             endif
-         endif
-         if(debug_m_cli2)write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:ALLOCATED',allocated(version_text)
-         if(allocated(version_text).and.debug_m_cli2)then
-            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:LEN',len(version_text)
-            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:SIZE',size(version_text)
-            write(*,gen)'<DEBUG>CHECK_COMMANDLINE:VERSION_TEXT:LEN',version_text
          endif
          do i=1,size(version_text)
             !xINTEL BUG*!call journal('sc',version_text(i)(istart:len_trim(version_text(i))-iback))
@@ -1835,8 +1856,13 @@ integer                                          :: iback
          call mystop(3,'displayed version text')
          return
       endif
-   elseif(get('version').eq.'T')then
-      call journal('sc','*check_commandline* no version text')
+   elseif(get('version') == 'T')then
+
+      if(G_QUIET)then
+         G_STOP_MESSAGE = 'no version text'
+      else
+         call journal('sc','*check_commandline* no version text')
+      endif
       call mystop(4,'displayed default version text')
       return
    endif
@@ -1850,7 +1876,9 @@ integer :: ilength
    call get_command_argument(number=0,value=cmd_name)
    G_passed_in=G_passed_in//repeat(' ',len(G_passed_in))
    call substitute(G_passed_in,' --',NEW_LINE('A')//' --')
-   call journal('sc',cmd_name,G_passed_in) ! no help text, echo command and default options
+   if(.not.G_QUIET)then
+      call journal('sc',cmd_name,G_passed_in) ! no help text, echo command and default options
+   endif
    deallocate(cmd_name)
 end subroutine default_help
 end subroutine check_commandline
@@ -1867,8 +1895,8 @@ end subroutine check_commandline
 !!     subroutine set_args(definition,help_text,version_text,ierr,errmsg)
 !!
 !!      character(len=*),intent(in),optional              :: definition
-!!      character(len=:),intent(in),allocatable,optional  :: help_text
-!!      character(len=:),intent(in),allocatable,optional  :: version_text
+!!      character(len=*),intent(in),optional              :: help_text(:)
+!!      character(len=*),intent(in),optional              :: version_text(:)
 !!      integer,intent(out),optional                      :: ierr
 !!      character(len=:),intent(out),allocatable,optional :: errmsg
 !!##DESCRIPTION
@@ -1882,26 +1910,26 @@ end subroutine check_commandline
 !!
 !!##OPTIONS
 !!
-!!      DESCRIPTION   composed of all command arguments concatenated
-!!                    into a Unix-like command prototype string. For
-!!                    example:
+!!    DEFINITION  composed of all command arguments concatenated
+!!                into a Unix-like command prototype string. For
+!!                example:
 !!
-!!                      call set_args('-L F -ints 10,20,30 -title "my title" -R 10.3')
+!!                 call set_args('-L F -ints 10,20,30 -title "my title" -R 10.3')
 !!
-!!                    DESCRIPTION is pre-defined to act as if started with
-!!                    the reserved options '--verbose F --usage F --help
-!!                    F --version F'. The --usage option is processed when
-!!                    the set_args(3f) routine is called. The same is true
-!!                    for --help and --version if the optional help_text
-!!                    and version_text options are provided.
+!!                DEFINITION is pre-defined to act as if started with
+!!                the reserved options '--verbose F --usage F --help
+!!                F --version F'. The --usage option is processed when
+!!                the set_args(3f) routine is called. The same is true
+!!                for --help and --version if the optional help_text
+!!                and version_text options are provided.
 !!
-!!                    see "DEFINING THE PROTOTYPE" in the next section for
-!!                    further details.
+!!                see "DEFINING THE PROTOTYPE" in the next section for
+!!                further details.
 !!
-!!      HELP_TEXT     if present, will be displayed if program is called with
-!!                    --help switch, and then the program will terminate. If
-!!                    not supplied, the command line initialization string
-!!                    will be shown when --help is used on the commandline.
+!!    HELP_TEXT   if present, will be displayed if program is called with
+!!                --help switch, and then the program will terminate. If
+!!                not supplied, the command line initialization string
+!!                will be shown when --help is used on the commandline.
 !!
 !!      VERSION_TEXT  if present, will be displayed if program is called with
 !!                    --version switch, and then the program will terminate.
@@ -2000,7 +2028,7 @@ end subroutine check_commandline
 !! Sample program:
 !!
 !!     program demo_set_args
-!!     use M_CLI2,  only : filenames=>unnamed, set_args, get_args, unnamed
+!!     use M_CLI2,  only : filenames=>unnamed, set_args, get_args
 !!     use M_CLI2,  only : get_args_fixed_size
 !!     implicit none
 !!     integer                      :: i
@@ -2047,7 +2075,7 @@ end subroutine check_commandline
 !!     write(*,*)'l=',l
 !!     write(*,*)'L=',lbig
 !!     ! UNNAMED VALUES
-!!     if(size(filenames).gt.0)then
+!!     if(size(filenames) > 0)then
 !!        write(*,'(i6.6,3a)')(i,'[',filenames(i),']',i=1,size(filenames))
 !!     endif
 !!     end program demo_set_args
@@ -2164,6 +2192,9 @@ end subroutine check_commandline
 !!                o give a blank string value as " ".
 !!                o use F|T for lists of logicals,
 !!                o lists of numbers should be comma-delimited.
+!!                o --usage, --help, --version, --verbose, and unknown
+!!                  options are ignored.
+!!
 !!    comment|#  Line is a comment line
 !!    system|!   System command.
 !!               System commands are executed as a simple call to
@@ -2171,6 +2202,8 @@ end subroutine check_commandline
 !!               would not effect subsequent lines, for example)
 !!    print|>    Message to screen
 !!    stop       display message and stop program.
+!!
+!!
 !!
 !!  So if a program that does nothing but echos its parameters
 !!
@@ -2236,7 +2269,7 @@ end subroutine check_commandline
 !!
 !!  is searched for in simple or compound files. If found subsequent lines
 !!  will be ignored that start with "@" until a line not starting with
-!!  "@" is encountered.  Lines will then be processed until another line
+!!  "@" is encountered. Lines will then be processed until another line
 !!  starting with "@" is found or end-of-file is encountered.
 !!
 !!   COMPOUND RESPONSE FILE EXAMPLE
@@ -2266,7 +2299,7 @@ end subroutine check_commandline
 !!    # install executables in directory (assuming install(1) exists)
 !!    #
 !!    system mkdir -p ~/.local/bin
-!!    options run --release T --compiler gfortran --runner "install -vbp -m 0711 -t ~/.local/bin"
+!!    options run --release T --runner "install -vbp -m 0711 -t ~/.local/bin"
 !!    @install
 !!    STOP INSTALL NOT SUPPORTED ON THIS PLATFORM OR $OSTYPE NOT SET
 !!    #
@@ -2290,8 +2323,8 @@ end subroutine check_commandline
 !!
 !!    The intel Fortran compiler now calls the response files "indirect
 !!    files" and does not add the implied suffix ".rsp" to the files
-!!    anymore. It also allows the @NAME syntax anywhere on the command
-!!    line, not just at the beginning. --  20201212
+!!    anymore. It also allows the @NAME syntax anywhere on the command line,
+!!    not just at the beginning. -- 20201212
 !!
 !!##AUTHOR
 !!      John S. Urban, 2019
@@ -2302,14 +2335,15 @@ end subroutine check_commandline
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine set_args(prototype,help_text,version_text,string,ierr,errmsg)
+subroutine set_args(prototype,help_text,version_text,string,prefix,ierr,errmsg)
 
-! ident_2="@(#)M_CLI2::set_args(3f): parse prototype string"
+! ident_2="@(#) M_CLI2 set_args(3f) parse prototype string"
 
 character(len=*),intent(in)                       :: prototype
-character(len=:),intent(in),allocatable,optional  :: help_text(:)
-character(len=:),intent(in),allocatable,optional  :: version_text(:)
+character(len=*),intent(in),optional              :: help_text(:)
+character(len=*),intent(in),optional              :: version_text(:)
 character(len=*),intent(in),optional              :: string
+character(len=*),intent(in),optional              :: prefix
 integer,intent(out),optional                      :: ierr
 character(len=:),intent(out),allocatable,optional :: errmsg
 character(len=:),allocatable                      :: hold               ! stores command line argument
@@ -2320,14 +2354,19 @@ integer                                           :: ibig
    G_passed_in=''
    G_STOP=0
    G_STOP_MESSAGE=''
-   if(present(ierr))then
-      G_STOPON=.false.
+   if(present(prefix))then
+      G_PREFIX=prefix
    else
-      G_STOPON=.true.
+      G_PREFIX=''
+   endif
+   if(present(ierr))then
+      G_QUIET=.true.
+   else
+      G_QUIET=.false.
    endif
    ibig=longest_command_argument() ! bug in gfortran. len=0 should be fine
-   if(allocated(unnamed)) deallocate(unnamed)
-   allocate(character(len=ibig) :: unnamed(0))
+   IF(ALLOCATED(UNNAMED)) DEALLOCATE(UNNAMED)
+   ALLOCATE(CHARACTER(LEN=IBIG) :: UNNAMED(0))
    if(allocated(args)) deallocate(args)
    allocate(character(len=ibig) :: args(0))
 
@@ -2336,7 +2375,7 @@ integer                                           :: ibig
    call prototype_and_cmd_args_to_nlist(hold,string)
    if(allocated(G_RESPONSE_IGNORED))then
       if(debug_m_cli2)write(*,gen)'<DEBUG>SET_ARGS:G_RESPONSE_IGNORED:',G_RESPONSE_IGNORED
-      if(size(unnamed).ne.0)write(*,*)'LOGIC ERROR'
+      if(size(unnamed) /= 0)write(*,*)'LOGIC ERROR'
       call split(G_RESPONSE_IGNORED,unnamed)
    endif
 
@@ -2489,7 +2528,7 @@ end subroutine set_args
 !===================================================================================================================================
 function get_subcommand() result(sub)
 
-! ident_3="@(#)M_CLI2::get_subcommand(3f): parse prototype string to get subcommand, allowing for response files"
+! ident_3="@(#) M_CLI2 get_subcommand(3f) parse prototype string to get subcommand allowing for response files"
 
 character(len=:),allocatable  :: sub
 character(len=:),allocatable  :: cmdarg
@@ -2500,6 +2539,7 @@ integer                       :: i
 integer                       :: j
    G_subcommand=''
    G_options_only=.true.
+   sub=''
 
    if(.not.allocated(unnamed))then
       allocate(character(len=0) :: unnamed(0))
@@ -2511,12 +2551,12 @@ integer                       :: j
    ! look for @NAME if CLI_RESPONSE_FILE=.TRUE. AND LOAD THEM
    do i = 1, command_argument_count()
       call get_command_argument(i, cmdarg)
-      if(adjustl(cmdarg(1:1)) .eq. '@')then
+      if(adjustl(cmdarg(1:1))  ==  '@')then
          call get_prototype(cmdarg,prototype)
          call split(prototype,array)
          ! assume that if using subcommands first word not starting with dash is the subcommand
          do j=1,size(array)
-            if(adjustl(array(j)(1:1)) .ne. '-')then
+            if(adjustl(array(j)(1:1))  /=  '-')then
             G_subcommand=trim(array(j))
             sub=G_subcommand
             exit
@@ -2525,15 +2565,15 @@ integer                       :: j
       endif
    enddo
 
-   if(G_subcommand.ne.'')then
+   if(G_subcommand /= '')then
       sub=G_subcommand
-   elseif(size(unnamed).ne.0)then
+   elseif(size(unnamed) /= 0)then
       sub=unnamed(1)
    else
       cmdarg(:) = ''
       do i = 1, command_argument_count()
          call get_command_argument(i, cmdarg)
-         if(adjustl(cmdarg(1:1)) .ne. '-')then
+         if(adjustl(cmdarg(1:1))  /=  '-')then
             sub=trim(cmdarg)
            exit
         endif
@@ -2565,7 +2605,6 @@ end subroutine set_usage
 !!      (LICENSE:PD)
 !!
 !!##SYNOPSIS
-!!
 !!
 !!     recursive subroutine prototype_to_dictionary(string)
 !!
@@ -2612,7 +2651,7 @@ end subroutine set_usage
 recursive subroutine prototype_to_dictionary(string)
 implicit none
 
-! ident_4="@(#)M_CLI2::prototype_to_dictionary(3f): parse user command and store tokens into dictionary"
+! ident_4="@(#) M_CLI2 prototype_to_dictionary(3f) parse user command and store tokens into dictionary"
 
 character(len=*),intent(in)       :: string ! string is character input string of options and values
 
@@ -2658,7 +2697,7 @@ integer                           :: place
 
       if((currnt=="-" .and. prev==" " .and. delmt == "off" .and. index("0123456789.",forwrd) == 0).or.ipoint > islen)then
          ! beginning of a keyword
-         if(forwrd.eq.'-')then                      ! change --var to -var so "long" syntax is supported
+         if(forwrd == '-')then                      ! change --var to -var so "long" syntax is supported
             !x!dummy(ifwd:ifwd)='_'
             ipoint=ipoint+1                         ! ignore second - instead (was changing it to _)
             G_keyword_single_letter=.false.         ! flag this is a long keyword
@@ -2678,7 +2717,7 @@ integer                           :: place
                   exit TESTIT
                endif
             enddo TESTIT
-            if(keyword.ne.' ')then
+            if(keyword /= ' ')then
                call update(keyword,value)            ! store name and its value
             elseif( G_remaining_option_allowed)then  ! meaning "--" has been encountered
                call update('_args_',trim(value))
@@ -2689,11 +2728,11 @@ integer                           :: place
             endif
          else
             call locate_key(keyword,place)
-            if(keyword.ne.' '.and.place.lt.0)then
+            if(keyword /= ' '.and.place < 0)then
                call update(keyword,'F')           ! store name and null value (first pass)
-            elseif(keyword.ne.' ')then
+            elseif(keyword /= ' ')then
                call update(keyword,' ')           ! store name and null value (second pass)
-            elseif(.not.G_keyword_single_letter.and.ipoint-2.eq.islen) then ! -- at end of line
+            elseif(.not.G_keyword_single_letter.and.ipoint-2 == islen) then ! -- at end of line
                G_remaining_option_allowed=.true.  ! meaning for "--" is that everything on commandline goes into G_remaining
             endif
          endif
@@ -2705,14 +2744,14 @@ integer                           :: place
 
       else       ! currnt is not one of the special characters
          ! the space after a keyword before the value
-         if(currnt == " ".and.itype  ==  KEYW)then
+         if(currnt == " " .and. itype  ==  KEYW)then
             ! switch from building a keyword string to building a value string
             itype=VAL
             ! beginning of a delimited value
          elseif(currnt  ==  """".and.itype  ==  VAL)then
             ! second of a double quote, put quote in
             if(prev  ==  """")then
-               if(itype.eq.VAL)then
+               if(itype == VAL)then
                   value=value//currnt
                else
                   keyword=keyword//currnt
@@ -2725,7 +2764,7 @@ integer                           :: place
                delmt="on"
             endif
             if(prev /= """")then  ! leave quotes where found them
-               if(itype.eq.VAL)then
+               if(itype == VAL)then
                   value=value//currnt
                else
                   keyword=keyword//currnt
@@ -2733,7 +2772,7 @@ integer                           :: place
                ipnt(itype)=ipnt(itype)+1
             endif
          else     ! add character to current keyword or value
-            if(itype.eq.VAL)then
+            if(itype == VAL)then
                value=value//currnt
             else
                keyword=keyword//currnt
@@ -2795,38 +2834,36 @@ end subroutine prototype_to_dictionary
 !!
 !!    ! IT IS A BAD IDEA TO NOT HAVE THE SAME DEFAULT VALUE FOR ALIASED
 !!    ! NAMES BUT CURRENTLY YOU STILL SPECIFY THEM
-!!       call set_args(' -flag 1 -f 1 -ints 1,2,3 -i 1,2,3 -twonames 11.3 -T 11.3')
+!!     call set_args('-flag 1 -f 1 -ints 1,2,3 -i 1,2,3 -twonames 11.3 -T 11.3')
 !!
 !!    ! ASSIGN VALUES TO ELEMENTS CONDITIONALLY CALLING WITH SHORT NAME
-!!       call get_args('flag',flag)
-!!       if(specified('f'))call get_args('f',flag)
-!!       call get_args('ints',ints)
-!!       if(specified('i'))call get_args('i',ints)
-!!       call get_args('twonames',twonames)
-!!       if(specified('T'))call get_args('T',twonames)
+!!     call get_args('flag',flag)
+!!     if(specified('f'))call get_args('f',flag)
+!!     call get_args('ints',ints)
+!!     if(specified('i'))call get_args('i',ints)
+!!     call get_args('twonames',twonames)
+!!     if(specified('T'))call get_args('T',twonames)
 !!
-!!       ! IF YOU WANT TO KNOW IF GROUPS OF PARAMETERS WERE SPECIFIED USE
-!!       ! ANY(3f) and ALL(3f)
-!!       write(*,*)specified(['twonames','T       '])
-!!       write(*,*)'ANY:',any(specified(['twonames','T       ']))
-!!       write(*,*)'ALL:',all(specified(['twonames','T       ']))
+!!     ! IF YOU WANT TO KNOW IF GROUPS OF PARAMETERS WERE SPECIFIED USE
+!!     ! ANY(3f) and ALL(3f)
+!!     write(*,*)specified(['twonames','T       '])
+!!     write(*,*)'ANY:',any(specified(['twonames','T       ']))
+!!     write(*,*)'ALL:',all(specified(['twonames','T       ']))
 !!
-!!       ! FOR MUTUALLY EXCLUSIVE
-!!       if (all(specified(['twonames','T       '])))then
-!!           write(*,*)'You specified both names -T and -twonames'
-!!       endif
+!!     ! FOR MUTUALLY EXCLUSIVE
+!!     if (all(specified(['twonames','T       '])))then
+!!         write(*,*)'You specified both names -T and -twonames'
+!!     endif
 !!
-!!       ! FOR REQUIRED PARAMETER
-!!       if (.not.any(specified(['twonames','T       '])))then
-!!           write(*,*)'You must specify -T or -twonames'
-!!       endif
-!!
-!!    ! USE VALUES
+!!     ! FOR REQUIRED PARAMETER
+!!     if (.not.any(specified(['twonames','T       '])))then
+!!         write(*,*)'You must specify -T or -twonames'
+!!     endif
+!!     ! USE VALUES
 !!       write(*,*)'flag=',flag
 !!       write(*,*)'ints=',ints
 !!       write(*,*)'twonames=',twonames
-!!    end program demo_specified
-!!
+!!     end program demo_specified
 !!
 !!##AUTHOR
 !!      John S. Urban, 2019
@@ -2839,7 +2876,7 @@ character(len=*),intent(in) :: key
 logical                     :: specified
 integer                     :: place
    call locate_key(key,place)                   ! find where string is or should be
-   if(place.lt.1)then
+   if(place < 1)then
       specified=.false.
    else
       specified=present_in(place)
@@ -2854,8 +2891,6 @@ end function specified
 !!      keyword and value
 !!      (LICENSE:PD)
 !!##SYNOPSIS
-!!
-!!
 !!
 !!     subroutine update(key,val)
 !!
@@ -2892,22 +2927,24 @@ logical                               :: set_mandatory
    call split(trim(key),long_short,':',nulls='return') ! split long:short keyname or long:short:: or long:: or short::
    ! check for :: on end
    isize=size(long_short)
-   if(isize.gt.0)then                     ! very special-purpose syntax where if ends in :: next field is a value even
-      if(long_short(isize).eq.'')then     ! if it starts with a dash, for --flags option on fpm(1).
+
+   if(isize > 0)then                     ! very special-purpose syntax where if ends in :: next field is a value even
+      if(long_short(isize) == '')then     ! if it starts with a dash, for --flags option on fpm(1).
          set_mandatory=.true.
          long_short=long_short(:isize-1)
       endif
    endif
+
    select case(size(long_short))
    case(0)
       long=''
       short=''
    case(1)
       long=trim(long_short(1))
-      if(len_trim(long).eq.1)then
+      if(len_trim(long) == 1)then
          !x!ii= findloc (shorts, long, dim=1) ! if parsing arguments on line and a short keyword look up long value
-         ii=maxloc([0,merge(1, 0, shorts.eq.long)],dim=1)
-         if(ii.gt.1)then
+         ii=maxloc([0,merge(1, 0, shorts == long)],dim=1)
+         if(ii > 1)then
             long=keywords(ii-1)
          endif
          short=long
@@ -2923,11 +2960,12 @@ logical                               :: set_mandatory
       long=trim(long_short(1))
       short=trim(long_short(2))
    end select
+
    if(present(val))then
       val_local=val
       iilen=len_trim(val_local)
       call locate_key(long,place)                  ! find where string is or should be
-      if(place.lt.1)then                                ! if string was not found insert it
+      if(place < 1)then                                ! if string was not found insert it
          call insert(keywords,long,iabs(place))
          call insert(values,val_local,iabs(place))
          call insert(counts,iilen,iabs(place))
@@ -2937,7 +2975,7 @@ logical                               :: set_mandatory
       else
          if(present_in(place))then                      ! if multiple keywords append values with space between them
             if(G_append)then
-               if(values(place)(1:1).eq.'"')then
+               if(values(place)(1:1) == '"')then
                ! UNDESIRABLE: will ignore previous blank entries
                   val_local='"'//trim(unquote(values(place)))//' '//trim(unquote(val_local))//'"'
                else
@@ -2952,7 +2990,7 @@ logical                               :: set_mandatory
       endif
    else                                                 ! if no value is present remove the keyword and related values
       call locate_key(long,place)                       ! check name as long and short
-      if(place.gt.0)then
+      if(place > 0)then
          call remove(keywords,place)
          call remove(values,place)
          call remove(counts,place)
@@ -2967,10 +3005,10 @@ end subroutine update
 !===================================================================================================================================
 !>
 !!##NAME
-!!      wipe_dictionary(3fp) - [ARGUMENTS:M_CLI2] reset private M_CLI2(3fm) dictionary to empty
+!!      wipe_dictionary(3fp) - [ARGUMENTS:M_CLI2] reset private M_CLI2(3fm)
+!!      dictionary to empty
 !!      (LICENSE:PD)
 !!##SYNOPSIS
-!!
 !!
 !!      subroutine wipe_dictionary()
 !!##DESCRIPTION
@@ -3007,12 +3045,14 @@ end subroutine wipe_dictionary
 !===================================================================================================================================
 !>
 !!##NAME
-!!      get(3f) - [ARGUMENTS:M_CLI2] get dictionary value associated with key name in private M_CLI2(3fm) dictionary
+!!    get(3f) - [ARGUMENTS:M_CLI2] get dictionary value associated with
+!!    key name in private M_CLI2(3fm) dictionary
 !!##SYNOPSIS
 !!
 !!
 !!##DESCRIPTION
-!!      Get dictionary value associated with key name in private M_CLI2(3fm) dictionary.
+!!    Get dictionary value associated with key name in private M_CLI2(3fm)
+!!    dictionary.
 !!##OPTIONS
 !!##RETURNS
 !!##EXAMPLE
@@ -3024,7 +3064,7 @@ character(len=:),allocatable  :: valout
 integer                       :: place
    ! find where string is or should be
    call locate_key(key,place)
-   if(place.lt.1)then
+   if(place < 1)then
       valout=''
    else
       valout=values(place)(:counts(place))
@@ -3035,10 +3075,10 @@ end function get
 !===================================================================================================================================
 !>
 !!##NAME
-!!      prototype_and_cmd_args_to_nlist(3f) - [ARGUMENTS:M_CLI2] convert Unix-like command arguments to table
+!!      prototype_and_cmd_args_to_nlist(3f) - [ARGUMENTS:M_CLI2] convert
+!!      Unix-like command arguments to table
 !!      (LICENSE:PD)
 !!##SYNOPSIS
-!!
 !!
 !!     subroutine prototype_and_cmd_args_to_nlist(prototype)
 !!
@@ -3049,7 +3089,6 @@ end function get
 !!##OPTIONS
 !!      prototype
 !!##EXAMPLE
-!!
 !!
 !! Sample program
 !!
@@ -3070,14 +3109,16 @@ end function get
 !!
 !!      ! uppercase keywords get an underscore to make it easier o remember
 !!      logical            :: l_,h_,v_
-!!      character(len=256) :: a_,b_                  ! character variables must be long enough to hold returned value
+!!      ! character variables must be long enough to hold returned value
+!!      character(len=256) :: a_,b_
 !!      integer            :: c_(3)
 !!
 !!         ! give command template with default values
 !!         ! all values except logicals get a value.
 !!         ! strings must be delimited with double quotes
 !!         ! A string has to have at least one character as for -A
-!!         ! lists of numbers should be comma-delimited. No spaces are allowed in lists of numbers
+!!         ! lists of numbers should be comma-delimited.
+!!         ! No spaces are allowed in lists of numbers
 !!         call prototype_and_cmd_args_to_nlist('&
 !!         & -l -v -h -LVH -x 0 -y 0.0 -z 0.0d0 -p 0,0 &
 !!         & -A " " -B "Value B" -C 10,20,30 -c (-123,-456)',readme)
@@ -3085,7 +3126,7 @@ end function get
 !!         call get_args('x',x,'y',y,'z',z)
 !!            something=sqrt(x**2+y**2+z**2)
 !!            write (*,*)something,x,y,z
-!!            if(size(unnamed).gt.0)then
+!!            if(size(unnamed) > 0)then
 !!               write (*,'(a)')'files:'
 !!               write (*,'(i6.6,3a)')(i,'[',unnamed(i),']',i=1,size(unnamed))
 !!            endif
@@ -3098,7 +3139,7 @@ end function get
 subroutine prototype_and_cmd_args_to_nlist(prototype,string)
 implicit none
 
-! ident_5="@(#)M_CLI2::prototype_and_cmd_args_to_nlist: create dictionary from prototype if not null and update from command line"
+! ident_5="@(#) M_CLI2 prototype_and_cmd_args_to_nlist create dictionary from prototype if not null and update from command line"
 
 character(len=*),intent(in)           :: prototype
 character(len=*),intent(in),optional  :: string
@@ -3112,39 +3153,39 @@ integer                               :: iused
 
    ibig=longest_command_argument()                  ! bug in gfortran. len=0 should be fine
    ibig=max(ibig,1)
-   if(allocated(unnamed))deallocate(unnamed)
-   allocate(character(len=ibig) :: unnamed(0))
+   IF(ALLOCATED(UNNAMED))DEALLOCATE(UNNAMED)
+   ALLOCATE(CHARACTER(LEN=IBIG) :: UNNAMED(0))
    if(allocated(args))deallocate(args)
    allocate(character(len=ibig) :: args(0))
 
    G_remaining_option_allowed=.false.
    G_remaining_on=.false.
    G_remaining=''
-   if(prototype.ne.'')then
+   if(prototype /= '')then
       call prototype_to_dictionary(prototype)       ! build dictionary from prototype
 
       ! if short keywords not used by user allow them for standard options
 
       call locate_key('h',iused)
-      if(iused.le.0)then
+      if(iused <= 0)then
          call update('help')
          call update('help:h','F')
       endif
 
       call locate_key('v',iused)
-      if(iused.le.0)then
+      if(iused <= 0)then
          call update('version')
          call update('version:v','F')
       endif
 
       call locate_key('V',iused)
-      if(iused.le.0)then
+      if(iused <= 0)then
          call update('verbose')
          call update('verbose:V','F')
       endif
 
       call locate_key('u',iused)
-      if(iused.le.0)then
+      if(iused <= 0)then
          call update('usage')
          call update('usage:u','F')
       endif
@@ -3157,12 +3198,12 @@ integer                               :: iused
       call prototype_to_dictionary(string)          ! build dictionary from prototype
    else
       if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_NLIST:CALL CMD_ARGS_TO_DICTIONARY:CHECK=',.true.
-      call cmd_args_to_dictionary(check=.true.)
+      call cmd_args_to_dictionary()
    endif
 
-   if(len(G_remaining).gt.1)then                    ! if -- was in prototype then after -- on input return rest in this string
+   if(len(G_remaining) > 1)then                    ! if -- was in prototype then after -- on input return rest in this string
       itrim=len(G_remaining)
-      if(G_remaining(itrim:itrim).eq.' ')then       ! was adding a space at end as building it, but do not want to remove blanks
+      if(G_remaining(itrim:itrim) == ' ')then       ! was adding a space at end as building it, but do not want to remove blanks
          G_remaining=G_remaining(:itrim-1)
       endif
       remaining=G_remaining
@@ -3178,7 +3219,7 @@ character(len=:),allocatable :: prototype
 logical :: hold
    if(debug_m_cli2)write(*,gen)'<DEBUG>EXPAND_RESPONSE:START:NAME=',name
    call get_prototype(name,prototype)
-   if(prototype.ne.'')then
+   if(prototype /= '')then
       hold=G_append
       G_append=.false.
       if(debug_m_cli2)write(*,gen)'<DEBUG>EXPAND_RESPONSE:CALL PROTOTYPE_TO_DICTIONARY:PROTOTYPE=',prototype
@@ -3210,35 +3251,35 @@ integer                                  :: lines_processed
 
    search_for=''
    ! look for NAME.rsp and see if there is an @OS  section in it and position to it and read
-   if(os.ne.'@')then
+   if(os /= '@')then
       search_for=os
       call find_and_read_response_file(plain_name)
-      if(lines_processed.ne.0)return
+      if(lines_processed /= 0)return
    endif
 
    ! look for NAME.rsp and see if there is anything before an OS-specific section
    search_for=''
    call find_and_read_response_file(plain_name)
-   if(lines_processed.ne.0)return
+   if(lines_processed /= 0)return
 
    ! look for ARG0.rsp  with @OS@NAME  section in it and position to it
-   if(os.ne.'@')then
+   if(os /= '@')then
       search_for=os//name
       call find_and_read_response_file(basename(get_name(),suffix=.true.))
-      if(lines_processed.ne.0)return
+      if(lines_processed /= 0)return
    endif
 
    ! look for ARG0.rsp  with a section called @NAME in it and position to it
    search_for=name
    call find_and_read_response_file(basename(get_name(),suffix=.true.))
-   if(lines_processed.ne.0)return
+   if(lines_processed /= 0)return
 
    write(*,gen)'<ERROR> response name ['//trim(name)//'] not found'
    stop 1
 contains
 !===================================================================================================================================
 subroutine find_and_read_response_file(rname)
-! seach for a simple file named the same as the @NAME field with one entry assumed in it
+! search for a simple file named the same as the @NAME field with one entry assumed in it
 character(len=*),intent(in)  :: rname
 character(len=:),allocatable :: paths(:)
 character(len=:),allocatable :: testpath
@@ -3247,7 +3288,18 @@ integer                      :: i
 integer                      :: ios
    prototype=''
    ! look for NAME.rsp
-   filename=rname//'.rsp'
+   ! assume if have / or \ a full filename was supplied to support ifort(1)
+   if((index(rname,'/') /= 0.or.index(rname,'\') /= 0) .and. len(rname) > 1 )then
+      filename=rname
+      lun=fileopen(filename,message)
+      if(lun /= -1)then
+         call process_response()
+         close(unit=lun,iostat=ios)
+      endif
+      return
+   else
+      filename=rname//'.rsp'
+   endif
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:FILENAME=',filename
 
    ! look for name.rsp in directories from environment variable assumed to be a colon-separated list of directories
@@ -3258,14 +3310,14 @@ integer                      :: ios
    do i=1,size(paths)
       testpath=join_path(paths(i),filename)
       lun=fileopen(testpath,message)
-      if(lun.ne.-1)then
+      if(lun /= -1)then
          if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:SEARCH_FOR=',search_for
-         if(search_for.ne.'') call position_response() ! set to end of file or where string was found
+         if(search_for /= '') call position_response() ! set to end of file or where string was found
          call process_response()
          if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:LINES_PROCESSED=',LINES_PROCESSED
          close(unit=lun,iostat=ios)
          if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:CLOSE:LUN=',LUN,' IOSTAT=',IOS
-         if(lines_processed.ne.0)exit
+         if(lines_processed /= 0)exit
       endif
    enddo
 
@@ -3280,16 +3332,18 @@ integer :: ios
          if(debug_m_cli2)write(*,gen)'<DEBUG>POSITION_RESPONSE:EOF'
          backspace(lun,iostat=ios)
          exit INFINITE
-      elseif(ios.ne.0)then
+      elseif(ios /= 0)then
          write(*,gen)'<ERROR>*position_response*:'//trim(message)
          exit INFINITE
       endif
       line=adjustl(line)
-      if(line.eq.search_for)return
+      if(line == search_for)return
    enddo INFINITE
 end subroutine position_response
 !===================================================================================================================================
 subroutine process_response()
+character(len=:),allocatable :: padded
+character(len=:),allocatable :: temp
    line=''
    lines_processed=0
       INFINITE: do
@@ -3297,41 +3351,58 @@ subroutine process_response()
       if(is_iostat_end(ios))then
          backspace(lun,iostat=ios)
          exit INFINITE
-      elseif(ios.ne.0)then
+      elseif(ios /= 0)then
          write(*,gen)'<ERROR>*process_response*:'//trim(message)
          exit INFINITE
       endif
-      line=adjustl(line)
-      if(index(line//' ','#').eq.1)cycle
-      if(line.ne.'')then
+      line=trim(adjustl(line))
+      temp=line
+      if(index(temp//' ','#') == 1)cycle
+      if(temp /= '')then
 
-         if(index(line,'@').eq.1.and.lines_processed.ne.0)exit INFINITE
+         if(index(temp,'@') == 1.and.lines_processed /= 0)exit INFINITE
 
-         call split(line,array) ! get first word
+         call split(temp,array) ! get first word
          itrim=len_trim(array(1))+2
-         line=line(itrim:)
+         temp=temp(itrim:)
 
          PROCESS: select case(lower(array(1)))
          case('comment','#','')
          case('system','!','$')
             if(G_options_only)exit PROCESS
             lines_processed= lines_processed+1
-            call execute_command_line(line)
+            call execute_command_line(temp)
          case('options','option','-')
             lines_processed= lines_processed+1
-            prototype=prototype//' '//trim(line)
+            prototype=prototype//' '//trim(temp)
          case('print','>','echo')
             if(G_options_only)exit PROCESS
             lines_processed= lines_processed+1
-            write(*,'(a)')trim(line)
+            write(*,'(a)')trim(temp)
          case('stop')
             if(G_options_only)exit PROCESS
-            write(*,'(a)')trim(line)
+            write(*,'(a)')trim(temp)
             stop
          case default
-            if(array(1)(1:1).eq.'@')cycle INFINITE !skip adjacent @ lines from first
-            lines_processed= lines_processed+1
-            write(*,'(*(g0))')'unknown response keyword [',array(1),'] with options of [',trim(line),']'
+            if(array(1)(1:1) == '-')then
+               ! assume these are simply options to support ifort(1)
+               ! if starts with a single dash must assume a single argument
+               ! and rest is value to support -Dname and -Ifile option
+               ! which currently is not supported, so multiple short keywords
+               ! does not work. Just a ifort(1) test at this point, so do not document
+               if(G_options_only)exit PROCESS
+               padded=trim(line)//'  '
+               if(padded(2:2) == '-')then
+                  prototype=prototype//' '//trim(line)
+               else
+                  prototype=prototype//' '//padded(1:2)//' '//trim(padded(3:))
+               endif
+               lines_processed= lines_processed+1
+            else
+               if(array(1)(1:1) == '@')cycle INFINITE !skip adjacent @ lines from first
+               lines_processed= lines_processed+1
+               write(*,'(*(g0))')'unknown response keyword [',array(1),'] with options of [',trim(temp),']'
+            endif
          end select PROCESS
 
       endif
@@ -3353,7 +3424,7 @@ character(len=256)                       :: message_local
     & form='formatted',access='sequential',action='read',&
     & position='rewind',status='old',iostat=ios,iomsg=message_local)
 
-   if(ios.ne.0)then
+   if(ios /= 0)then
       lun=-1
       if(present(message))then
          message=trim(message_local)
@@ -3375,7 +3446,7 @@ integer                              :: stat
 integer                              :: length
    ! get length required to hold value
    length=0
-   if(NAME.ne.'')then
+   if(NAME /= '')then
       call get_environment_variable(NAME, length=howbig,status=stat,trim_name=.true.)
       select case (stat)
       case (1)
@@ -3390,12 +3461,12 @@ integer                              :: length
           allocate(character(len=max(howbig,1)) :: VALUE)
           ! get value
          call get_environment_variable(NAME,VALUE,status=stat,trim_name=.true.)
-          if(stat.ne.0)VALUE=''
+          if(stat /= 0)VALUE=''
       end select
    else
       VALUE=''
    endif
-   if(VALUE.eq.''.and.present(DEFAULT))VALUE=DEFAULT
+   if(VALUE == ''.and.present(DEFAULT))VALUE=DEFAULT
 end function get_env
 !===================================================================================================================================
 function join_path(a1,a2,a3,a4,a5) result(path)
@@ -3407,7 +3478,7 @@ function join_path(a1,a2,a3,a4,a5) result(path)
    character(len=1)                       :: filesep
 
    filesep = separator()
-   if(a1.ne.'')then
+   if(a1 /= '')then
       path = trim(a1) // filesep // trim(a2)
    else
       path = trim(a2)
@@ -3432,11 +3503,11 @@ character(len=:),allocatable :: name
    name=''
    long_name=''
    call get_command_argument(0,length=arg0_length,status=istat)
-   if(istat.eq.0)then
+   if(istat == 0)then
       if(allocated(arg0))deallocate(arg0)
       allocate(character(len=arg0_length) :: arg0)
       call get_command_argument(0,arg0,status=istat)
-      if(istat.eq.0)then
+      if(istat == 0)then
          inquire(file=arg0,iostat=istat,name=long_name)
          name=trim(long_name)
       else
@@ -3463,14 +3534,14 @@ logical :: with_suffix
 
    if (with_suffix) then
       call split(path,file_parts,delimiters='\/')
-      if(size(file_parts).gt.0)then
+      if(size(file_parts) > 0)then
          base = trim(file_parts(size(file_parts)))
       else
          base = ''
       endif
    else
       call split(path,file_parts,delimiters='\/.')
-      if(size(file_parts).ge.2)then
+      if(size(file_parts) >= 2)then
          base = trim(file_parts(size(file_parts)-1))
       else
          base = ''
@@ -3495,18 +3566,18 @@ character(len=:),allocatable :: fname
    allocate(character(len=arg0_length) :: arg0)
    call get_command_argument(0,arg0,status=istat)
    ! check argument name
-   if(index(arg0,'\').ne.0)then
+   if(index(arg0,'\') /= 0)then
       sep='\'
-   elseif(index(arg0,'/').ne.0)then
+   elseif(index(arg0,'/') /= 0)then
       sep='/'
    else
       ! try name returned by INQUIRE(3f)
       existing=.false.
       name=' '
       inquire(file=arg0,iostat=istat,exist=existing,name=name)
-      if(index(name,'\').ne.0)then
+      if(index(name,'\') /= 0)then
          sep='\'
-      elseif(index(name,'/').ne.0)then
+      elseif(index(name,'/') /= 0)then
          sep='/'
       else
          ! well, try some common syntax and assume in current directory
@@ -3574,11 +3645,11 @@ character(len=4096)          :: name
 character(len=:),allocatable :: envnames(:)
 
     ! NOTE:  A parallel code might theoretically use multiple OS
-    !x!FORT BUG:if(sep_cache.ne.' ')then  ! use cached value.
+    !x!FORT BUG:if(sep_cache /= ' ')then  ! use cached value.
     !x!FORT BUG:    sep=sep_cache
     !x!FORT BUG:    return
     !x!FORT BUG:endif
-    if(isep.ne.-1)then  ! use cached value.
+    if(isep /= -1)then  ! use cached value.
         sep=char(isep)
         return
     endif
@@ -3587,7 +3658,7 @@ character(len=:),allocatable :: envnames(:)
     ! most MSWindows environments see to work with backslash even when
     ! using POSIX filenames to do not rely on '\.'.
     inquire(file='/.',exist=existing,iostat=ios,name=name)
-    if(existing.and.ios.eq.0)then
+    if(existing.and.ios == 0)then
         sep='/'
         exit FOUND
     endif
@@ -3598,10 +3669,10 @@ character(len=:),allocatable :: envnames(:)
     ! POSIX filenames in the environment.
     envnames=[character(len=10) :: 'PATH', 'HOME']
     do i=1,size(envnames)
-       if(index(get_env(envnames(i)),'\').ne.0)then
+       if(index(get_env(envnames(i)),'\') /= 0)then
           sep='\'
           exit FOUND
-       elseif(index(get_env(envnames(i)),'/').ne.0)then
+       elseif(index(get_env(envnames(i)),'/') /= 0)then
           sep='/'
           exit FOUND
        endif
@@ -3616,10 +3687,8 @@ end function separator
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-subroutine cmd_args_to_dictionary(check)
+subroutine cmd_args_to_dictionary()
 ! convert command line arguments to dictionary entries
-logical,intent(in),optional  :: check
-logical                      :: check_local
 !x!logical                      :: guess_if_value
 integer                      :: pointer
 character(len=:),allocatable :: lastkeyword
@@ -3634,11 +3703,6 @@ logical                      :: nomore
 logical                      :: next_mandatory
    if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:START'
    next_mandatory=.false.
-   if(present(check))then
-      check_local=check
-   else
-      check_local=.false.
-   endif
    nomore=.false.
    pointer=0
    lastkeyword=' '
@@ -3646,18 +3710,18 @@ logical                      :: next_mandatory
    i=1
    GET_ARGS: do while (get_next_argument()) ! insert and replace entries
 
-      if( current_argument .eq. '-' .and. nomore .eqv. .true. )then   ! sort of
-      elseif( current_argument .eq. '-')then                          ! sort of
+      if( current_argument  ==  '-' .and. nomore .eqv. .true. )then   ! sort of
+      elseif( current_argument  ==  '-')then                          ! sort of
          current_argument='"stdin"'
       endif
-      if( current_argument .eq. '--' .and. nomore .eqv. .true. )then  ! -- was already encountered
-      elseif( current_argument .eq. '--' )then                        ! everything after this goes into the unnamed array
+      if( current_argument  ==  '--' .and. nomore .eqv. .true. )then  ! -- was already encountered
+      elseif( current_argument  ==  '--' )then                        ! everything after this goes into the unnamed array
          nomore=.true.
          pointer=0
          if(G_remaining_option_allowed)then
             G_remaining_on=.true.
          endif
-         cycle
+         cycle GET_ARGS
       endif
 
       dummy=current_argument//'   '
@@ -3665,13 +3729,18 @@ logical                      :: next_mandatory
 
       !x!guess_if_value=maybe_value()
 
-      if(.not.next_mandatory.and..not.nomore.and.current_argument_padded(1:2).eq.'--')then    ! beginning of long word
+      if(.not.next_mandatory.and..not.nomore.and.current_argument_padded(1:2) == '--')then    ! beginning of long word
          G_keyword_single_letter=.false.
-         if(lastkeyword.ne.'')then
+         if(lastkeyword /= '')then
             call ifnull()
          endif
          call locate_key(current_argument_padded(3:),pointer)
-         if(pointer.le.0.and.check_local)then
+         if(pointer <= 0)then
+            if(G_QUIET)then
+               lastkeyword="UNKNOWN"
+               pointer=0
+               cycle GET_ARGS
+            endif
             call print_dictionary('UNKNOWN LONG KEYWORD: '//current_argument)
             call mystop(1)
             return
@@ -3680,24 +3749,29 @@ logical                      :: next_mandatory
          next_mandatory=mandatory(pointer)
       elseif(.not.next_mandatory &
       & .and..not.nomore &
-      & .and.current_argument_padded(1:1).eq.'-' &
-      & .and.index("0123456789.",dummy(2:2)).eq.0)then
+      & .and.current_argument_padded(1:1) == '-' &
+      & .and.index("0123456789.",dummy(2:2)) == 0)then
       ! short word
          G_keyword_single_letter=.true.
-         if(lastkeyword.ne.'')then
+         if(lastkeyword /= '')then
             call ifnull()
          endif
          call locate_key(current_argument_padded(2:),pointer)
-         if(pointer.le.0.and.check_local)then
+         if(pointer <= 0)then
             jj=len(current_argument)
-            if(G_STRICT.and.jj.gt.2)then  ! in strict mode this might be multiple single-character values
+            if(G_STRICT.and.jj > 2)then  ! in strict mode this might be multiple single-character values
               do kk=2,jj
                  letter=current_argument_padded(kk:kk)
                  call locate_key(letter,pointer)
-                 if(pointer.gt.0)then
+                 if(pointer > 0)then
                     call update(keywords(pointer),'T')
                  else
                     call print_dictionary('UNKNOWN COMPOUND SHORT KEYWORD:'//letter//' in '//current_argument)
+                    if(G_QUIET)then
+                       lastkeyword="UNKNOWN"
+                       pointer=0
+                       cycle GET_ARGS
+                    endif
                     call mystop(2)
                     return
                  endif
@@ -3705,17 +3779,22 @@ logical                      :: next_mandatory
               enddo
             else
                call print_dictionary('UNKNOWN SHORT KEYWORD: '//current_argument)
+               if(G_QUIET)then
+                  lastkeyword="UNKNOWN"
+                  pointer=0
+                  cycle GET_ARGS
+               endif
                call mystop(2)
                return
             endif
          endif
          lastkeyword=trim(current_argument_padded(2:))
          next_mandatory=mandatory(pointer)
-      elseif(pointer.eq.0)then                                       ! unnamed arguments
+      elseif(pointer == 0)then                                       ! unnamed arguments
          if(G_remaining_on)then
-            if(len(current_argument).lt.1)then
+            if(len(current_argument) < 1)then
                G_remaining=G_remaining//'"" '
-            elseif(current_argument(1:1).eq.'-')then
+            elseif(current_argument(1:1) == '-')then
                !get fancier to handle spaces and =!G_remaining=G_remaining//current_argument//' '
                G_remaining=G_remaining//'"'//current_argument//'" '
             else
@@ -3725,7 +3804,7 @@ logical                      :: next_mandatory
             args=[character(len=imax) :: args,current_argument]
          else
             imax=max(len(unnamed),len(current_argument))
-            if(index(current_argument//' ','@').eq.1.and.G_response)then
+            if(index(current_argument//' ','@') == 1.and.G_response)then
                if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:1:CALL EXPAND_RESPONSE:CURRENT_ARGUMENT=',current_argument
                call expand_response(current_argument)
             else
@@ -3734,15 +3813,15 @@ logical                      :: next_mandatory
          endif
       else
          oldvalue=get(keywords(pointer))//' '
-         if(oldvalue(1:1).eq.'"')then
+         if(oldvalue(1:1) == '"')then
             current_argument=quote(current_argument(:ilength))
          endif
-         if(upper(oldvalue).eq.'F'.or.upper(oldvalue).eq.'T')then  ! assume boolean parameter
-            if(current_argument.ne.' ')then
+         if(upper(oldvalue) == 'F'.or.upper(oldvalue) == 'T')then  ! assume boolean parameter
+            if(current_argument /= ' ')then
                if(G_remaining_on)then
-                  if(len(current_argument).lt.1)then
+                  if(len(current_argument) < 1)then
                         G_remaining=G_remaining//'"" '
-                  elseif(current_argument(1:1).eq.'-')then
+                  elseif(current_argument(1:1) == '-')then
                        !get fancier to handle spaces and =!G_remaining=G_remaining//current_argument//' '
                         G_remaining=G_remaining//'"'//current_argument//'" '
                   else
@@ -3752,7 +3831,7 @@ logical                      :: next_mandatory
                   args=[character(len=imax) :: args,current_argument]
                else
                   imax=max(len(unnamed),len(current_argument))
-                  if(index(current_argument//' ','@').eq.1.and.G_response)then
+                  if(index(current_argument//' ','@') == 1.and.G_response)then
                if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:2:CALL EXPAND_RESPONSE:CURRENT_ARGUMENT=',current_argument
                      call expand_response(current_argument)
                   else
@@ -3768,7 +3847,7 @@ logical                      :: next_mandatory
          next_mandatory=.false.
       endif
    enddo GET_ARGS
-   if(lastkeyword.ne.'')then
+   if(lastkeyword /= '')then
       call ifnull()
    endif
    if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:NORMAL END'
@@ -3777,9 +3856,9 @@ contains
 
 subroutine ifnull()
    oldvalue=get(lastkeyword)//' '
-   if(upper(oldvalue).eq.'F'.or.upper(oldvalue).eq.'T')then
+   if(upper(oldvalue) == 'F'.or.upper(oldvalue) == 'T')then
       call update(lastkeyword,'T')
-   elseif(oldvalue(1:1).eq.'"')then
+   elseif(oldvalue(1:1) == '"')then
       call update(lastkeyword,'" "')
    else
       call update(lastkeyword,' ')
@@ -3833,14 +3912,14 @@ integer :: iequal
 
        ! if an argument keyword and an equal before a space split on equal and save right hand side for next call
        if(nomore)then
-       elseif(len(current_argument).eq.0)then
+       elseif(len(current_argument) == 0)then
        else
           iright=index(current_argument,' ')
-          if(iright.eq.0)iright=len(current_argument)
+          if(iright == 0)iright=len(current_argument)
           iequal=index(current_argument(:iright),'=')
           if(next_mandatory)then
-          elseif(iequal.ne.0.and.current_argument(1:1).eq.'-')then
-             if(iequal.ne.len(current_argument))then
+          elseif(iequal /= 0.and.current_argument(1:1) == '-')then
+             if(iequal /= len(current_argument))then
                 right_hand_side=current_argument(iequal+1:)
              else
                 right_hand_side=''
@@ -3864,22 +3943,22 @@ integer :: pointer
 character(len=:),allocatable :: oldvalue
 
    oldvalue=get(lastkeyword)//' '
-   if(current_argument_padded(1:1).ne.'-')then
+   if(current_argument_padded(1:1) /= '-')then
       maybe_value=.true.
-   elseif(oldvalue(1:1).ne.'"')then
+   elseif(oldvalue(1:1) /= '"')then
       maybe_value=.false.
-   elseif(index(current_argument,' ').ne.0)then
+   elseif(index(current_argument,' ') /= 0)then
       maybe_value=.true.
-   elseif(scan(current_argument,",:;!@#$%^&*+=()[]{}\|'""./><?").ne.0)then
+   elseif(scan(current_argument,",:;!@#$%^&*+=()[]{}\|'""./><?") /= 0)then
       maybe_value=.true.
    else  ! the last value was a null string so see if this matches an allowed parameter
       pointer=0
-      if(current_argument_padded(1:2).eq.'--')then
+      if(current_argument_padded(1:2) == '--')then
          call locate_key(current_argument_padded(3:),pointer)
-      elseif(current_argument_padded(1:1).eq.'-')then
+      elseif(current_argument_padded(1:1) == '-')then
          call locate_key(current_argument_padded(2:),pointer)
       endif
-      if(pointer.le.0)then
+      if(pointer <= 0)then
          maybe_value=.true.
       else                   ! matched an option name so LIKELY is not a value
          maybe_value=.false.
@@ -3893,11 +3972,10 @@ end subroutine cmd_args_to_dictionary
 !===================================================================================================================================
 !>
 !!##NAME
-!!     print_dictionary(3f) - [ARGUMENTS:M_CLI2] print internal dictionary created by calls to set_args(3f)
+!!     print_dictionary(3f) - [ARGUMENTS:M_CLI2] print internal dictionary
+!!     created by calls to set_args(3f)
 !!     (LICENSE:PD)
 !!##SYNOPSIS
-!!
-!!
 !!
 !!     subroutine print_dictionary(header,stop)
 !!
@@ -3952,31 +4030,32 @@ subroutine print_dictionary(header,stop)
 character(len=*),intent(in),optional :: header
 logical,intent(in),optional          :: stop
 integer          :: i
+   if(G_QUIET)return
    if(present(header))then
-      if(header.ne.'')then
+      if(header /= '')then
          write(warn,'(a)')header
       endif
    endif
    if(allocated(keywords))then
-      if(size(keywords).gt.0)then
+      if(size(keywords) > 0)then
          write(warn,'(a,1x,a,1x,a,1x,a)')atleast('KEYWORD',max(len(keywords),8)),'SHORT','PRESENT','VALUE'
          write(warn,'(*(a,1x,a5,1x,l1,8x,"[",a,"]",/))') &
          & (atleast(keywords(i),max(len(keywords),8)),shorts(i),present_in(i),values(i)(:counts(i)),i=1,size(keywords))
       endif
    endif
    if(allocated(unnamed))then
-      if(size(unnamed).gt.0)then
+      if(size(unnamed) > 0)then
          write(warn,'(a)')'UNNAMED'
          write(warn,'(i6.6,3a)')(i,'[',unnamed(i),']',i=1,size(unnamed))
       endif
    endif
    if(allocated(args))then
-      if(size(args).gt.0)then
+      if(size(args) > 0)then
          write(warn,'(a)')'ARGS'
          write(warn,'(i6.6,3a)')(i,'[',args(i),']',i=1,size(args))
       endif
    endif
-   if(G_remaining.ne.'')then
+   if(G_remaining /= '')then
       write(warn,'(a)')'REMAINING'
       write(warn,'(a)')G_remaining
    endif
@@ -3990,7 +4069,7 @@ end subroutine print_dictionary
 FUNCTION strtok(source_string,itoken,token_start,token_end,delimiters) result(strtok_status)
 ! JSU- 20151030
 
-! ident_6="@(#)M_CLI2::strtok(3f): Tokenize a string"
+! ident_6="@(#) M_CLI2 strtok(3f) Tokenize a string"
 
 character(len=*),intent(in)  :: source_string    ! Source string to tokenize.
 character(len=*),intent(in)  :: delimiters       ! list of separator characters. May change between calls
@@ -4001,7 +4080,7 @@ integer,intent(inout)        :: token_end        ! end of token found if functio
 integer                      :: isource_len
 !----------------------------------------------------------------------------------------------------------------------------
 !  calculate where token_start should start for this pass
-   if(itoken.le.0)then                           ! this is assumed to be the first call
+   if(itoken <= 0)then                           ! this is assumed to be the first call
       token_start=1
    else                                          ! increment start to previous end + 1
       token_start=token_end+1
@@ -4009,15 +4088,15 @@ integer                      :: isource_len
 !----------------------------------------------------------------------------------------------------------------------------
    isource_len=len(source_string)                ! length of input string
 !----------------------------------------------------------------------------------------------------------------------------
-   if(token_start.gt.isource_len)then            ! user input error or at end of string
+   if(token_start > isource_len)then            ! user input error or at end of string
       token_end=isource_len                      ! assume end of token is end of string until proven otherwise so it is set
       strtok_status=.false.
       return
    endif
 !----------------------------------------------------------------------------------------------------------------------------
    ! find beginning of token
-   do while (token_start .le. isource_len)       ! step thru each character to find next delimiter, if any
-      if(index(delimiters,source_string(token_start:token_start)) .ne. 0) then
+   do while (token_start  <=  isource_len)       ! step thru each character to find next delimiter, if any
+      if(index(delimiters,source_string(token_start:token_start))  /=  0) then
          token_start = token_start + 1
       else
          exit
@@ -4025,14 +4104,14 @@ integer                      :: isource_len
    enddo
 !----------------------------------------------------------------------------------------------------------------------------
    token_end=token_start
-   do while (token_end .le. isource_len-1)       ! step thru each character to find next delimiter, if any
-      if(index(delimiters,source_string(token_end+1:token_end+1)) .ne. 0) then  ! found a delimiter in next character
+   do while (token_end  <=  isource_len-1)       ! step thru each character to find next delimiter, if any
+      if(index(delimiters,source_string(token_end+1:token_end+1))  /=  0) then  ! found a delimiter in next character
          exit
       endif
       token_end = token_end + 1
    enddo
 !----------------------------------------------------------------------------------------------------------------------------
-   if (token_start .gt. isource_len) then        ! determine if finished
+   if (token_start  >  isource_len) then        ! determine if finished
       strtok_status=.false.                      ! flag that input string has been completely processed
    else
       itoken=itoken+1                            ! increment count of tokens found
@@ -4045,10 +4124,13 @@ end function strtok
 !==================================================================================================================================!
 !>
 !!##NAME
-!!     get_args(3f) - [ARGUMENTS:M_CLI2] return keyword values when parsing command line arguments
+!!     get_args(3f) - [ARGUMENTS:M_CLI2] return keyword values when parsing
+!!     command line arguments
 !!     (LICENSE:PD)
 !!
 !!##SYNOPSIS
+!!
+!!   get_args(3f) and its convenience functions:
 !!
 !!     use M_CLI2, only : get_args
 !!     ! convenience functions
@@ -4059,16 +4141,14 @@ end function strtok
 !!
 !!      character(len=*),intent(in) :: name
 !!
-!!      character(len=:),allocatable :: value
+!!      type(${TYPE}),allocatable,intent(out) :: value(:)
 !!      ! or
-!!      character(len=:),allocatable :: value(:)
-!!      ! or
-!!      [real|doubleprecision|integer|logical|complex] :: value
-!!      ! or
-!!      [real|doubleprecision|integer|logical|complex],allocatable :: value(:)
+!!      type(${TYPE}),allocatable,intent(out) :: value
 !!
 !!      character(len=*),intent(in),optional :: delimiters
 !!
+!!      where ${TYPE} may be from the set
+!!              {real,doubleprecision,integer,logical,complex,character(len=:)}
 !!##DESCRIPTION
 !!
 !!    GET_ARGS(3f) returns the value of keywords after SET_ARGS(3f)
@@ -4146,7 +4226,7 @@ end function strtok
 !!     write(*,*)'title=',title
 !!     write(*,*)'l=',l
 !!     write(*,*)'L=',lbig
-!!     if(size(filenames).gt.0)then
+!!     if(size(filenames) > 0)then
 !!        write(*,'(i6.6,3a)')(i,'[',filenames(i),']',i=1,size(filenames))
 !!     endif
 !!     end program demo_get_args
@@ -4157,7 +4237,8 @@ end function strtok
 !===================================================================================================================================
 !>
 !!##NAME
-!!    get_args_fixed_length(3f) - [ARGUMENTS:M_CLI2] return keyword values for fixed-length string when parsing command line
+!!    get_args_fixed_length(3f) - [ARGUMENTS:M_CLI2] return keyword values
+!!    for fixed-length string when parsing command line
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -4209,7 +4290,8 @@ end function strtok
 !===================================================================================================================================
 !>
 !!##NAME
-!!    get_args_fixed_size(3f) - [ARGUMENTS:M_CLI2] return keyword values for fixed-size array when parsing command line arguments
+!!    get_args_fixed_size(3f) - [ARGUMENTS:M_CLI2] return keyword values
+!!    for fixed-size array when parsing command line arguments
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -4310,7 +4392,7 @@ end subroutine get_fixedarray_class
 !===================================================================================================================================
 subroutine get_anyarray_l(keyword,larray,delimiters)
 
-! ident_7="@(#)M_CLI2::get_anyarray_l(3f): given keyword fetch logical array from string in dictionary(F on err)"
+! ident_7="@(#) M_CLI2 get_anyarray_l(3f) given keyword fetch logical array from string in dictionary(F on err)"
 
 character(len=*),intent(in)  :: keyword                    ! the dictionary keyword (in form VERB_KEYWORD) to retrieve
 logical,allocatable          :: larray(:)                  ! convert value to an array
@@ -4321,7 +4403,7 @@ integer                      :: i
 integer                      :: place
 integer                      :: iichar                     ! point to first character of word unless first character is "."
    call locate_key(keyword,place)                          ! find where string is or should be
-   if(place.gt.0)then                                      ! if string was found
+   if(place > 0)then                                      ! if string was found
       val=values(place)(:counts(place))
       call split(adjustl(upper(val)),carray,delimiters=delimiters)  ! convert value to uppercase, trimmed; then parse into array
    else
@@ -4331,12 +4413,12 @@ integer                      :: iichar                     ! point to first char
       allocate(larray(0))
       return
    endif
-   if(size(carray).gt.0)then                                  ! if not a null string
+   if(size(carray) > 0)then                                  ! if not a null string
       if(allocated(larray))deallocate(larray)
       allocate(larray(size(carray)))                          ! allocate output array
       do i=1,size(carray)
          larray(i)=.false.                                    ! initialize return value to .false.
-         if(carray(i)(1:1).eq.'.')then                        ! looking for fortran logical syntax .STRING.
+         if(carray(i)(1:1) == '.')then                        ! looking for fortran logical syntax .STRING.
             iichar=2
          else
             iichar=1
@@ -4357,7 +4439,7 @@ end subroutine get_anyarray_l
 !===================================================================================================================================
 subroutine get_anyarray_d(keyword,darray,delimiters)
 
-! ident_8="@(#)M_CLI2::get_anyarray_d(3f): given keyword fetch dble value array from Language Dictionary (0 on err)"
+! ident_8="@(#) M_CLI2 get_anyarray_d(3f) given keyword fetch dble value array from Language Dictionary (0 on err)"
 
 character(len=*),intent(in)           :: keyword      ! keyword to retrieve value from dictionary
 real(kind=dp),allocatable,intent(out) :: darray(:)    ! function type
@@ -4370,7 +4452,7 @@ integer                               :: ierr
 character(len=:),allocatable          :: val
 !-----------------------------------------------------------------------------------------------------------------------------------
    call locate_key(keyword,place)                     ! find where string is or should be
-   if(place.gt.0)then                                 ! if string was found
+   if(place > 0)then                                 ! if string was found
       val=values(place)(:counts(place))
       val=replace_str(val,'(','')
       val=replace_str(val,')','')
@@ -4386,7 +4468,7 @@ character(len=:),allocatable          :: val
    allocate(darray(size(carray)))                     ! create the output array
    do i=1,size(carray)
       call a2d(carray(i), darray(i),ierr) ! convert the string to a numeric value
-      if(ierr.ne.0)then
+      if(ierr /= 0)then
          call mystop(10 ,'*get_anyarray_d* unreadable value '//carray(i)//' for keyword '//keyword)
       endif
    enddo
@@ -4419,7 +4501,7 @@ integer                              :: half,sz,i
    call get_anyarray_d(keyword,darray,delimiters)
    sz=size(darray)
    half=sz/2
-   if(sz.ne.half+half)then
+   if(sz /= half+half)then
       call journal('sc','*get_anyarray_x* uneven number of values defining complex value '//keyword)
       call mystop(11,'*get_anyarray_x* uneven number of values defining complex value '//keyword)
       if(allocated(xarray))deallocate(xarray)
@@ -4462,7 +4544,7 @@ end subroutine get_anyarray_c
 !===================================================================================================================================
 subroutine get_args_fixed_length_a_array(keyword,strings,delimiters)
 
-! ident_9="@(#)M_CLI2::get_args_fixed_length_a_array(3f): Fetch strings value for specified KEYWORD from the lang. dictionary"
+! ident_9="@(#) M_CLI2 get_args_fixed_length_a_array(3f) Fetch strings value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)          :: keyword       ! name to look up in dictionary
@@ -4475,7 +4557,7 @@ character(len=:),allocatable         :: val
    if(place > 0)then                                  ! if index is valid return strings
       val=unquote(values(place)(:counts(place)))
       call split(val,strings_a,delimiters=delimiters)   ! find value associated with keyword and split it into an array
-      if(len(strings_a).le.len(strings))then
+      if(len(strings_a) <= len(strings))then
          strings=strings_a
       else
          call journal('sc','*get_args_fixed_length_a_array* values too long. Longest is',len(strings_a),'allowed is',len(strings))
@@ -4501,7 +4583,7 @@ real(kind=dp),allocatable            :: darray(:)    ! function type
 integer                              :: dsize
    call get_anyarray_d(keyword,darray,delimiters)
    dsize=size(darray)
-   if(ubound(iarray,dim=1).eq.dsize)then
+   if(ubound(iarray,dim=1) == dsize)then
       iarray=nint(darray)
    else
       call journal('sc','*get_fixedarray_i* wrong number of values for keyword',keyword,'got',dsize,'expected',size(iarray))
@@ -4519,7 +4601,7 @@ real,allocatable                     :: darray(:)    ! function type
 integer                              :: dsize
    call get_anyarray_r(keyword,darray,delimiters)
    dsize=size(darray)
-   if(ubound(rarray,dim=1).eq.dsize)then
+   if(ubound(rarray,dim=1) == dsize)then
       rarray=darray
    else
       call journal('sc','*get_fixedarray_r* wrong number of values for keyword',keyword,'got',dsize,'expected',size(rarray))
@@ -4540,13 +4622,13 @@ integer                              :: dsize
    dsize=size(darray)
    sz=dsize*2
    half=sz/2
-   if(sz.ne.half+half)then
+   if(sz /= half+half)then
       call journal('sc','*get_fixed_size_complex* uneven number of values defining complex value '//keyword)
       call mystop(15,'*get_fixed_size_complex* uneven number of values defining complex value '//keyword)
       xarray=0
       return
    endif
-   if(ubound(xarray,dim=1).eq.dsize)then
+   if(ubound(xarray,dim=1) == dsize)then
       xarray=darray
    else
       call journal('sc','*get_fixed_size_complex* wrong number of values for keyword',keyword,'got',dsize,'expected',size(xarray))
@@ -4564,7 +4646,7 @@ real(kind=dp),allocatable            :: darray(:)    ! function type
 integer                              :: dsize
    call get_anyarray_d(keyword,darray,delimiters)
    dsize=size(darray)
-   if(ubound(darr,dim=1).eq.dsize)then
+   if(ubound(darr,dim=1) == dsize)then
       darr=darray
    else
       call journal('sc','*get_fixedarray_d* wrong number of values for keyword',keyword,'got',dsize,'expected',size(darr))
@@ -4582,7 +4664,7 @@ logical,allocatable                  :: darray(:)    ! function type
 integer                              :: dsize
    call get_anyarray_l(keyword,darray,delimiters)
    dsize=size(darray)
-   if(ubound(larray,dim=1).eq.dsize)then
+   if(ubound(larray,dim=1) == dsize)then
       larray=darray
    else
       call journal('sc','*get_fixedarray_l* wrong number of values for keyword',keyword,'got',dsize,'expected',size(larray))
@@ -4594,7 +4676,7 @@ end subroutine get_fixedarray_l
 !===================================================================================================================================
 subroutine get_fixedarray_fixed_length_c(keyword,strings,delimiters)
 
-! ident_10="@(#)M_CLI2::get_fixedarray_fixed_length_c(3f): Fetch strings value for specified KEYWORD from the lang. dictionary"
+! ident_10="@(#) M_CLI2 get_fixedarray_fixed_length_c(3f) Fetch strings value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*)                     :: strings(:)
@@ -4632,7 +4714,7 @@ character(len=*),intent(in)   :: keyword      ! keyword to retrieve value from d
 real(kind=dp)                 :: d
 real(kind=dp),allocatable     :: darray(:)    ! function type
    call get_anyarray_d(keyword,darray)
-   if(size(darray).eq.1)then
+   if(size(darray) == 1)then
       d=darray(1)
    else
       call journal('sc','*get_anyarray_d* incorrect number of values for keyword',keyword,'expected one found',size(darray))
@@ -4659,7 +4741,7 @@ end subroutine get_scalar_i
 !===================================================================================================================================
 subroutine get_scalar_anylength_c(keyword,string)
 
-! ident_11="@(#)M_CLI2::get_scalar_anylength_c(3f): Fetch string value for specified KEYWORD from the lang. dictionary"
+! ident_11="@(#) M_CLI2 get_scalar_anylength_c(3f) Fetch string value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)   :: keyword              ! name to look up in dictionary
@@ -4677,7 +4759,7 @@ end subroutine get_scalar_anylength_c
 !===================================================================================================================================
 elemental impure subroutine get_args_fixed_length_scalar_c(keyword,string)
 
-! ident_12="@(#)M_CLI2::get_args_fixed_length_scalar_c(3f): Fetch string value for specified KEYWORD from the lang. dictionary"
+! ident_12="@(#) M_CLI2 get_args_fixed_length_scalar_c(3f) Fetch string value for specified KEYWORD from the lang. dictionary"
 
 ! This routine trusts that the desired keyword exists. A blank is returned if the keyword is not in the dictionary
 character(len=*),intent(in)   :: keyword              ! name to look up in dictionary
@@ -4705,7 +4787,7 @@ character(len=*),intent(in) :: keyword      ! keyword to retrieve value from dic
 complex,intent(out)         :: x
 real(kind=dp)               :: d(2)
    call get_fixedarray_d(keyword,d)
-   if(size(d).eq.2)then
+   if(size(d) == 2)then
       x=cmplx(d(1),d(2),kind=sp)
    else
       call journal('sc','*get_scalar_complex* expected two values found',size(d))
@@ -4719,7 +4801,7 @@ character(len=*),intent(in)   :: keyword      ! keyword to retrieve value from d
 logical                       :: l
 logical,allocatable           :: larray(:)    ! function type
    call get_anyarray_l(keyword,larray)
-   if(size(larray).eq.1)then
+   if(size(larray) == 1)then
       l=larray(1)
    else
       call journal('sc','*get_anyarray_l* expected one value found',size(larray))
@@ -4744,7 +4826,8 @@ end subroutine get_scalar_logical
 !===================================================================================================================================
 !>
 !!##NAME
-!!    longest_command_argument(3f) - [ARGUMENTS:M_args] length of longest argument on command line
+!!    longest_command_argument(3f) - [ARGUMENTS:M_args] length of longest
+!!    argument on command line
 !!    (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -4753,7 +4836,8 @@ end subroutine get_scalar_logical
 !!     integer :: ilongest
 !!
 !!##DESCRIPTION
-!!    length of longest argument on command line. Useful when allocating storage for holding arguments.
+!!    length of longest argument on command line. Useful when allocating
+!!    storage for holding arguments.
 !!##RESULT
 !!    longest_command_argument  length of longest command argument
 !!##EXAMPLE
@@ -4780,7 +4864,7 @@ integer :: ilongest
       if(istatus /= 0) then                                                 ! on error
          write(warn,*)'*prototype_and_cmd_args_to_nlist* error obtaining length for argument ',i
          exit GET_LONGEST
-      elseif(ilength.gt.0)then
+      elseif(ilength > 0)then
          ilongest=max(ilongest,ilength)
       endif
    enddo GET_LONGEST
@@ -4791,7 +4875,7 @@ end function longest_command_argument
 subroutine journal(where, g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, ga, gb, gc, gd, ge, gf, gg, gh, gi, gj, sep)
 implicit none
 
-! ident_13="@(#)M_CLI2::journal(3f): writes a message to a string composed of any standard scalar types"
+! ident_13="@(#) M_CLI2 journal(3f) writes a message to a string composed of any standard scalar types"
 
 character(len=*),intent(in)   :: where
 class(*),intent(in)           :: g0
@@ -4838,14 +4922,15 @@ end subroutine journal
 !!
 !! Sample program:
 !!
-!!       program demo_msg
+!!       program demo_str
 !!       use M_CLI2, only : str
 !!       implicit none
 !!       character(len=:),allocatable :: pr
 !!       character(len=:),allocatable :: frmt
 !!       integer                      :: biggest
 !!
-!!       pr=str('HUGE(3f) integers',huge(0),'and real',huge(0.0),'and double',huge(0.0d0))
+!!       pr=str('HUGE(3f) integers',huge(0),'and real',&
+!!               & huge(0.0),'and double',huge(0.0d0))
 !!       write(*,'(a)')pr
 !!       pr=str('real            :',huge(0.0),0.0,12345.6789,tiny(0.0) )
 !!       write(*,'(a)')pr
@@ -4856,21 +4941,24 @@ end subroutine journal
 !!
 !!       ! create a format on the fly
 !!       biggest=huge(0)
-!!       frmt=str('(*(i',int(log10(real(biggest))),':,1x))',sep=' ')
+!!       frmt=str('(*(i',nint(log10(real(biggest))),':,1x))',sep=' ')
 !!       write(*,*)'format=',frmt
 !!
-!!       ! although it will often work, using str(3f) in an I/O statement is not recommended
-!!       ! because if an error occurs str(3f) will try to write while part of an I/O statement
-!!       ! which not all compilers can handle and is currently non-standard
+!!       ! although it will often work, using str(3f) in an I/O statement
+!!       ! is not recommended because if an error occurs str(3f) will try
+!!       ! to write while part of an I/O statement which not all compilers
+!!       ! can handle and is currently non-standard
 !!       write(*,*)str('program will now stop')
 !!
-!!       end program demo_msg
+!!       end program demo_str
 !!
 !!  Output
 !!
-!!     HUGE(3f) integers 2147483647 and real 3.40282347E+38 and double 1.7976931348623157E+308
+!!     HUGE(3f) integers 2147483647 and real 3.40282347E+38 and
+!!     double 1.7976931348623157E+308
 !!     real            : 3.40282347E+38 0.00000000 12345.6787 1.17549435E-38
-!!     doubleprecision : 1.7976931348623157E+308 0.0000000000000000 12345.678900000001 2.2250738585072014E-308
+!!     doubleprecision : 1.7976931348623157E+308 0.0000000000000000
+!!     12345.678900000001 2.2250738585072014E-308
 !!     complex         : (3.40282347E+38,1.17549435E-38)
 !!      format=(*(i9:,1x))
 !!      program will now stop
@@ -4884,7 +4972,7 @@ function msg_scalar(generic0, generic1, generic2, generic3, generic4, generic5, 
                   & sep)
 implicit none
 
-! ident_14="@(#)M_CLI2::msg_scalar(3fp): writes a message to a string composed of any standard scalar types"
+! ident_14="@(#) M_CLI2 msg_scalar(3fp) writes a message to a string composed of any standard scalar types"
 
 class(*),intent(in),optional  :: generic0, generic1, generic2, generic3, generic4
 class(*),intent(in),optional  :: generic5, generic6, generic7, generic8, generic9
@@ -4969,7 +5057,7 @@ end function msg_scalar
 function msg_one(generic0,generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9,sep)
 implicit none
 
-! ident_15="@(#)M_CLI2::msg_one(3fp): writes a message to a string composed of any standard one dimensional types"
+! ident_15="@(#) M_CLI2 msg_one(3fp) writes a message to a string composed of any standard one dimensional types"
 
 class(*),intent(in)           :: generic0(:)
 class(*),intent(in),optional  :: generic1(:), generic2(:), generic3(:), generic4(:), generic5(:)
@@ -5035,7 +5123,7 @@ end function msg_one
 !===================================================================================================================================
 function upper(str) result (string)
 
-! ident_16="@(#)M_CLI2::upper(3f): Changes a string to uppercase"
+! ident_16="@(#) M_CLI2 upper(3f) Changes a string to uppercase"
 
 character(*), intent(in)      :: str
 character(:),allocatable      :: string
@@ -5053,7 +5141,7 @@ end function upper
 !===================================================================================================================================
 function lower(str) result (string)
 
-! ident_17="@(#)M_CLI2::lower(3f): Changes a string to lowercase over specified range"
+! ident_17="@(#) M_CLI2 lower(3f) Changes a string to lowercase over specified range"
 
 character(*), intent(In)     :: str
 character(:),allocatable     :: string
@@ -5071,7 +5159,7 @@ end function lower
 !===================================================================================================================================
 subroutine a2i(chars,valu,ierr)
 
-! ident_18="@(#)M_CLI2::a2i(3fp): subroutine returns integer value from string"
+! ident_18="@(#) M_CLI2 a2i(3fp) subroutine returns integer value from string"
 
 character(len=*),intent(in) :: chars                      ! input string
 integer,intent(out)         :: valu                       ! value read from input string
@@ -5079,8 +5167,8 @@ integer,intent(out)         :: ierr                       ! error flag (0 == no 
 doubleprecision             :: valu8
    valu8=0.0d0
    call a2d(chars,valu8,ierr,onerr=0.0d0)
-   if(valu8.le.huge(valu))then
-      if(valu8.le.huge(valu))then
+   if(valu8 <= huge(valu))then
+      if(valu8 <= huge(valu))then
          valu=int(valu8)
       else
          call journal('sc','*a2i*','- value too large',valu8,'>',huge(valu))
@@ -5092,7 +5180,7 @@ end subroutine a2i
 !----------------------------------------------------------------------------------------------------------------------------------
 subroutine a2d(chars,valu,ierr,onerr)
 
-! ident_19="@(#)M_CLI2::a2d(3fp): subroutine returns double value from string"
+! ident_19="@(#) M_CLI2 a2d(3fp) subroutine returns double value from string"
 
 !     1989,2016 John S. Urban.
 !
@@ -5118,10 +5206,10 @@ character(len=3),save        :: nan_string='NaN'
    ierr=0                                                       ! initialize error flag to zero
    local_chars=unquote(chars)
    msg=''
-   if(len(local_chars).eq.0)local_chars=' '
+   if(len(local_chars) == 0)local_chars=' '
    call substitute(local_chars,',','')                          ! remove any comma characters
    pnd=scan(local_chars,'#:')
-   if(pnd.ne.0)then
+   if(pnd /= 0)then
       write(frmt,fmt)pnd-1                                      ! build format of form '(BN,Gn.0)'
       read(local_chars(:pnd-1),fmt=frmt,iostat=ierr,iomsg=msg)basevalue   ! try to read value from string
       if(decodebase(local_chars(pnd+1:),basevalue,ivalu))then
@@ -5149,7 +5237,7 @@ character(len=3),save        :: nan_string='NaN'
          read(local_chars,fmt=frmt,iostat=ierr,iomsg=msg)valu   ! try to read value from string
       end select
    endif
-   if(ierr.ne.0)then                                            ! if an error occurred ierr will be non-zero.
+   if(ierr /= 0)then                                            ! if an error occurred ierr will be non-zero.
       if(present(onerr))then
          select type(onerr)
          type is (integer)
@@ -5160,11 +5248,11 @@ character(len=3),save        :: nan_string='NaN'
             valu=onerr
          end select
       else                                                      ! set return value to NaN
-         read(nan_string,'(g3.3)')valu
+         read(nan_string,'(f3.3)')valu
       endif
-      if(local_chars.ne.'eod')then                           ! print warning message except for special value "eod"
+      if(local_chars /= 'eod')then                           ! print warning message except for special value "eod"
          call journal('sc','*a2d* - cannot produce number from string ['//trim(chars)//']')
-         if(msg.ne.'')then
+         if(msg /= '')then
             call journal('sc','*a2d* - ['//trim(msg)//']')
          endif
       endif
@@ -5175,7 +5263,8 @@ end subroutine a2d
 !===================================================================================================================================
 !>
 !!##NAME
-!!    split(3f) - [M_CLI2:TOKENS] parse string into an array using specified delimiters
+!!    split(3f) - [M_CLI2:TOKENS] parse string into an array using specified
+!!    delimiters
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -5315,7 +5404,7 @@ end subroutine a2d
 subroutine split(input_line,array,delimiters,order,nulls)
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! ident_20="@(#)M_CLI2::split(3f): parse string on delimiter characters and store tokens into an allocatable array"
+! ident_20="@(#) M_CLI2 split(3f) parse string on delimiter characters and store tokens into an allocatable array"
 
 !  John S. Urban
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -5349,7 +5438,7 @@ integer                       :: imax                   ! length of longest toke
 !-----------------------------------------------------------------------------------------------------------------------------------
    ! decide on value for optional DELIMITERS parameter
    if (present(delimiters)) then                                     ! optional delimiter list was present
-      if(delimiters.ne.'')then                                       ! if DELIMITERS was specified and not null use it
+      if(delimiters /= '')then                                       ! if DELIMITERS was specified and not null use it
          dlim=delimiters
       else                                                           ! DELIMITERS was specified on call as empty string
          dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0)//',:' ! use default delimiter when not specified
@@ -5374,15 +5463,15 @@ integer                       :: imax                   ! length of longest toke
    icount=0                                                       ! how many tokens found
    inotnull=0                                                     ! how many tokens found not composed of delimiters
    imax=0                                                         ! length of longest token found
-   if(iilen.gt.0)then                                             ! there is at least one non-delimiter in INPUT_LINE if get here
+   if(iilen > 0)then                                             ! there is at least one non-delimiter in INPUT_LINE if get here
       icol=1                                                      ! initialize pointer into input line
       INFINITE: do i30=1,iilen,1                                  ! store into each array element
          ibegin(i30)=icol                                         ! assume start new token on the character
-         if(index(dlim(1:idlim),input_line(icol:icol)).eq.0)then  ! if current character is not a delimiter
+         if(index(dlim(1:idlim),input_line(icol:icol)) == 0)then  ! if current character is not a delimiter
             iterm(i30)=iilen                                      ! initially assume no more tokens
             do i10=1,idlim                                        ! search for next delimiter
                ifound=index(input_line(ibegin(i30):iilen),dlim(i10:i10))
-               IF(ifound.gt.0)then
+               IF(ifound > 0)then
                   iterm(i30)=min(iterm(i30),ifound+ibegin(i30)-2)
                endif
             enddo
@@ -5394,7 +5483,7 @@ integer                       :: imax                   ! length of longest toke
          endif
          imax=max(imax,iterm(i30)-ibegin(i30)+1)
          icount=i30                                               ! increment count of number of tokens found
-         if(icol.gt.iilen)then                                     ! no text left
+         if(icol > iilen)then                                     ! no text left
             exit INFINITE
          endif
       enddo INFINITE
@@ -5416,7 +5505,7 @@ integer                       :: imax                   ! length of longest toke
    end select
 !-----------------------------------------------------------------------------------------------------------------------------------
    do i20=1,icount                                                ! fill the array with the tokens that were found
-      if(iterm(i20).lt.ibegin(i20))then
+      if(iterm(i20) < ibegin(i20))then
          select case (trim(adjustl(nlls)))
          case ('ignore','','ignoreend')
          case default
@@ -5435,7 +5524,8 @@ integer                       :: imax                   ! length of longest toke
 !===================================================================================================================================
 !>
 !!##NAME
-!!    replace_str(3f) - [M_CLI2:EDITING] function globally replaces one substring for another in string
+!!    replace_str(3f) - [M_CLI2:EDITING] function globally replaces one
+!!    substring for another in string
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -5461,7 +5551,8 @@ integer                       :: imax                   ! length of longest toke
 !!     cmd         alternate way to specify old and new string, in
 !!                 the form c/old/new/; where "/" can be any character
 !!                 not in "old" or "new"
-!!     range       if present, only change range(1) to range(2) of occurrences of old string
+!!     range       if present, only change range(1) to range(2) of
+!!                 occurrences of old string
 !!     ierr        error code. iF ier = -1 bad directive, >= 0 then
 !!                 count of changes made
 !!     clip        whether to return trailing spaces or not. Defaults to .false.
@@ -5498,7 +5589,8 @@ integer                       :: imax                   ! length of longest toke
 !!       targetline=replace_str('a b ab baaa aaaa','a','',range=[3,5])
 !!       write(*,*)'replace a with null instances 3 to 5 ['//targetline//']'
 !!
-!!       targetline=replace_str('a b ab baaa aaaa aa aa a a a aa aaaaaa','aa','CCCC',range=[3,5])
+!!       targetline=replace_str('a b ab baaa aaaa aa aa a a a aa aaaaaa',&
+!!        & 'aa','CCCC',range=[3,5])
 !!       write(*,*)'replace aa with CCCC instances 3 to 5 ['//targetline//']'
 !!
 !!       contains
@@ -5510,7 +5602,7 @@ integer                       :: imax                   ! length of longest toke
 !!       targetline=replace_str(targetline,old,new)
 !!       write(*,*)':GOT     ['//targetline//']'
 !!       write(*,*)':EXPECTED['//expected//']'
-!!       write(*,*)':TEST    [',targetline.eq.expected,']'
+!!       write(*,*)':TEST    [',targetline == expected,']'
 !!       end subroutine testit
 !!
 !!       end program demo_replace_str
@@ -5539,7 +5631,8 @@ integer                       :: imax                   ! length of longest toke
 !!     replace a with A [A b Ab bAAA AAAA]
 !!     replace a with A instances 3 to 5 [a b ab bAAA aaaa]
 !!     replace a with null instances 3 to 5 [a b ab b aaaa]
-!!     replace aa with CCCC instances 3 to 5 [a b ab baaa aaCCCC CCCC CCCC a a a aa aaaaaa]
+!!     replace aa with CCCC instances 3 to 5 [a b ab baaa aaCCCC CCCC CCCC
+!!     a a a aa aaaaaa]
 !!
 !!##AUTHOR
 !!    John S. Urban
@@ -5563,7 +5656,7 @@ integer                                  :: start_token,end_token
    new=''
    lmax=len_trim(cmd)                       ! significant length of change directive
 
-   if(lmax.ge.4)then                      ! strtok ignores blank tokens so look for special case where first token is really null
+   if(lmax >= 4)then                      ! strtok ignores blank tokens so look for special case where first token is really null
       delimiters=cmd(id:id)               ! find delimiter in expected location
       itoken=0                            ! initialize strtok(3f) procedure
 
@@ -5573,12 +5666,12 @@ integer                                  :: start_token,end_token
          old=''
       endif
 
-      if(cmd(id:id).eq.cmd(id+1:id+1))then
+      if(cmd(id:id) == cmd(id+1:id+1))then
          new=old
          old=''
       else                                                                     ! normal case
          ifok=strtok(cmd(id:),itoken,start_token,end_token,delimiters)         ! find NEW string
-         if(end_token .eq. (len(cmd)-id+1) )end_token=len_trim(cmd(id:))       ! if missing ending delimiter
+         if(end_token  ==  (len(cmd)-id+1) )end_token=len_trim(cmd(id:))       ! if missing ending delimiter
          new=cmd(start_token+id-1:min(end_token+id-1,lmax))
       endif
    else                                                                        ! command was two or less characters
@@ -5592,7 +5685,7 @@ end subroutine crack_cmd
 !===================================================================================================================================
 function replace_str(targetline,old,new,ierr,cmd,range) result (newline)
 
-! ident_21="@(#)M_CLI2::replace_str(3f): Globally replace one substring for another in string"
+! ident_21="@(#) M_CLI2 replace_str(3f) Globally replace one substring for another in string"
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 ! parameters
@@ -5621,7 +5714,7 @@ integer                       :: range_local(2)
 !  get old_local and new_local from cmd or old and new
    if(present(cmd))then
       call crack_cmd(cmd,old_local,new_local,ier2)
-      if(ier2.ne.0)then
+      if(ier2 /= 0)then
          newline=targetline  ! if no changes are made return original string on error
          if(present(ierr))ierr=ier2
          return
@@ -5650,9 +5743,9 @@ integer                       :: range_local(2)
       range_local=[1,original_input_length]
    endif
 !-----------------------------------------------------------------------------------------------------------------------------------
-   if(len_old.eq.0)then                                ! c//new/ means insert new at beginning of line (or left margin)
+   if(len_old == 0)then                                ! c//new/ means insert new at beginning of line (or left margin)
       iichar=len_new + original_input_length
-      if(len_new.gt.0)then
+      if(len_new > 0)then
          newline=new_local(:len_new)//targetline(left_margin:original_input_length)
       else
          newline=targetline(left_margin:original_input_length)
@@ -5666,23 +5759,23 @@ integer                       :: range_local(2)
    ic=left_margin                                      ! place looking at in input string
    loop: do
       ind=index(targetline(ic:),old_local(:len_old))+ic-1 ! try finding start of OLD in remaining part of input in change window
-      if(ind.eq.ic-1.or.ind.gt.right_margin)then          ! did not find old string or found old string past edit window
+      if(ind == ic-1.or.ind > right_margin)then          ! did not find old string or found old string past edit window
          exit loop                                        ! no more changes left to make
       endif
       icount=icount+1                                  ! found an old string to change, so increment count of change candidates
-      if(ind.gt.ic)then                                ! if found old string past at current position in input string copy unchanged
+      if(ind > ic)then                                ! if found old string past at current position in input string copy unchanged
          ladd=ind-ic                                   ! find length of character range to copy as-is from input to output
          newline=newline(:iichar-1)//targetline(ic:ind-1)
          iichar=iichar+ladd
       endif
-      if(icount.ge.range_local(1).and.icount.le.range_local(2))then    ! check if this is an instance to change or keep
+      if(icount >= range_local(1).and.icount <= range_local(2))then    ! check if this is an instance to change or keep
          ichange=ichange+1
-         if(len_new.ne.0)then                                          ! put in new string
+         if(len_new /= 0)then                                          ! put in new string
             newline=newline(:iichar-1)//new_local(:len_new)
             iichar=iichar+len_new
          endif
       else
-         if(len_old.ne.0)then                                          ! put in copy of old string
+         if(len_old /= 0)then                                          ! put in copy of old string
             newline=newline(:iichar-1)//old_local(:len_old)
             iichar=iichar+len_old
          endif
@@ -5694,7 +5787,7 @@ integer                       :: range_local(2)
    case (0)                                            ! there were no changes made to the window
       newline=targetline                               ! if no changes made output should be input
    case default
-      if(ic.le.len(targetline))then                    ! if there is more after last change on original line add it
+      if(ic <= len(targetline))then                    ! if there is more after last change on original line add it
          newline=newline(:iichar-1)//targetline(ic:max(ic,original_input_length))
       endif
    end select
@@ -5706,7 +5799,8 @@ end function replace_str
 !===================================================================================================================================
 !>
 !!##NAME
-!!     quote(3f) - [M_CLI2:QUOTES] add quotes to string as if written with list-directed input
+!!     quote(3f) - [M_CLI2:QUOTES] add quotes to string as if written with
+!!     list-directed input
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -5723,13 +5817,16 @@ end function replace_str
 !!
 !!##OPTIONS
 !!    str         input string to add quotes to, using the rules of
-!!                list-directed input (single quotes are replaced by two adjacent quotes)
+!!                list-directed input (single quotes are replaced by two
+!!                adjacent quotes)
 !!    mode        alternate quoting methods are supported:
 !!
 !!                   DOUBLE   default. replace quote with double quotes
-!!                   ESCAPE   replace quotes with backslash-quote instead of double quotes
+!!                   ESCAPE   replace quotes with backslash-quote instead
+!!                            of double quotes
 !!
-!!    clip        default is to trim leading and trailing spaces from the string. If CLIP
+!!    clip        default is to trim leading and trailing spaces from the
+!!                string. If CLIP
 !!                is .FALSE. spaces are not trimmed
 !!
 !!##RESULT
@@ -5748,7 +5845,7 @@ end function replace_str
 !!        do
 !!           write(*,'(a)',advance='no')'Enter test string:'
 !!           read(*,'(a)',iostat=ios,iomsg=msg)inline
-!!           if(ios.ne.0)then
+!!           if(ios /= 0)then
 !!              write(*,*)trim(inline)
 !!              exit
 !!           endif
@@ -5809,7 +5906,8 @@ end function quote
 !===================================================================================================================================
 !>
 !!##NAME
-!!     unquote(3f) - [M_CLI2:QUOTES] remove quotes from string as if read with list-directed input
+!!     unquote(3f) - [M_CLI2:QUOTES] remove quotes from string as if read
+!!     with list-directed input
 !!     (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -5836,7 +5934,8 @@ end function quote
 !!                character from being processed as a quote, but simply as
 !!                a plain character.
 !!##RESULT
-!!    unquoted_str  The output string, which is based on removing quotes from quoted_str.
+!!    unquoted_str  The output string, which is based on removing quotes
+!!                  from quoted_str.
 !!##EXAMPLE
 !!
 !! Sample program:
@@ -5853,7 +5952,7 @@ end function quote
 !!       do
 !!          write(*,'(a)',advance='no')'Enter test string:'
 !!          read(*,'(a)',iostat=ios,iomsg=msg)quoted_str
-!!          if(ios.ne.0)then
+!!          if(ios /= 0)then
 !!             write(*,*)trim(msg)
 !!             exit
 !!          endif
@@ -5867,7 +5966,7 @@ end function quote
 !!
 !!          ! read the string list-directed to compare the results
 !!          read(quoted_str,*,iostat=ios,iomsg=msg)dummy
-!!          if(ios.ne.0)then
+!!          if(ios /= 0)then
 !!             write(*,*)trim(msg)
 !!          else
 !!             write(*,'(a)')'LIST DIRECTED['//trim(dummy)//']'
@@ -5904,8 +6003,8 @@ logical                              :: inside
    if(allocated(unquoted_str))deallocate(unquoted_str)
    allocate(character(len=inlen) :: unquoted_str) ! initially make output string length of input string
 !-----------------------------------------------------------------------------------------------------------------------------------
-   if(inlen.ge.1)then                             ! double_quote is the default quote unless the first character is single_quote
-      if(quoted_str(1:1).eq.single_quote)then
+   if(inlen >= 1)then                             ! double_quote is the default quote unless the first character is single_quote
+      if(quoted_str(1:1) == single_quote)then
          quote=ichar(single_quote)
       else
          quote=ichar(double_quote)
@@ -5920,17 +6019,17 @@ logical                              :: inside
    inside=.false.
    STEPTHROUGH: do i=1,inlen
       current=ichar(quoted_str(i:i))
-      if(before.eq.iesc)then                      ! if previous character was escape use current character unconditionally
+      if(before == iesc)then                      ! if previous character was escape use current character unconditionally
            iput=iput-1                            ! backup
            unquoted_str(iput:iput)=char(current)
            iput=iput+1
            before=-2                              ! this could be second esc or quote
-      elseif(current.eq.quote)then                ! if current is a quote it depends on whether previous character was a quote
-         if(before.eq.quote)then
+      elseif(current == quote)then                ! if current is a quote it depends on whether previous character was a quote
+         if(before == quote)then
            unquoted_str(iput:iput)=char(quote)    ! this is second quote so retain it
            iput=iput+1
            before=-2
-         elseif(.not.inside.and.before.ne.iesc)then
+         elseif(.not.inside.and.before /= iesc)then
             inside=.true.
          else                                     ! this is first quote so ignore it except remember it in case next is a quote
             before=current
@@ -5950,7 +6049,7 @@ end function unquote
 !===================================================================================================================================
 function i2s(ivalue,fmt) result(outstr)
 
-! ident_22="@(#)M_CLI2::i2s(3fp): private function returns string given integer value"
+! ident_22="@(#) M_CLI2 i2s(3fp) private function returns string given integer value"
 
 integer,intent(in)           :: ivalue                         ! input value to convert to a string
 character(len=*),intent(in),optional :: fmt
@@ -5968,7 +6067,8 @@ end function i2s
 !===================================================================================================================================
 !>
 !!##NAME
-!!    merge_str(3f) - [M_CLI2:LENGTH] pads strings to same length and then calls MERGE(3f)
+!!    merge_str(3f) - [M_CLI2:LENGTH] pads strings to same length and then
+!!                    calls MERGE(3f)
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6009,9 +6109,9 @@ end function i2s
 !!     use M_CLI2, only : merge_str
 !!     implicit none
 !!     character(len=:), allocatable :: answer
-!!        answer=merge_str('first string', 'second string is longer',10.eq.10)
+!!        answer=merge_str('first string', 'second string is longer',10 == 10)
 !!        write(*,'("[",a,"]")') answer
-!!        answer=merge_str('first string', 'second string is longer',10.ne.10)
+!!        answer=merge_str('first string', 'second string is longer',10 /= 10)
 !!        write(*,'("[",a,"]")') answer
 !!     end program demo_merge_str
 !!
@@ -6027,7 +6127,7 @@ function merge_str(str1,str2,expr) result(strout)
 ! for some reason the MERGE(3f) intrinsic requires the strings it compares to be of equal length
 ! make an alias for MERGE(3f) that makes the lengths the same before doing the comparison by padding the shorter one with spaces
 
-! ident_23="@(#)M_CLI2::merge_str(3f): pads first and second arguments to MERGE(3f) to same length"
+! ident_23="@(#) M_CLI2 merge_str(3f) pads first and second arguments to MERGE(3f) to same length"
 
 character(len=*),intent(in),optional :: str1
 character(len=*),intent(in),optional :: str2
@@ -6056,7 +6156,8 @@ end function merge_str
 !>
 !!##NAME
 !!
-!!    decodebase(3f) - [M_CLI2:BASE] convert whole number string in base [2-36] to base 10 number
+!!    decodebase(3f) - [M_CLI2:BASE] convert whole number string in base
+!!                     [2-36] to base 10 number
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6101,7 +6202,7 @@ end function merge_str
 !!      INFINITE: do
 !!         print *,''
 !!         write(*,'("Enter number in start base: ")',advance='no'); read *, x
-!!         if(x.eq.'0') exit INFINITE
+!!         if(x == '0') exit INFINITE
 !!         if(decodebase(x,bd,r)) then
 !!            if(codebase(r,ba,y)) then
 !!              write(*,'("In base ",I2,": ",A20)')  ba, y
@@ -6129,7 +6230,7 @@ end function merge_str
 logical function decodebase(string,basein,out_baseten)
 implicit none
 
-! ident_24="@(#)M_CLI2::decodebase(3f): convert whole number string in base [2-36] to base 10 number"
+! ident_24="@(#) M_CLI2 decodebase(3f) convert whole number string in base [2-36] to base 10 number"
 
 character(len=*),intent(in)  :: string
 integer,intent(in)           :: basein
@@ -6150,10 +6251,10 @@ integer           :: ierr
   decodebase=.false.
 
   ipound=index(string_local,'#')                                       ! determine if in form [-]base#whole
-  if(basein.eq.0.and.ipound.gt.1)then                                  ! split string into two values
+  if(basein == 0.and.ipound > 1)then                                  ! split string into two values
      call a2i(string_local(:ipound-1),basein_local,ierr)   ! get the decimal value of the base
      string_local=string_local(ipound+1:)                              ! now that base is known make string just the value
-     if(basein_local.ge.0)then                                         ! allow for a negative sign prefix
+     if(basein_local >= 0)then                                         ! allow for a negative sign prefix
         out_sign=1
      else
         out_sign=-1
@@ -6174,7 +6275,7 @@ integer           :: ierr
      do i=1, long
         k=long+1-i
         ch=string_local(k:k)
-        if(ch.eq.'-'.and.k.eq.1)then
+        IF(CH == '-'.AND.K == 1)THEN
            out_sign=-1
            cycle
         endif
@@ -6205,7 +6306,8 @@ end function decodebase
 !===================================================================================================================================
 !>
 !!##NAME
-!!    lenset(3f) - [M_CLI2:LENGTH] return string trimmed or padded to specified length
+!!    lenset(3f) - [M_CLI2:LENGTH] return string trimmed or padded to
+!!                 specified length
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6249,7 +6351,7 @@ end function decodebase
 !!    Public Domain
 function lenset(line,length) result(strout)
 
-! ident_25="@(#)M_CLI2::lenset(3f): return string trimmed or padded to specified length"
+! ident_25="@(#) M_CLI2 lenset(3f) return string trimmed or padded to specified length"
 
 character(len=*),intent(in)  ::  line
 integer,intent(in)           ::  length
@@ -6261,7 +6363,8 @@ end function lenset
 !===================================================================================================================================
 !>
 !!##NAME
-!!      value_to_string(3f) - [M_CLI2:NUMERIC] return numeric string from a numeric value
+!!      value_to_string(3f) - [M_CLI2:NUMERIC] return numeric string from
+!!                            a numeric value
 !!      (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6299,8 +6402,10 @@ end function lenset
 !!
 !!##RETURNS
 !!       CHARS   returned string representing input value, must be at least
-!!               23 characters long; or what is required by optional FMT if longer.
-!!       IILEN   position of last non-blank character in returned string; optional.
+!!               23 characters long; or what is required by optional FMT
+!!               if longer.
+!!       IILEN   position of last non-blank character in returned string;
+!!               optional.
 !!       IERR    If not zero, error occurred; optional.
 !!##EXAMPLE
 !!
@@ -6342,7 +6447,7 @@ end function lenset
 !!    Public Domain
 subroutine value_to_string(gval,chars,length,err,fmt,trimz)
 
-! ident_26="@(#)M_CLI2::value_to_string(3fp): subroutine returns a string from a value"
+! ident_26="@(#) M_CLI2 value_to_string(3fp) subroutine returns a string from a value"
 
 class(*),intent(in)                      :: gval
 character(len=*),intent(out)             :: chars
@@ -6360,26 +6465,26 @@ character(len=1024)                      :: msg
       select type(gval)
       type is (integer)
          fmt_local='(i0)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (real)
          fmt_local='(bz,g23.10e3)'
          fmt_local='(bz,g0.8)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (doubleprecision)
          fmt_local='(bz,g0)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (logical)
          fmt_local='(l1)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       class default
          call journal('sc','*value_to_string* UNKNOWN TYPE')
          chars=' '
       end select
-      if(fmt.eq.'') then
+      if(fmt == '') then
          chars=adjustl(chars)
          call trimzeros_(chars)
       endif
@@ -6398,7 +6503,7 @@ character(len=1024)                      :: msg
          chars=''
       end select
       chars=adjustl(chars)
-      if(index(chars,'.').ne.0) call trimzeros_(chars)
+      if(index(chars,'.') /= 0) call trimzeros_(chars)
    endif
    if(present(trimz))then
       if(trimz)then
@@ -6413,7 +6518,7 @@ character(len=1024)                      :: msg
 
    if(present(err)) then
       err=err_local
-   elseif(err_local.ne.0)then
+   elseif(err_local /= 0)then
       !-! cannot currently do I/O from a function being called from I/O
       !-!write(ERROR_UNIT,'(a)')'*value_to_string* WARNING:['//trim(msg)//']'
       chars=chars//' *value_to_string* WARNING:['//trim(msg)//']'
@@ -6425,7 +6530,8 @@ end subroutine value_to_string
 !===================================================================================================================================
 !>
 !!##NAME
-!!    trimzeros_(3fp) - [M_CLI2:NUMERIC] Delete trailing zeros from numeric decimal string
+!!    trimzeros_(3fp) - [M_CLI2:NUMERIC] Delete trailing zeros from numeric
+!!                      `decimal string
 !!    (LICENSE:PD)
 !!##SYNOPSIS
 !!
@@ -6437,8 +6543,8 @@ end subroutine value_to_string
 !!    number. If the resulting string would end in a decimal point, one
 !!    trailing zero is added.
 !!##OPTIONS
-!!    str   input string will be assumed to be a numeric value and have trailing
-!!          zeros removed
+!!    str   input string will be assumed to be a numeric value and have
+!!          trailing zeros removed
 !!##EXAMPLES
 !!
 !! Sample program:
@@ -6458,7 +6564,7 @@ end subroutine value_to_string
 !!    Public Domain
 subroutine trimzeros_(string)
 
-! ident_27="@(#)M_CLI2::trimzeros_(3fp): Delete trailing zeros from numeric decimal string"
+! ident_27="@(#) M_CLI2 trimzeros_(3fp) Delete trailing zeros from numeric decimal string"
 
 ! if zero needs added at end assumes input string has room
 character(len=*)             :: string
@@ -6472,7 +6578,7 @@ integer                      :: i, ii
       expo=str(ipos:)                        ! keep exponent string so it can be added back as a suffix
       str=str(1:ipos-1)                      ! just the real part, exponent removed will not have trailing zeros removed
    endif
-   if(index(str,'.').eq.0)then               ! if no decimal character in original string add one to end of string
+   if(index(str,'.') == 0)then               ! if no decimal character in original string add one to end of string
       ii=len_trim(str)
       str(ii+1:ii+1)='.'                     ! add decimal to end of string
    endif
@@ -6481,7 +6587,7 @@ integer                      :: i, ii
       case('0')                              ! found a trailing zero so keep trimming
          cycle
       case('.')                              ! found a decimal character at end of remaining string
-         if(i.le.1)then
+         if(i <= 1)then
             str='0'
          else
             str=str(1:i-1)
@@ -6503,7 +6609,8 @@ end subroutine trimzeros_
 !===================================================================================================================================
 !>
 !!##NAME
-!!    substitute(3f) - [M_CLI2:EDITING] subroutine globally substitutes one substring for another in string
+!!    substitute(3f) - [M_CLI2:EDITING] subroutine globally substitutes
+!!                     one substring for another in string
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6572,7 +6679,7 @@ end subroutine trimzeros_
 !!    Public Domain
 subroutine substitute(targetline,old,new,ierr,start,end)
 
-! ident_28="@(#)M_CLI2::substitute(3f): Globally substitute one substring for another in string"
+! ident_28="@(#) M_CLI2 substitute(3f) Globally substitute one substring for another in string"
 
 !-----------------------------------------------------------------------------------------------------------------------------------
 character(len=*)               :: targetline         ! input line to be changed
@@ -6614,7 +6721,7 @@ integer                        :: iichar
 !-----------------------------------------------------------------------------------------------------------------------------------
    len_old=len(old)                                    ! length of old substring to be replaced
    len_new=len(new)                                    ! length of new substring to replace old substring
-   if(id.le.0)then                                     ! no window so change entire input string
+   if(id <= 0)then                                     ! no window so change entire input string
       il=1                                             ! il is left margin of window to change
       ir=maxlengthout                                  ! ir is right margin of window to change
       dum1(:)=' '                                      ! begin with a blank line
@@ -6624,15 +6731,15 @@ integer                        :: iichar
       dum1=targetline(:il-1)                           ! begin with what's below margin
    endif                                               ! end of window settings
 !-----------------------------------------------------------------------------------------------------------------------------------
-   if(len_old.eq.0)then                                ! c//new/ means insert new at beginning of line (or left margin)
+   if(len_old == 0)then                                ! c//new/ means insert new at beginning of line (or left margin)
       iichar=len_new + original_input_length
-      if(iichar.gt.maxlengthout)then
+      if(iichar > maxlengthout)then
          call journal('sc','*substitute* new line will be too long')
          ier1=-1
          if (present(ierr))ierr=ier1
          return
       endif
-      if(len_new.gt.0)then
+      if(len_new > 0)then
          dum1(il:)=new(:len_new)//targetline(il:original_input_length)
       else
          dum1(il:)=targetline(il:original_input_length)
@@ -6647,24 +6754,24 @@ integer                        :: iichar
    ic=il                                               ! place looking at in input string
    loop: do
       ind=index(targetline(ic:),old(:len_old))+ic-1    ! try to find start of old string in remaining part of input in change window
-      if(ind.eq.ic-1.or.ind.gt.ir)then                 ! did not find old string or found old string past edit window
+      if(ind == ic-1.or.ind > ir)then                 ! did not find old string or found old string past edit window
          exit loop                                     ! no more changes left to make
       endif
       ier1=ier1+1                                      ! found an old string to change, so increment count of changes
-      if(ind.gt.ic)then                                ! if found old string past at current position in input string copy unchanged
+      if(ind > ic)then                                ! if found old string past at current position in input string copy unchanged
          ladd=ind-ic                                   ! find length of character range to copy as-is from input to output
-         if(iichar-1+ladd.gt.maxlengthout)then
+         if(iichar-1+ladd > maxlengthout)then
             ier1=-1
             exit loop
          endif
          dum1(iichar:)=targetline(ic:ind-1)
          iichar=iichar+ladd
       endif
-      if(iichar-1+len_new.gt.maxlengthout)then
+      if(iichar-1+len_new > maxlengthout)then
          ier1=-2
          exit loop
       endif
-      if(len_new.ne.0)then
+      if(len_new /= 0)then
          dum1(iichar:)=new(:len_new)
          iichar=iichar+len_new
       endif
@@ -6677,13 +6784,13 @@ integer                        :: iichar
    case (0)                                                ! there were no changes made to the window
    case default
       ladd=original_input_length-ic
-      if(iichar+ladd.gt.maxlengthout)then
+      if(iichar+ladd > maxlengthout)then
          call journal('sc','*substitute* new line will be too long')
          ier1=-1
          if(present(ierr))ierr=ier1
          return
       endif
-      if(ic.lt.len(targetline))then
+      if(ic < len(targetline))then
          dum1(iichar:)=targetline(ic:max(ic,original_input_length))
       endif
       targetline=dum1(:maxlengthout)
@@ -6696,7 +6803,8 @@ end subroutine substitute
 !===================================================================================================================================
 !>
 !!##NAME
-!!    locate(3f) - [M_CLI2] finds the index where a string is found or should be in a sorted array
+!!    locate(3f) - [M_CLI2] finds the index where a string is found or
+!!                 should be in a sorted array
 !!    (LICENSE:PD)
 !!
 !!##SYNOPSIS
@@ -6773,18 +6881,18 @@ end subroutine substitute
 !!     call locate(arr,string,place)
 !!     write(*,*)'for "'//string//'" index is ',place, size(arr)
 !!     ! if string was not found insert it
-!!     if(place.lt.1)then
+!!     if(place < 1)then
 !!        plus=abs(place)
 !!        ii=len(arr)
 !!        end=size(arr)
 !!        ! empty array
-!!        if(end.eq.0)then
+!!        if(end == 0)then
 !!           arr=[character(len=ii) :: string ]
 !!        ! put in front of array
-!!        elseif(plus.eq.1)then
+!!        elseif(plus == 1)then
 !!           arr=[character(len=ii) :: string, arr]
 !!        ! put at end of array
-!!        elseif(plus.eq.end)then
+!!        elseif(plus == end)then
 !!           arr=[character(len=ii) :: arr, string ]
 !!        ! put in middle of array
 !!        else
@@ -6816,7 +6924,7 @@ end subroutine substitute
 !!    Public Domain
 subroutine locate_c(list,value,place,ier,errmsg)
 
-! ident_29="@(#)M_CLI2::locate_c(3f): find PLACE in sorted character array where VALUE can be found or should be placed"
+! ident_29="@(#) M_CLI2 locate_c(3f) find PLACE in sorted character array LIST where VALUE can be found or should be placed"
 
 character(len=*),intent(in)             :: value
 integer,intent(out)                     :: place
@@ -6835,7 +6943,7 @@ integer                                 :: error
    arraysize=size(list)
 
    error=0
-   if(arraysize.eq.0)then
+   if(arraysize == 0)then
       maxtry=0
       place=-1
    else
@@ -6849,17 +6957,17 @@ integer                                 :: error
    LOOP: block
    do i=1,maxtry
 
-      if(value.eq.list(PLACE))then
+      if(value == list(PLACE))then
          exit LOOP
-      elseif(value.gt.list(place))then
+      elseif(value > list(place))then
          imax=place-1
       else
          imin=place+1
       endif
 
-      if(imin.gt.imax)then
+      if(imin > imax)then
          place=-imin
-         if(iabs(place).gt.arraysize)then ! ran off end of list. Where new value should go or an unsorted input array'
+         if(iabs(place) > arraysize)then ! ran off end of list. Where new value should go or an unsorted input array'
             exit LOOP
          endif
          exit LOOP
@@ -6867,7 +6975,7 @@ integer                                 :: error
 
       place=(imax+imin)/2
 
-      if(place.gt.arraysize.or.place.le.0)then
+      if(place > arraysize.or.place <= 0)then
          message='*locate* error: search is out of bounds of list. Probably an unsorted input array'
          error=-1
          exit LOOP
@@ -6878,7 +6986,7 @@ integer                                 :: error
    endblock LOOP
    if(present(ier))then
       ier=error
-   elseif(error.ne.0)then
+   elseif(error /= 0)then
       write(warn,*)message//' VALUE=',trim(value)//' PLACE=',place
       call mystop(-24,'(*locate_c* '//message)
    endif
@@ -6954,7 +7062,7 @@ end subroutine locate_c
 !!    Public Domain
 subroutine remove_c(list,place)
 
-! ident_30="@(#)M_CLI2::remove_c(3fp): remove string from allocatable string array at specified position"
+! ident_30="@(#) M_CLI2 remove_c(3fp) remove string from allocatable string array at specified position"
 
 character(len=:),allocatable :: list(:)
 integer,intent(in)           :: place
@@ -6964,8 +7072,8 @@ integer                      :: ii, end
    endif
    ii=len(list)
    end=size(list)
-   if(place.le.0.or.place.gt.end)then                       ! index out of bounds of array
-   elseif(place.eq.end)then                                 ! remove from array
+   if(place <= 0.or.place > end)then                       ! index out of bounds of array
+   elseif(place == end)then                                 ! remove from array
       list=[character(len=ii) :: list(:place-1) ]
    else
       list=[character(len=ii) :: list(:place-1), list(place+1:) ]
@@ -6973,7 +7081,7 @@ integer                      :: ii, end
 end subroutine remove_c
 subroutine remove_l(list,place)
 
-! ident_31="@(#)M_CLI2::remove_l(3fp): remove value from allocatable array at specified position"
+! ident_31="@(#) M_CLI2 remove_l(3fp) remove value from allocatable array at specified position"
 
 logical,allocatable    :: list(:)
 integer,intent(in)     :: place
@@ -6983,8 +7091,8 @@ integer                :: end
       list=[logical :: ]
    endif
    end=size(list)
-   if(place.le.0.or.place.gt.end)then                       ! index out of bounds of array
-   elseif(place.eq.end)then                                 ! remove from array
+   if(place <= 0.or.place > end)then                       ! index out of bounds of array
+   elseif(place == end)then                                 ! remove from array
       list=[ list(:place-1)]
    else
       list=[ list(:place-1), list(place+1:) ]
@@ -6993,7 +7101,7 @@ integer                :: end
 end subroutine remove_l
 subroutine remove_i(list,place)
 
-! ident_32="@(#)M_CLI2::remove_i(3fp): remove value from allocatable array at specified position"
+! ident_32="@(#) M_CLI2 remove_i(3fp) remove value from allocatable array at specified position"
 integer,allocatable    :: list(:)
 integer,intent(in)     :: place
 integer                :: end
@@ -7002,8 +7110,8 @@ integer                :: end
       list=[integer :: ]
    endif
    end=size(list)
-   if(place.le.0.or.place.gt.end)then                       ! index out of bounds of array
-   elseif(place.eq.end)then                                 ! remove from array
+   if(place <= 0.or.place > end)then                       ! index out of bounds of array
+   elseif(place == end)then                                 ! remove from array
       list=[ list(:place-1)]
    else
       list=[ list(:place-1), list(place+1:) ]
@@ -7070,7 +7178,7 @@ end subroutine remove_i
 !!     write(*,'(*(a,"==>",a,/))')(trim(keywords(i)),trim(values(i)),i=1,size(keywords))
 !!
 !!     call locate_key('a',place)
-!!     if(place.gt.0)then
+!!     if(place > 0)then
 !!        write(*,*)'The value of "a" is',trim(values(place))
 !!     else
 !!        write(*,*)'"a" not found'
@@ -7085,7 +7193,7 @@ end subroutine remove_i
 !!     ! find where string is or should be
 !!     call locate_key(key,place)
 !!     ! if string was not found insert it
-!!     if(place.lt.1)then
+!!     if(place < 1)then
 !!        call insert(keywords,key,abs(place))
 !!        call insert(values,val,abs(place))
 !!     else ! replace
@@ -7108,7 +7216,7 @@ end subroutine remove_i
 !!    Public Domain
 subroutine replace_c(list,value,place)
 
-! ident_33="@(#)M_CLI2::replace_c(3fp): replace string in allocatable string array at specified position"
+! ident_33="@(#) M_CLI2 replace_c(3fp) replace string in allocatable string array at specified position"
 
 character(len=*),intent(in)  :: value
 character(len=:),allocatable :: list(:)
@@ -7122,9 +7230,9 @@ integer                      :: end
    endif
    tlen=len_trim(value)
    end=size(list)
-   if(place.lt.0.or.place.gt.end)then
+   if(place < 0.or.place > end)then
            write(warn,*)'*replace_c* error: index out of range. end=',end,' index=',place
-   elseif(len_trim(value).le.len(list))then
+   elseif(len_trim(value) <= len(list))then
       list(place)=value
    else  ! increase length of variable
       ii=max(tlen,len(list))
@@ -7135,7 +7243,7 @@ integer                      :: end
 end subroutine replace_c
 subroutine replace_l(list,value,place)
 
-! ident_34="@(#)M_CLI2::replace_l(3fp): place value into allocatable array at specified position"
+! ident_34="@(#) M_CLI2 replace_l(3fp) place value into allocatable array at specified position"
 
 logical,allocatable   :: list(:)
 logical,intent(in)    :: value
@@ -7145,9 +7253,9 @@ integer               :: end
       list=[logical :: ]
    endif
    end=size(list)
-   if(end.eq.0)then                                          ! empty array
+   if(end == 0)then                                          ! empty array
       list=[value]
-   elseif(place.gt.0.and.place.le.end)then
+   elseif(place > 0.and.place <= end)then
       list(place)=value
    else                                                      ! put in middle of array
       write(warn,*)'*replace_l* error: index out of range. end=',end,' index=',place
@@ -7155,7 +7263,7 @@ integer               :: end
 end subroutine replace_l
 subroutine replace_i(list,value,place)
 
-! ident_35="@(#)M_CLI2::replace_i(3fp): place value into allocatable array at specified position"
+! ident_35="@(#) M_CLI2 replace_i(3fp) place value into allocatable array at specified position"
 
 integer,intent(in)    :: value
 integer,allocatable   :: list(:)
@@ -7165,9 +7273,9 @@ integer               :: end
       list=[integer :: ]
    endif
    end=size(list)
-   if(end.eq.0)then                                          ! empty array
+   if(end == 0)then                                          ! empty array
       list=[value]
-   elseif(place.gt.0.and.place.le.end)then
+   elseif(place > 0.and.place <= end)then
       list(place)=value
    else                                                      ! put in middle of array
       write(warn,*)'*replace_i* error: index out of range. end=',end,' index=',place
@@ -7237,7 +7345,7 @@ end subroutine replace_i
 !!     ! find where string is or should be
 !!     call locate(arr,string,place)
 !!     ! if string was not found insert it
-!!     if(place.lt.1)then
+!!     if(place < 1)then
 !!        call insert(arr,string,abs(place))
 !!     endif
 !!     ! show array
@@ -7262,7 +7370,7 @@ end subroutine replace_i
 !!    Public Domain
 subroutine insert_c(list,value,place)
 
-! ident_36="@(#)M_CLI2::insert_c(3fp): place string into allocatable string array at specified position"
+! ident_36="@(#) M_CLI2 insert_c(3fp) place string into allocatable string array at specified position"
 
 character(len=*),intent(in)  :: value
 character(len=:),allocatable :: list(:)
@@ -7278,15 +7386,15 @@ integer                      :: end
    ii=max(len_trim(value),len(list),2)
    end=size(list)
 
-   if(end.eq.0)then                                          ! empty array
+   if(end == 0)then                                          ! empty array
       list=[character(len=ii) :: value ]
-   elseif(place.eq.1)then                                    ! put in front of array
+   elseif(place == 1)then                                    ! put in front of array
       kludge=[character(len=ii) :: value, list]
       list=kludge
-   elseif(place.gt.end)then                                  ! put at end of array
+   elseif(place > end)then                                  ! put at end of array
       kludge=[character(len=ii) :: list, value ]
       list=kludge
-   elseif(place.ge.2.and.place.le.end)then                 ! put in middle of array
+   elseif(place >= 2.and.place <= end)then                 ! put in middle of array
       kludge=[character(len=ii) :: list(:place-1), value,list(place:) ]
       list=kludge
    else                                                      ! index out of range
@@ -7296,7 +7404,7 @@ integer                      :: end
 end subroutine insert_c
 subroutine insert_l(list,value,place)
 
-! ident_37="@(#)M_CLI2::insert_l(3fp): place value into allocatable array at specified position"
+! ident_37="@(#) M_CLI2 insert_l(3fp) place value into allocatable array at specified position"
 
 logical,allocatable   :: list(:)
 logical,intent(in)    :: value
@@ -7306,13 +7414,13 @@ integer               :: end
       list=[logical :: ]
    endif
    end=size(list)
-   if(end.eq.0)then                                          ! empty array
+   if(end == 0)then                                          ! empty array
       list=[value]
-   elseif(place.eq.1)then                                    ! put in front of array
+   elseif(place == 1)then                                    ! put in front of array
       list=[value, list]
-   elseif(place.gt.end)then                                  ! put at end of array
+   elseif(place > end)then                                  ! put at end of array
       list=[list, value ]
-   elseif(place.ge.2.and.place.le.end)then                 ! put in middle of array
+   elseif(place >= 2.and.place <= end)then                 ! put in middle of array
       list=[list(:place-1), value,list(place:) ]
    else                                                      ! index out of range
       write(warn,*)'*insert_l* error: index out of range. end=',end,' index=',place,' value=',value
@@ -7321,7 +7429,7 @@ integer               :: end
 end subroutine insert_l
 subroutine insert_i(list,value,place)
 
-! ident_38="@(#)M_CLI2::insert_i(3fp): place value into allocatable array at specified position"
+! ident_38="@(#) M_CLI2 insert_i(3fp) place value into allocatable array at specified position"
 
 integer,allocatable   :: list(:)
 integer,intent(in)    :: value
@@ -7331,13 +7439,13 @@ integer               :: end
       list=[integer :: ]
    endif
    end=size(list)
-   if(end.eq.0)then                                          ! empty array
+   if(end == 0)then                                          ! empty array
       list=[value]
-   elseif(place.eq.1)then                                    ! put in front of array
+   elseif(place == 1)then                                    ! put in front of array
       list=[value, list]
-   elseif(place.gt.end)then                                  ! put at end of array
+   elseif(place > end)then                                  ! put at end of array
       list=[list, value ]
-   elseif(place.ge.2.and.place.le.end)then                 ! put in middle of array
+   elseif(place >= 2.and.place <= end)then                 ! put in middle of array
       list=[list(:place-1), value,list(place:) ]
    else                                                      ! index out of range
       write(warn,*)'*insert_i* error: index out of range. end=',end,' index=',place,' value=',value
@@ -7351,7 +7459,7 @@ subroutine many_args(n0,g0, n1,g1, n2,g2, n3,g3, n4,g4, n5,g5, n6,g6, n7,g7, n8,
                    & na,ga, nb,gb, nc,gc, nd,gd, ne,ge, nf,gf, ng,gg, nh,gh, ni,gi, nj,gj )
 implicit none
 
-! ident_39="@(#)M_CLI2::many_args(3fp): allow for multiple calls to get_args(3f)"
+! ident_39="@(#) M_CLI2 many_args(3fp) allow for multiple calls to get_args(3f)"
 
 character(len=*),intent(in)          :: n0, n1
 character(len=*),intent(in),optional ::         n2, n3, n4, n5, n6, n7, n8, n9, na, nb, nc, nd, ne, nf, ng, nh, ni, nj
@@ -7423,7 +7531,12 @@ function lget(n); logical                      :: lget; character(len=*),intent(
 function igs(n); integer,allocatable          :: igs(:); character(len=*),intent(in) :: n; call get_args(n,igs); end function igs
 function rgs(n); real,allocatable             :: rgs(:); character(len=*),intent(in) :: n; call get_args(n,rgs); end function rgs
 function dgs(n); real(kind=dp),allocatable    :: dgs(:); character(len=*),intent(in) :: n; call get_args(n,dgs); end function dgs
-function sgs(n); character(len=:),allocatable :: sgs(:); character(len=*),intent(in) :: n; call get_args(n,sgs); end function sgs
+function sgs(n,delims)
+character(len=:),allocatable         :: sgs(:)
+character(len=*),optional,intent(in) :: delims
+character(len=*),intent(in)          :: n
+   call get_args(n,sgs,delims)
+end function sgs
 function cgs(n); complex,allocatable          :: cgs(:); character(len=*),intent(in) :: n; call get_args(n,cgs); end function cgs
 function lgs(n); logical,allocatable          :: lgs(:); character(len=*),intent(in) :: n; call get_args(n,lgs); end function lgs
 !===================================================================================================================================
@@ -7464,7 +7577,7 @@ character,allocatable :: hold
    allocate(lg(size(unnamed)))
    do i=1,size(lg)
       hold=trim(upper(adjustl(unnamed(i))))
-      if(hold(1:1).eq.'.')then                 ! looking for fortran logical syntax .STRING.
+      if(hold(1:1) == '.')then                 ! looking for fortran logical syntax .STRING.
          iichar=2
       else
          iichar=1
@@ -7491,29 +7604,36 @@ real(kind=dp)       :: rc, ic
    enddo
 end function cg
 !===================================================================================================================================
+! Does not work with gcc 5.3
+!function sg()
+!character(len=:),allocatable :: sg(:)
+!   sg=unnamed
+!end function sg
+
 function sg()
 character(len=:),allocatable :: sg(:)
-   sg=unnamed
+   if(allocated(sg))deallocate(sg)
+   allocate(sg,source=unnamed)
 end function sg
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
 subroutine mystop(sig,msg)
 ! negative signal means always stop program
-! else do not stop and set G_STOP_MESSAGE if G_STOPON is false
+! else do not stop and set G_STOP_MESSAGE if G_QUIET is true
 ! or
-! print message and stop if G_STOPON is true
+! print message and stop if G_QUIET is false
 ! the MSG is NOT for displaying except for internal errors when the program will be stopped.
 ! It is for returning a value when the stop is being ignored
 !
 integer,intent(in) :: sig
 character(len=*),intent(in),optional :: msg
    !x!write(*,*)'MYSTOP:',sig,trim(msg)
-   if(sig.lt.0)then
+   if(sig < 0)then
       if(present(msg))call journal('sc',msg)
       !x!stop abs(sig)
       stop 1
-   elseif(G_STOPON)then
+   elseif(.not.G_QUIET)then
       stop
    else
       if(present(msg)) then
@@ -7530,7 +7650,7 @@ end subroutine mystop
 !===================================================================================================================================
 function atleast(line,length,pattern) result(strout)
 
-! ident_40="@(#)M_strings::atleast(3f): return string padded to at least specified length"
+! ident_40="@(#) M_strings atleast(3f) return string padded to at least specified length"
 
 character(len=*),intent(in)                :: line
 integer,intent(in)                         :: length
@@ -7547,15 +7667,15 @@ end function atleast
 !===================================================================================================================================
 subroutine locate_key(value,place)
 
-! ident_41="@(#)M_CLI2::locate_key(3f): find PLACE in sorted character array where VALUE can be found or should be placed"
+! ident_41="@(#) M_CLI2 locate_key(3f) find PLACE in sorted character array where VALUE can be found or should be placed"
 
 character(len=*),intent(in)             :: value
 integer,intent(out)                     :: place
 integer                                 :: ii
-   if(len_trim(value).eq.1)then
+   if(len_trim(value) == 1)then
       !x!ii=findloc(shorts,value,dim=1)
-      ii=maxloc([0,merge(1, 0, shorts.eq.value)],dim=1)
-      if(ii.gt.1)then
+      ii=maxloc([0,merge(1, 0, shorts == value)],dim=1)
+      if(ii > 1)then
          place=ii-1
       else
          call locate(keywords,value,place)
@@ -10831,7 +10951,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.7.0, alpha',                               &
+         &  'Version:     0.7.0, alpha, 20221117, i386-compatible ',   &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -11922,274 +12042,6 @@ contains
 end module fpm_command_line
  
  
-!>>>>> ././src/fpm/git.f90
-!> Implementation for interacting with git repositories.
-module fpm_git
-    use fpm_error, only: error_t, fatal_error
-    use fpm_filesystem, only : get_temp_filename, getline, join_path
-    implicit none
-
-    public :: git_target_t
-    public :: git_target_default, git_target_branch, git_target_tag, &
-        & git_target_revision
-    public :: git_revision
-
-
-    !> Possible git target
-    type :: enum_descriptor
-
-        !> Default target
-        integer :: default = 200
-
-        !> Branch in git repository
-        integer :: branch = 201
-
-        !> Tag in git repository
-        integer :: tag = 202
-
-        !> Commit hash
-        integer :: revision = 203
-
-    end type enum_descriptor
-
-    !> Actual enumerator for descriptors
-    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
-
-
-    !> Description of an git target
-    type :: git_target_t
-
-        !> Kind of the git target
-        integer, private :: descriptor = git_descriptor%default
-
-        !> Target URL of the git repository
-        character(len=:), allocatable :: url
-
-        !> Additional descriptor of the git object
-        character(len=:), allocatable :: object
-
-    contains
-
-        !> Fetch and checkout in local directory
-        procedure :: checkout
-
-        !> Show information on instance
-        procedure :: info
-
-    end type git_target_t
-
-
-contains
-
-
-    !> Default target
-    function git_target_default(url) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%default
-        self%url = url
-
-    end function git_target_default
-
-
-    !> Target a branch in the git repository
-    function git_target_branch(url, branch) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Name of the branch of interest
-        character(len=*), intent(in) :: branch
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%branch
-        self%url = url
-        self%object = branch
-
-    end function git_target_branch
-
-
-    !> Target a specific git revision
-    function git_target_revision(url, sha1) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Commit hash of interest
-        character(len=*), intent(in) :: sha1
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%revision
-        self%url = url
-        self%object = sha1
-
-    end function git_target_revision
-
-
-    !> Target a git tag
-    function git_target_tag(url, tag) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Tag name of interest
-        character(len=*), intent(in) :: tag
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%tag
-        self%url = url
-        self%object = tag
-
-    end function git_target_tag
-
-
-    subroutine checkout(self, local_path, error)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat
-        character(len=:), allocatable :: object, workdir
-
-        if (allocated(self%object)) then
-            object = self%object
-        else
-            object = 'HEAD'
-        end if
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-
-        call execute_command_line("git init "//local_path, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while initiating git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
-                                  self%url//" "//object, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while fetching git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while checking out git repository for remote dependency')
-            return
-        end if
-
-    end subroutine checkout
-
-
-    subroutine git_revision(local_path, object, error)
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Git object reference
-        character(len=:), allocatable, intent(out) :: object
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat, unit, istart, iend
-        character(len=:), allocatable :: temp_file, line, iomsg, workdir
-        character(len=*), parameter :: hexdigits = '0123456789abcdef'
-
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-        allocate(temp_file, source=get_temp_filename())
-        line = "git "//workdir//" log -n 1 > "//temp_file
-        call execute_command_line(line, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error, "Error while retrieving commit information")
-            return
-        end if
-
-        open(file=temp_file, newunit=unit)
-        call getline(unit, line, stat, iomsg)
-
-        if (stat /= 0) then
-            call fatal_error(error, iomsg)
-            return
-        end if
-        close(unit, status="delete")
-
-        ! Tokenize:
-        ! commit 0123456789abcdef (HEAD, ...)
-        istart = scan(line, ' ') + 1
-        iend = verify(line(istart:), hexdigits) + istart - 1
-        if (iend < istart) iend = len(line)
-        object = line(istart:iend)
-
-    end subroutine git_revision
-
-
-    !> Show information on git target
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Git target"
-        if (allocated(self%url)) then
-            write(unit, fmt) "- URL", self%url
-        end if
-        if (allocated(self%object)) then
-            select case(self%descriptor)
-            case default
-                write(unit, fmt) "- object", self%object
-            case(git_descriptor%tag)
-                write(unit, fmt) "- tag", self%object
-            case(git_descriptor%branch)
-                write(unit, fmt) "- branch", self%object
-            case(git_descriptor%revision)
-                write(unit, fmt) "- sha1", self%object
-            end select
-        end if
-
-    end subroutine info
-
-
-end module fpm_git
- 
- 
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
 !>
@@ -12501,6 +12353,274 @@ contains
   end subroutine run
 
 end module fpm_installer
+ 
+ 
+!>>>>> ././src/fpm/git.f90
+!> Implementation for interacting with git repositories.
+module fpm_git
+    use fpm_error, only: error_t, fatal_error
+    use fpm_filesystem, only : get_temp_filename, getline, join_path
+    implicit none
+
+    public :: git_target_t
+    public :: git_target_default, git_target_branch, git_target_tag, &
+        & git_target_revision
+    public :: git_revision
+
+
+    !> Possible git target
+    type :: enum_descriptor
+
+        !> Default target
+        integer :: default = 200
+
+        !> Branch in git repository
+        integer :: branch = 201
+
+        !> Tag in git repository
+        integer :: tag = 202
+
+        !> Commit hash
+        integer :: revision = 203
+
+    end type enum_descriptor
+
+    !> Actual enumerator for descriptors
+    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
+
+
+    !> Description of an git target
+    type :: git_target_t
+
+        !> Kind of the git target
+        integer, private :: descriptor = git_descriptor%default
+
+        !> Target URL of the git repository
+        character(len=:), allocatable :: url
+
+        !> Additional descriptor of the git object
+        character(len=:), allocatable :: object
+
+    contains
+
+        !> Fetch and checkout in local directory
+        procedure :: checkout
+
+        !> Show information on instance
+        procedure :: info
+
+    end type git_target_t
+
+
+contains
+
+
+    !> Default target
+    function git_target_default(url) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%default
+        self%url = url
+
+    end function git_target_default
+
+
+    !> Target a branch in the git repository
+    function git_target_branch(url, branch) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Name of the branch of interest
+        character(len=*), intent(in) :: branch
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%branch
+        self%url = url
+        self%object = branch
+
+    end function git_target_branch
+
+
+    !> Target a specific git revision
+    function git_target_revision(url, sha1) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Commit hash of interest
+        character(len=*), intent(in) :: sha1
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%revision
+        self%url = url
+        self%object = sha1
+
+    end function git_target_revision
+
+
+    !> Target a git tag
+    function git_target_tag(url, tag) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Tag name of interest
+        character(len=*), intent(in) :: tag
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%tag
+        self%url = url
+        self%object = tag
+
+    end function git_target_tag
+
+
+    subroutine checkout(self, local_path, error)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat
+        character(len=:), allocatable :: object, workdir
+
+        if (allocated(self%object)) then
+            object = self%object
+        else
+            object = 'HEAD'
+        end if
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+
+        call execute_command_line("git init "//local_path, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while initiating git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
+                                  self%url//" "//object, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while fetching git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while checking out git repository for remote dependency')
+            return
+        end if
+
+    end subroutine checkout
+
+
+    subroutine git_revision(local_path, object, error)
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Git object reference
+        character(len=:), allocatable, intent(out) :: object
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat, unit, istart, iend
+        character(len=:), allocatable :: temp_file, line, iomsg, workdir
+        character(len=*), parameter :: hexdigits = '0123456789abcdef'
+
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+        allocate(temp_file, source=get_temp_filename())
+        line = "git "//workdir//" log -n 1 > "//temp_file
+        call execute_command_line(line, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error, "Error while retrieving commit information")
+            return
+        end if
+
+        open(file=temp_file, newunit=unit)
+        call getline(unit, line, stat, iomsg)
+
+        if (stat /= 0) then
+            call fatal_error(error, iomsg)
+            return
+        end if
+        close(unit, status="delete")
+
+        ! Tokenize:
+        ! commit 0123456789abcdef (HEAD, ...)
+        istart = scan(line, ' ') + 1
+        iend = verify(line(istart:), hexdigits) + istart - 1
+        if (iend < istart) iend = len(line)
+        object = line(istart:iend)
+
+    end subroutine git_revision
+
+
+    !> Show information on git target
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Git target"
+        if (allocated(self%url)) then
+            write(unit, fmt) "- URL", self%url
+        end if
+        if (allocated(self%object)) then
+            select case(self%descriptor)
+            case default
+                write(unit, fmt) "- object", self%object
+            case(git_descriptor%tag)
+                write(unit, fmt) "- tag", self%object
+            case(git_descriptor%branch)
+                write(unit, fmt) "- branch", self%object
+            case(git_descriptor%revision)
+                write(unit, fmt) "- sha1", self%object
+            end select
+        end if
+
+    end subroutine info
+
+
+end module fpm_git
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
@@ -15460,6 +15580,125 @@ end subroutine next
 end module tomlf_de_tokenizer
  
  
+!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Merge TOML data structures.
+!>
+!> Merge policy:
+!> - copy key-value pair in case it is not present in table
+!> - copy subtable in case it is not present in table
+!> - copy array in case it is not present in table
+!> - merge subtable in case it is present in table
+!> - append array in case it is present in table
+module tomlf_build_merge
+   use tomlf_constants, only : tfc
+   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
+      & toml_key, len
+   implicit none
+   private
+
+   public :: merge_table, merge_array
+
+
+contains
+
+
+!> Merge TOML tables by appending their values
+recursive subroutine merge_table(lhs, rhs)
+
+   !> Instance of table to merge into
+   class(toml_table), intent(inout) :: lhs
+
+   !> Instance of table to be merged
+   class(toml_table), intent(inout) :: rhs
+
+   type(toml_key), allocatable :: list(:)
+   class(toml_value), pointer :: ptr1, ptr2
+   class(toml_value), allocatable :: tmp
+   logical :: has_key
+   integer :: i, n, stat
+
+   call rhs%get_keys(list)
+   n = size(list, 1)
+
+   do i = 1, n
+      if (allocated(tmp)) deallocate(tmp)
+      call rhs%get(list(i)%key, ptr1)
+      has_key = lhs%has_key(list(i)%key)
+      select type(ptr1)
+      class is(toml_keyval)
+         if (.not.has_key) then
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_array)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_array)
+               call merge_array(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_table)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_table)
+               call merge_table(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      end select
+   end do
+
+end subroutine merge_table
+
+
+!> Append values from one TOML array to another
+recursive subroutine merge_array(lhs, rhs)
+
+   !> Instance of array to merge into
+   class(toml_array), intent(inout) :: lhs
+
+   !> Instance of array to be merged
+   class(toml_array), intent(inout) :: rhs
+
+   class(toml_value), pointer :: ptr
+   class(toml_value), allocatable :: tmp
+   integer :: n, i, stat
+
+   n = len(rhs)
+
+   do i = 1, n
+      call rhs%get(i, ptr)
+      if (allocated(tmp)) deallocate(tmp)
+      allocate(tmp, source=ptr)
+      call lhs%push_back(tmp, stat)
+   end do
+
+end subroutine merge_array
+
+
+end module tomlf_build_merge
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -15937,125 +16176,6 @@ end subroutine set_value_string
 
 
 end module tomlf_build_keyval
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Merge TOML data structures.
-!>
-!> Merge policy:
-!> - copy key-value pair in case it is not present in table
-!> - copy subtable in case it is not present in table
-!> - copy array in case it is not present in table
-!> - merge subtable in case it is present in table
-!> - append array in case it is present in table
-module tomlf_build_merge
-   use tomlf_constants, only : tfc
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
-      & toml_key, len
-   implicit none
-   private
-
-   public :: merge_table, merge_array
-
-
-contains
-
-
-!> Merge TOML tables by appending their values
-recursive subroutine merge_table(lhs, rhs)
-
-   !> Instance of table to merge into
-   class(toml_table), intent(inout) :: lhs
-
-   !> Instance of table to be merged
-   class(toml_table), intent(inout) :: rhs
-
-   type(toml_key), allocatable :: list(:)
-   class(toml_value), pointer :: ptr1, ptr2
-   class(toml_value), allocatable :: tmp
-   logical :: has_key
-   integer :: i, n, stat
-
-   call rhs%get_keys(list)
-   n = size(list, 1)
-
-   do i = 1, n
-      if (allocated(tmp)) deallocate(tmp)
-      call rhs%get(list(i)%key, ptr1)
-      has_key = lhs%has_key(list(i)%key)
-      select type(ptr1)
-      class is(toml_keyval)
-         if (.not.has_key) then
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_array)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_array)
-               call merge_array(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_table)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_table)
-               call merge_table(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      end select
-   end do
-
-end subroutine merge_table
-
-
-!> Append values from one TOML array to another
-recursive subroutine merge_array(lhs, rhs)
-
-   !> Instance of array to merge into
-   class(toml_array), intent(inout) :: lhs
-
-   !> Instance of array to be merged
-   class(toml_array), intent(inout) :: rhs
-
-   class(toml_value), pointer :: ptr
-   class(toml_value), allocatable :: tmp
-   integer :: n, i, stat
-
-   n = len(rhs)
-
-   do i = 1, n
-      call rhs%get(i, ptr)
-      if (allocated(tmp)) deallocate(tmp)
-      allocate(tmp, source=ptr)
-      call lhs%push_back(tmp, stat)
-   end do
-
-end subroutine merge_array
-
-
-end module tomlf_build_merge
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
@@ -18719,267 +18839,6 @@ contains
 end module fpm_manifest_build
  
  
-!>>>>> ././src/fpm/manifest/dependency.f90
-!> Implementation of the meta data for dependencies.
-!>
-!> A dependency table can currently have the following fields
-!>
-!>```toml
-!>[dependencies]
-!>"dep1" = { git = "url" }
-!>"dep2" = { git = "url", branch = "name" }
-!>"dep3" = { git = "url", tag = "name" }
-!>"dep4" = { git = "url", rev = "sha1" }
-!>"dep0" = { path = "path" }
-!>```
-!>
-!> To reduce the amount of boilerplate code this module provides two constructors
-!> for dependency types, one basic for an actual dependency (inline) table
-!> and another to collect all dependency objects from a dependencies table,
-!> which is handling the allocation of the objects and is forwarding the
-!> individual dependency tables to their respective constructors.
-!> The usual entry point should be the constructor for the super table.
-!>
-!> This objects contains a target to retrieve required `fpm` projects to
-!> build the target declaring the dependency.
-!> Resolving a dependency will result in obtaining a new package configuration
-!> data for the respective project.
-module fpm_manifest_dependency
-    use fpm_error, only : error_t, syntax_error
-    use fpm_git, only : git_target_t, git_target_tag, git_target_branch, &
-        & git_target_revision, git_target_default
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
-    use fpm_filesystem, only: windows_path
-    use fpm_environment, only: get_os_type, OS_WINDOWS
-    implicit none
-    private
-
-    public :: dependency_config_t, new_dependency, new_dependencies
-
-
-    !> Configuration meta data for a dependency
-    type :: dependency_config_t
-
-        !> Name of the dependency
-        character(len=:), allocatable :: name
-
-        !> Local target
-        character(len=:), allocatable :: path
-
-        !> Git descriptor
-        type(git_target_t), allocatable :: git
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type dependency_config_t
-
-
-contains
-
-
-    !> Construct a new dependency configuration from a TOML data structure
-    subroutine new_dependency(self, table, root, error)
-
-        !> Instance of the dependency configuration
-        type(dependency_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Root directory of the manifest
-        character(*), intent(in), optional :: root
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        character(len=:), allocatable :: url, obj
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call table%get_key(self%name)
-
-        call get_value(table, "path", url)
-        if (allocated(url)) then
-            if (get_os_type() == OS_WINDOWS) url = windows_path(url)
-            if (present(root)) url = root//url  ! Relative to the fpm.toml it’s written in
-            call move_alloc(url, self%path)
-        else
-            call get_value(table, "git", url)
-
-            call get_value(table, "tag", obj)
-            if (allocated(obj)) then
-                self%git = git_target_tag(url, obj)
-            end if
-
-            if (.not.allocated(self%git)) then
-                call get_value(table, "branch", obj)
-                if (allocated(obj)) then
-                    self%git = git_target_branch(url, obj)
-                end if
-            end if
-
-            if (.not.allocated(self%git)) then
-                call get_value(table, "rev", obj)
-                if (allocated(obj)) then
-                    self%git = git_target_revision(url, obj)
-                end if
-            end if
-
-            if (.not.allocated(self%git)) then
-                self%git = git_target_default(url)
-            end if
-
-        end if
-
-    end subroutine new_dependency
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        character(len=:), allocatable :: name
-        type(toml_key), allocatable :: list(:)
-        logical :: url_present, git_target_present, has_path
-        integer :: ikey
-
-        has_path = .false.
-        url_present = .false.
-        git_target_present = .false.
-
-        call table%get_key(name)
-        call table%get_keys(list)
-
-        if (size(list) < 1) then
-            call syntax_error(error, "Dependency "//name//" does not provide sufficient entries")
-            return
-        end if
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in dependency "//name)
-                exit
-
-            case("git", "path")
-                if (url_present) then
-                    call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
-                    exit
-                end if
-                url_present = .true.
-                has_path = list(ikey)%key == 'path'
-
-            case("branch", "rev", "tag")
-                if (git_target_present) then
-                    call syntax_error(error, "Dependency "//name//" can only have one of branch, rev or tag present")
-                    exit
-                end if
-                git_target_present = .true.
-
-            end select
-        end do
-        if (allocated(error)) return
-
-        if (.not.url_present) then
-            call syntax_error(error, "Dependency "//name//" does not provide a method to actually retrieve itself")
-            return
-        end if
-
-        if (has_path .and. git_target_present) then
-            call syntax_error(error, "Dependency "//name//" uses a local path, therefore no git identifiers are allowed")
-        end if
-
-    end subroutine check
-
-
-    !> Construct new dependency array from a TOML data structure
-    subroutine new_dependencies(deps, table, root, error)
-
-        !> Instance of the dependency configuration
-        type(dependency_config_t), allocatable, intent(out) :: deps(:)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Root directory of the manifest
-        character(*), intent(in), optional :: root
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_table), pointer :: node
-        type(toml_key), allocatable :: list(:)
-        integer :: idep, stat
-
-        call table%get_keys(list)
-        ! An empty table is okay
-        if (size(list) < 1) return
-
-        allocate(deps(size(list)))
-        do idep = 1, size(list)
-            call get_value(table, list(idep)%key, node, stat=stat)
-            if (stat /= toml_stat%success) then
-                call syntax_error(error, "Dependency "//list(idep)%key//" must be a table entry")
-                exit
-            end if
-            call new_dependency(deps(idep), node, root, error)
-            if (allocated(error)) exit
-        end do
-
-    end subroutine new_dependencies
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the dependency configuration
-        class(dependency_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        write(unit, fmt) "Dependency"
-        if (allocated(self%name)) then
-            write(unit, fmt) "- name", self%name
-        end if
-
-        if (allocated(self%git)) then
-            write(unit, fmt) "- kind", "git"
-            call self%git%info(unit, pr - 1)
-        end if
-
-        if (allocated(self%path)) then
-            write(unit, fmt) "- kind", "local"
-            write(unit, fmt) "- path", self%path
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_dependency
- 
- 
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
 !>
@@ -19089,348 +18948,6 @@ contains
   end subroutine info
 
 end module fpm_manifest_install
- 
- 
-!>>>>> ././src/fpm/manifest/library.f90
-!> Implementation of the meta data for libraries.
-!>
-!> A library table can currently have the following fields
-!>
-!>```toml
-!>[library]
-!>source-dir = "path"
-!>include-dir = ["path1","path2"]
-!>build-script = "file"
-!>```
-module fpm_manifest_library
-    use fpm_error, only : error_t, syntax_error
-    use fpm_strings, only: string_t, string_cat
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-    implicit none
-    private
-
-    public :: library_config_t, new_library
-
-
-    !> Configuration meta data for a library
-    type :: library_config_t
-
-        !> Source path prefix
-        character(len=:), allocatable :: source_dir
-
-        !> Include path prefix
-        type(string_t), allocatable :: include_dir(:)
-
-        !> Alternative build script to be invoked
-        character(len=:), allocatable :: build_script
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type library_config_t
-
-
-contains
-
-
-    !> Construct a new library configuration from a TOML data structure
-    subroutine new_library(self, table, error)
-
-        !> Instance of the library configuration
-        type(library_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call get_value(table, "source-dir", self%source_dir, "src")
-        call get_value(table, "build-script", self%build_script)
-
-        call get_list(table, "include-dir", self%include_dir, error)
-        if (allocated(error)) return
-
-        ! Set default value of include-dir if not found in manifest
-        if (.not.allocated(self%include_dir)) then
-            self%include_dir = [string_t("include")]
-        end if
-
-    end subroutine new_library
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_key), allocatable :: list(:)
-        integer :: ikey
-
-        call table%get_keys(list)
-
-        ! table can be empty
-        if (size(list) < 1) return
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in library")
-                exit
-
-            case("source-dir", "include-dir", "build-script")
-                continue
-
-            end select
-        end do
-
-    end subroutine check
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the library configuration
-        class(library_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Library target"
-        if (allocated(self%source_dir)) then
-            write(unit, fmt) "- source directory", self%source_dir
-        end if
-        if (allocated(self%include_dir)) then
-            write(unit, fmt) "- include directory", string_cat(self%include_dir,",")
-        end if
-        if (allocated(self%build_script)) then
-            write(unit, fmt) "- custom build", self%build_script
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_library
- 
- 
-!>>>>> ././src/fpm/manifest/preprocess.f90
-!> Implementation of the meta data for preprocessing.
-!>
-!> A preprocess table can currently have the following fields
-!>
-!> ```toml
-!> [preprocess]
-!> [preprocess.cpp]
-!> suffixes = ["F90", "f90"]
-!> directories = ["src/feature1", "src/models"]
-!> macros = []
-!> ```
-
-module fpm_mainfest_preprocess
-   use fpm_error, only : error_t, syntax_error
-   use fpm_strings, only : string_t
-   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-   implicit none
-   private
-
-   public :: preprocess_config_t, new_preprocess_config, new_preprocessors
-
-   !> Configuration meta data for a preprocessor
-   type :: preprocess_config_t
-
-      !> Name of the preprocessor
-      character(len=:), allocatable :: name
-
-      !> Suffixes of the files to be preprocessed
-      type(string_t), allocatable :: suffixes(:)
-
-      !> Directories to search for files to be preprocessed
-      type(string_t), allocatable :: directories(:)
-
-      !> Macros to be defined for the preprocessor
-      type(string_t), allocatable :: macros(:)
-
-   contains
-
-      !> Print information on this instance
-      procedure :: info
-
-   end type preprocess_config_t
-
-contains
-
-   !> Construct a new preprocess configuration from TOML data structure
-   subroutine new_preprocess_config(self, table, error)
-
-      !> Instance of the preprocess configuration
-      type(preprocess_config_t), intent(out) :: self
-
-      !> Instance of the TOML data structure.
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(out) :: error
-
-      call check(table, error)
-      if (allocated(error)) return
-
-      call table%get_key(self%name)
-
-      call get_list(table, "suffixes", self%suffixes, error)
-      if (allocated(error)) return
-
-      call get_list(table, "directories", self%directories, error)
-      if (allocated(error)) return
-
-      call get_list(table, "macros", self%macros, error)
-      if (allocated(error)) return
-
-   end subroutine new_preprocess_config
-
-   !> Check local schema for allowed entries
-   subroutine check(table, error)
-
-      !> Instance of the TOML data structure.
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(inout) :: error
-
-      character(len=:), allocatable :: name
-      type(toml_key), allocatable :: list(:)
-      logical :: suffixes_present, directories_present, macros_present
-      integer :: ikey
-
-      suffixes_present = .false.
-      directories_present = .false.
-      macros_present = .false.
-
-      call table%get_key(name)
-      call table%get_keys(list)
-
-      do ikey = 1, size(list)
-         select case(list(ikey)%key)
-          case default
-            call syntax_error(error, "Key " // list(ikey)%key // "is not allowed in preprocessor"//name)
-            exit
-          case("suffixes")
-            suffixes_present = .true.
-          case("directories")
-            directories_present = .true.
-          case("macros")
-            macros_present = .true.
-         end select
-      end do
-   end subroutine check
-
-   !> Construct new preprocess array from a TOML data structure.
-   subroutine new_preprocessors(preprocessors, table, error)
-
-      !> Instance of the preprocess configuration
-      type(preprocess_config_t), allocatable, intent(out) :: preprocessors(:)
-
-      !> Instance of the TOML data structure
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(out) :: error
-
-      type(toml_table), pointer :: node
-      type(toml_key), allocatable :: list(:)
-      integer :: iprep, stat
-
-      call table%get_keys(list)
-
-      ! An empty table is not allowed
-      if (size(list) == 0) then
-         call syntax_error(error, "No preprocessors defined")
-      end if
-
-      allocate(preprocessors(size(list)))
-      do iprep = 1, size(list)
-         call get_value(table, list(iprep)%key, node, stat=stat)
-         if (stat /= toml_stat%success) then
-            call syntax_error(error, "Preprocessor "//list(iprep)%key//" must be a table entry")
-            exit
-         end if
-         call new_preprocess_config(preprocessors(iprep), node, error)
-         if (allocated(error)) exit
-      end do
-
-   end subroutine new_preprocessors
-
-   !> Write information on this instance
-   subroutine info(self, unit, verbosity)
-
-      !> Instance of the preprocess configuration
-      class(preprocess_config_t), intent(in) :: self
-
-      !> Unit for IO
-      integer, intent(in) :: unit
-
-      !> Verbosity of the printout
-      integer, intent(in), optional :: verbosity
-
-      integer :: pr, ilink
-      character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-      if (present(verbosity)) then
-         pr = verbosity
-      else
-         pr = 1
-      end if
-
-      if (pr < 1) return 
-
-      write(unit, fmt) "Preprocessor"
-      if (allocated(self%name)) then
-         write(unit, fmt) "- name", self%name
-      end if
-      if (allocated(self%suffixes)) then
-         write(unit, fmt) " - suffixes"
-         do ilink = 1, size(self%suffixes)
-            write(unit, fmt) "   - " // self%suffixes(ilink)%s
-         end do
-      end if
-      if (allocated(self%directories)) then
-         write(unit, fmt) " - directories"
-         do ilink = 1, size(self%directories)
-            write(unit, fmt) "   - " // self%directories(ilink)%s
-         end do
-      end if
-      if (allocated(self%macros)) then
-         write(unit, fmt) " - macros"
-         do ilink = 1, size(self%macros)
-            write(unit, fmt) "   - " // self%macros(ilink)%s
-         end do
-      end if
-
-   end subroutine info
-
-end module fpm_mainfest_preprocess
  
  
 !>>>>> ././src/fpm/manifest/profiles.f90
@@ -20391,6 +19908,609 @@ module fpm_manifest_profile
         end if
       end subroutine find_profile
 end module fpm_manifest_profile
+ 
+ 
+!>>>>> ././src/fpm/manifest/library.f90
+!> Implementation of the meta data for libraries.
+!>
+!> A library table can currently have the following fields
+!>
+!>```toml
+!>[library]
+!>source-dir = "path"
+!>include-dir = ["path1","path2"]
+!>build-script = "file"
+!>```
+module fpm_manifest_library
+    use fpm_error, only : error_t, syntax_error
+    use fpm_strings, only: string_t, string_cat
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+    implicit none
+    private
+
+    public :: library_config_t, new_library
+
+
+    !> Configuration meta data for a library
+    type :: library_config_t
+
+        !> Source path prefix
+        character(len=:), allocatable :: source_dir
+
+        !> Include path prefix
+        type(string_t), allocatable :: include_dir(:)
+
+        !> Alternative build script to be invoked
+        character(len=:), allocatable :: build_script
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type library_config_t
+
+
+contains
+
+
+    !> Construct a new library configuration from a TOML data structure
+    subroutine new_library(self, table, error)
+
+        !> Instance of the library configuration
+        type(library_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call get_value(table, "source-dir", self%source_dir, "src")
+        call get_value(table, "build-script", self%build_script)
+
+        call get_list(table, "include-dir", self%include_dir, error)
+        if (allocated(error)) return
+
+        ! Set default value of include-dir if not found in manifest
+        if (.not.allocated(self%include_dir)) then
+            self%include_dir = [string_t("include")]
+        end if
+
+    end subroutine new_library
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_key), allocatable :: list(:)
+        integer :: ikey
+
+        call table%get_keys(list)
+
+        ! table can be empty
+        if (size(list) < 1) return
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in library")
+                exit
+
+            case("source-dir", "include-dir", "build-script")
+                continue
+
+            end select
+        end do
+
+    end subroutine check
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the library configuration
+        class(library_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Library target"
+        if (allocated(self%source_dir)) then
+            write(unit, fmt) "- source directory", self%source_dir
+        end if
+        if (allocated(self%include_dir)) then
+            write(unit, fmt) "- include directory", string_cat(self%include_dir,",")
+        end if
+        if (allocated(self%build_script)) then
+            write(unit, fmt) "- custom build", self%build_script
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_library
+ 
+ 
+!>>>>> ././src/fpm/manifest/preprocess.f90
+!> Implementation of the meta data for preprocessing.
+!>
+!> A preprocess table can currently have the following fields
+!>
+!> ```toml
+!> [preprocess]
+!> [preprocess.cpp]
+!> suffixes = ["F90", "f90"]
+!> directories = ["src/feature1", "src/models"]
+!> macros = []
+!> ```
+
+module fpm_mainfest_preprocess
+   use fpm_error, only : error_t, syntax_error
+   use fpm_strings, only : string_t
+   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+   implicit none
+   private
+
+   public :: preprocess_config_t, new_preprocess_config, new_preprocessors
+
+   !> Configuration meta data for a preprocessor
+   type :: preprocess_config_t
+
+      !> Name of the preprocessor
+      character(len=:), allocatable :: name
+
+      !> Suffixes of the files to be preprocessed
+      type(string_t), allocatable :: suffixes(:)
+
+      !> Directories to search for files to be preprocessed
+      type(string_t), allocatable :: directories(:)
+
+      !> Macros to be defined for the preprocessor
+      type(string_t), allocatable :: macros(:)
+
+   contains
+
+      !> Print information on this instance
+      procedure :: info
+
+   end type preprocess_config_t
+
+contains
+
+   !> Construct a new preprocess configuration from TOML data structure
+   subroutine new_preprocess_config(self, table, error)
+
+      !> Instance of the preprocess configuration
+      type(preprocess_config_t), intent(out) :: self
+
+      !> Instance of the TOML data structure.
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(out) :: error
+
+      call check(table, error)
+      if (allocated(error)) return
+
+      call table%get_key(self%name)
+
+      call get_list(table, "suffixes", self%suffixes, error)
+      if (allocated(error)) return
+
+      call get_list(table, "directories", self%directories, error)
+      if (allocated(error)) return
+
+      call get_list(table, "macros", self%macros, error)
+      if (allocated(error)) return
+
+   end subroutine new_preprocess_config
+
+   !> Check local schema for allowed entries
+   subroutine check(table, error)
+
+      !> Instance of the TOML data structure.
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(inout) :: error
+
+      character(len=:), allocatable :: name
+      type(toml_key), allocatable :: list(:)
+      logical :: suffixes_present, directories_present, macros_present
+      integer :: ikey
+
+      suffixes_present = .false.
+      directories_present = .false.
+      macros_present = .false.
+
+      call table%get_key(name)
+      call table%get_keys(list)
+
+      do ikey = 1, size(list)
+         select case(list(ikey)%key)
+          case default
+            call syntax_error(error, "Key " // list(ikey)%key // "is not allowed in preprocessor"//name)
+            exit
+          case("suffixes")
+            suffixes_present = .true.
+          case("directories")
+            directories_present = .true.
+          case("macros")
+            macros_present = .true.
+         end select
+      end do
+   end subroutine check
+
+   !> Construct new preprocess array from a TOML data structure.
+   subroutine new_preprocessors(preprocessors, table, error)
+
+      !> Instance of the preprocess configuration
+      type(preprocess_config_t), allocatable, intent(out) :: preprocessors(:)
+
+      !> Instance of the TOML data structure
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(out) :: error
+
+      type(toml_table), pointer :: node
+      type(toml_key), allocatable :: list(:)
+      integer :: iprep, stat
+
+      call table%get_keys(list)
+
+      ! An empty table is not allowed
+      if (size(list) == 0) then
+         call syntax_error(error, "No preprocessors defined")
+      end if
+
+      allocate(preprocessors(size(list)))
+      do iprep = 1, size(list)
+         call get_value(table, list(iprep)%key, node, stat=stat)
+         if (stat /= toml_stat%success) then
+            call syntax_error(error, "Preprocessor "//list(iprep)%key//" must be a table entry")
+            exit
+         end if
+         call new_preprocess_config(preprocessors(iprep), node, error)
+         if (allocated(error)) exit
+      end do
+
+   end subroutine new_preprocessors
+
+   !> Write information on this instance
+   subroutine info(self, unit, verbosity)
+
+      !> Instance of the preprocess configuration
+      class(preprocess_config_t), intent(in) :: self
+
+      !> Unit for IO
+      integer, intent(in) :: unit
+
+      !> Verbosity of the printout
+      integer, intent(in), optional :: verbosity
+
+      integer :: pr, ilink
+      character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+      if (present(verbosity)) then
+         pr = verbosity
+      else
+         pr = 1
+      end if
+
+      if (pr < 1) return 
+
+      write(unit, fmt) "Preprocessor"
+      if (allocated(self%name)) then
+         write(unit, fmt) "- name", self%name
+      end if
+      if (allocated(self%suffixes)) then
+         write(unit, fmt) " - suffixes"
+         do ilink = 1, size(self%suffixes)
+            write(unit, fmt) "   - " // self%suffixes(ilink)%s
+         end do
+      end if
+      if (allocated(self%directories)) then
+         write(unit, fmt) " - directories"
+         do ilink = 1, size(self%directories)
+            write(unit, fmt) "   - " // self%directories(ilink)%s
+         end do
+      end if
+      if (allocated(self%macros)) then
+         write(unit, fmt) " - macros"
+         do ilink = 1, size(self%macros)
+            write(unit, fmt) "   - " // self%macros(ilink)%s
+         end do
+      end if
+
+   end subroutine info
+
+end module fpm_mainfest_preprocess
+ 
+ 
+!>>>>> ././src/fpm/manifest/dependency.f90
+!> Implementation of the meta data for dependencies.
+!>
+!> A dependency table can currently have the following fields
+!>
+!>```toml
+!>[dependencies]
+!>"dep1" = { git = "url" }
+!>"dep2" = { git = "url", branch = "name" }
+!>"dep3" = { git = "url", tag = "name" }
+!>"dep4" = { git = "url", rev = "sha1" }
+!>"dep0" = { path = "path" }
+!>```
+!>
+!> To reduce the amount of boilerplate code this module provides two constructors
+!> for dependency types, one basic for an actual dependency (inline) table
+!> and another to collect all dependency objects from a dependencies table,
+!> which is handling the allocation of the objects and is forwarding the
+!> individual dependency tables to their respective constructors.
+!> The usual entry point should be the constructor for the super table.
+!>
+!> This objects contains a target to retrieve required `fpm` projects to
+!> build the target declaring the dependency.
+!> Resolving a dependency will result in obtaining a new package configuration
+!> data for the respective project.
+module fpm_manifest_dependency
+    use fpm_error, only : error_t, syntax_error
+    use fpm_git, only : git_target_t, git_target_tag, git_target_branch, &
+        & git_target_revision, git_target_default
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
+    use fpm_filesystem, only: windows_path
+    use fpm_environment, only: get_os_type, OS_WINDOWS
+    implicit none
+    private
+
+    public :: dependency_config_t, new_dependency, new_dependencies
+
+
+    !> Configuration meta data for a dependency
+    type :: dependency_config_t
+
+        !> Name of the dependency
+        character(len=:), allocatable :: name
+
+        !> Local target
+        character(len=:), allocatable :: path
+
+        !> Git descriptor
+        type(git_target_t), allocatable :: git
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type dependency_config_t
+
+
+contains
+
+
+    !> Construct a new dependency configuration from a TOML data structure
+    subroutine new_dependency(self, table, root, error)
+
+        !> Instance of the dependency configuration
+        type(dependency_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Root directory of the manifest
+        character(*), intent(in), optional :: root
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        character(len=:), allocatable :: url, obj
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call table%get_key(self%name)
+
+        call get_value(table, "path", url)
+        if (allocated(url)) then
+            if (get_os_type() == OS_WINDOWS) url = windows_path(url)
+            if (present(root)) url = root//url  ! Relative to the fpm.toml it   s written in
+            call move_alloc(url, self%path)
+        else
+            call get_value(table, "git", url)
+
+            call get_value(table, "tag", obj)
+            if (allocated(obj)) then
+                self%git = git_target_tag(url, obj)
+            end if
+
+            if (.not.allocated(self%git)) then
+                call get_value(table, "branch", obj)
+                if (allocated(obj)) then
+                    self%git = git_target_branch(url, obj)
+                end if
+            end if
+
+            if (.not.allocated(self%git)) then
+                call get_value(table, "rev", obj)
+                if (allocated(obj)) then
+                    self%git = git_target_revision(url, obj)
+                end if
+            end if
+
+            if (.not.allocated(self%git)) then
+                self%git = git_target_default(url)
+            end if
+
+        end if
+
+    end subroutine new_dependency
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        character(len=:), allocatable :: name
+        type(toml_key), allocatable :: list(:)
+        logical :: url_present, git_target_present, has_path
+        integer :: ikey
+
+        has_path = .false.
+        url_present = .false.
+        git_target_present = .false.
+
+        call table%get_key(name)
+        call table%get_keys(list)
+
+        if (size(list) < 1) then
+            call syntax_error(error, "Dependency "//name//" does not provide sufficient entries")
+            return
+        end if
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in dependency "//name)
+                exit
+
+            case("git", "path")
+                if (url_present) then
+                    call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
+                    exit
+                end if
+                url_present = .true.
+                has_path = list(ikey)%key == 'path'
+
+            case("branch", "rev", "tag")
+                if (git_target_present) then
+                    call syntax_error(error, "Dependency "//name//" can only have one of branch, rev or tag present")
+                    exit
+                end if
+                git_target_present = .true.
+
+            end select
+        end do
+        if (allocated(error)) return
+
+        if (.not.url_present) then
+            call syntax_error(error, "Dependency "//name//" does not provide a method to actually retrieve itself")
+            return
+        end if
+
+        if (has_path .and. git_target_present) then
+            call syntax_error(error, "Dependency "//name//" uses a local path, therefore no git identifiers are allowed")
+        end if
+
+    end subroutine check
+
+
+    !> Construct new dependency array from a TOML data structure
+    subroutine new_dependencies(deps, table, root, error)
+
+        !> Instance of the dependency configuration
+        type(dependency_config_t), allocatable, intent(out) :: deps(:)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Root directory of the manifest
+        character(*), intent(in), optional :: root
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_table), pointer :: node
+        type(toml_key), allocatable :: list(:)
+        integer :: idep, stat
+
+        call table%get_keys(list)
+        ! An empty table is okay
+        if (size(list) < 1) return
+
+        allocate(deps(size(list)))
+        do idep = 1, size(list)
+            call get_value(table, list(idep)%key, node, stat=stat)
+            if (stat /= toml_stat%success) then
+                call syntax_error(error, "Dependency "//list(idep)%key//" must be a table entry")
+                exit
+            end if
+            call new_dependency(deps(idep), node, root, error)
+            if (allocated(error)) exit
+        end do
+
+    end subroutine new_dependencies
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the dependency configuration
+        class(dependency_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        write(unit, fmt) "Dependency"
+        if (allocated(self%name)) then
+            write(unit, fmt) "- name", self%name
+        end if
+
+        if (allocated(self%git)) then
+            write(unit, fmt) "- kind", "git"
+            call self%git%info(unit, pr - 1)
+        end if
+
+        if (allocated(self%path)) then
+            write(unit, fmt) "- kind", "local"
+            write(unit, fmt) "- path", self%path
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_dependency
  
  
 !>>>>> ././src/fpm/manifest/executable.f90
@@ -22006,7 +22126,7 @@ character(len=:,kind=tfc),allocatable :: littlefile(:)
         &'#M_strings = { path = "M_strings" }                                             ',&
         &'                                                                                ',&
         &'  # This tells fpm that we depend on a crate called M_strings which is found    ',&
-        &'  # in the M_strings folder (relative to the fpm.toml it’s written in).         ',&
+        &'  # in the M_strings folder (relative to the fpm.toml it   s written in).         ',&
         &'  #                                                                             ',&
         &'  # For a more verbose layout use normal tables rather than inline tables       ',&
         &'  # to specify dependencies:                                                    ',&
@@ -24194,7 +24314,7 @@ end module fpm_dependency
 !>### Enumerations
 !>
 !> __Source type:__ `FPM_UNIT_*`
-!> Describes the type of source file — determines build target generation
+!> Describes the type of source file     determines build target generation
 !>
 !> The logical order of precedence for assigning `unit_type` is as follows:
 !>
@@ -24214,7 +24334,7 @@ end module fpm_dependency
 !> (This allows tree-shaking/pruning of build targets based on unused module dependencies.)
 !>
 !> __Source scope:__ `FPM_SCOPE_*`
-!> Describes the scoping rules for using modules — controls module dependency resolution
+!> Describes the scoping rules for using modules     controls module dependency resolution
 !>
 module fpm_model
 use iso_fortran_env, only: int64
@@ -25293,7 +25413,7 @@ end module fpm_source_parsing
 !>### Enumerations
 !>
 !> __Target type:__ `FPM_TARGET_*`
-!> Describes the type of build target — determines backend build rules
+!> Describes the type of build target     determines backend build rules
 !>
 module fpm_targets
 use iso_fortran_env, only: int64
@@ -26304,186 +26424,6 @@ end subroutine filter_modules
 end module fpm_targets
  
  
-!>>>>> ././src/fpm_backend_output.f90
-!># Build Backend Progress Output
-!> This module provides a derived type `build_progress_t` for printing build status
-!> and progress messages to the console while the backend is building the package.
-!>
-!> The `build_progress_t` type supports two modes: `normal` and `plain`
-!> where the former does 'pretty' output and the latter does not.
-!> The `normal` mode is intended for typical interactive usage whereas
-!> 'plain' mode is used with the `--verbose` flag or when `stdout` is not attached
-!> to a terminal (e.g. when piping or redirecting `stdout`). In these cases,
-!> the pretty output must be suppressed to avoid control codes being output.
-
-module fpm_backend_output
-use iso_fortran_env, only: stdout=>output_unit
-use fpm_filesystem, only: basename
-use fpm_targets, only: build_target_ptr
-use fpm_backend_console, only: console_t, LINE_RESET, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-implicit none
-
-private
-public build_progress_t
-
-!> Build progress object
-type build_progress_t
-    !> Console object for updating console lines
-    type(console_t) :: console
-    !> Number of completed targets
-    integer :: n_complete
-    !> Total number of targets scheduled
-    integer :: n_target
-    !> 'Plain' output (no colors or updating)
-    logical :: plain_mode = .true.
-    !> Store needed when updating previous console lines
-    integer, allocatable :: output_lines(:)
-    !> Queue of scheduled build targets
-    type(build_target_ptr), pointer :: target_queue(:)
-contains
-    !> Output 'compiling' status for build target
-    procedure :: compiling_status => output_status_compiling
-    !> Output 'complete' status for build target
-    procedure :: completed_status => output_status_complete
-    !> Output finished status for whole package
-    procedure :: success => output_progress_success
-end type build_progress_t
-
-!> Constructor for build_progress_t
-interface build_progress_t
-    procedure :: new_build_progress
-end interface build_progress_t
-
-contains
-    
-    !> Initialise a new build progress object
-    function new_build_progress(target_queue,plain_mode) result(progress)
-        !> The queue of scheduled targets
-        type(build_target_ptr), intent(in), target :: target_queue(:)
-        !> Enable 'plain' output for progress object
-        logical, intent(in), optional :: plain_mode
-        !> Progress object to initialise
-        type(build_progress_t) :: progress
-
-        progress%n_target = size(target_queue,1)
-        progress%target_queue => target_queue
-        progress%plain_mode = plain_mode
-        progress%n_complete = 0
-
-        allocate(progress%output_lines(progress%n_target))
-
-    end function new_build_progress
-
-    !> Output 'compiling' status for build target and overall percentage progress
-    subroutine output_status_compiling(progress, queue_index)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(7) :: overall_progress
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
-
-            if (progress%plain_mode) then ! Plain output
-
-                !$omp critical
-                write(*,'(A7,A30)') overall_progress,target_name
-                !$omp end critical
-
-            else ! Pretty output
-
-                write(output_string,'(A,T40,A,A)') target_name, COLOR_YELLOW//'compiling...'//COLOR_RESET
-
-                call progress%console%write_line(trim(output_string),progress%output_lines(queue_index))
-
-                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_compiling
-
-    !> Output 'complete' status for build target and update overall percentage progress
-    subroutine output_status_complete(progress, queue_index, build_stat)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-        !> Build status flag
-        integer, intent(in) :: build_stat
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(7) :: overall_progress
-
-        !$omp critical 
-        progress%n_complete = progress%n_complete + 1
-        !$omp end critical
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            if (build_stat == 0) then
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_GREEN//'done.'//COLOR_RESET
-            else
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_RED//'failed.'//COLOR_RESET
-            end if
-
-            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
-
-            if (progress%plain_mode) then  ! Plain output
-
-                !$omp critical
-                write(*,'(A7,A30,A7)') overall_progress,target_name, 'done.'
-                !$omp end critical
-
-            else ! Pretty output
-
-                call progress%console%update_line(progress%output_lines(queue_index),trim(output_string))
-
-                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_complete
-
-    !> Output finished status for whole package
-    subroutine output_progress_success(progress)
-        class(build_progress_t), intent(inout) :: progress
-
-        if (progress%plain_mode) then ! Plain output
-
-            write(*,'(A)') '[100%] Project compiled successfully.'
-
-        else ! Pretty output
-
-            write(*,'(A)') LINE_RESET//COLOR_GREEN//'[100%] Project compiled successfully.'//COLOR_RESET
-
-        end if
-
-    end subroutine output_progress_success
-
-end module fpm_backend_output 
- 
 !>>>>> ././src/fpm_sources.f90
 !># Discovery of sources
 !>
@@ -26721,6 +26661,186 @@ end subroutine get_executable_source_dirs
 
 end module fpm_sources
  
+ 
+!>>>>> ././src/fpm_backend_output.f90
+!># Build Backend Progress Output
+!> This module provides a derived type `build_progress_t` for printing build status
+!> and progress messages to the console while the backend is building the package.
+!>
+!> The `build_progress_t` type supports two modes: `normal` and `plain`
+!> where the former does 'pretty' output and the latter does not.
+!> The `normal` mode is intended for typical interactive usage whereas
+!> 'plain' mode is used with the `--verbose` flag or when `stdout` is not attached
+!> to a terminal (e.g. when piping or redirecting `stdout`). In these cases,
+!> the pretty output must be suppressed to avoid control codes being output.
+
+module fpm_backend_output
+use iso_fortran_env, only: stdout=>output_unit
+use fpm_filesystem, only: basename
+use fpm_targets, only: build_target_ptr
+use fpm_backend_console, only: console_t, LINE_RESET, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
+implicit none
+
+private
+public build_progress_t
+
+!> Build progress object
+type build_progress_t
+    !> Console object for updating console lines
+    type(console_t) :: console
+    !> Number of completed targets
+    integer :: n_complete
+    !> Total number of targets scheduled
+    integer :: n_target
+    !> 'Plain' output (no colors or updating)
+    logical :: plain_mode = .true.
+    !> Store needed when updating previous console lines
+    integer, allocatable :: output_lines(:)
+    !> Queue of scheduled build targets
+    type(build_target_ptr), pointer :: target_queue(:)
+contains
+    !> Output 'compiling' status for build target
+    procedure :: compiling_status => output_status_compiling
+    !> Output 'complete' status for build target
+    procedure :: completed_status => output_status_complete
+    !> Output finished status for whole package
+    procedure :: success => output_progress_success
+end type build_progress_t
+
+!> Constructor for build_progress_t
+interface build_progress_t
+    procedure :: new_build_progress
+end interface build_progress_t
+
+contains
+    
+    !> Initialise a new build progress object
+    function new_build_progress(target_queue,plain_mode) result(progress)
+        !> The queue of scheduled targets
+        type(build_target_ptr), intent(in), target :: target_queue(:)
+        !> Enable 'plain' output for progress object
+        logical, intent(in), optional :: plain_mode
+        !> Progress object to initialise
+        type(build_progress_t) :: progress
+
+        progress%n_target = size(target_queue,1)
+        progress%target_queue => target_queue
+        progress%plain_mode = plain_mode
+        progress%n_complete = 0
+
+        allocate(progress%output_lines(progress%n_target))
+
+    end function new_build_progress
+
+    !> Output 'compiling' status for build target and overall percentage progress
+    subroutine output_status_compiling(progress, queue_index)
+        !> Progress object
+        class(build_progress_t), intent(inout) :: progress
+        !> Index of build target in the target queue
+        integer, intent(in) :: queue_index
+
+        character(:), allocatable :: target_name
+        character(100) :: output_string
+        character(7) :: overall_progress
+
+        associate(target=>progress%target_queue(queue_index)%ptr)
+
+            if (allocated(target%source)) then
+                target_name = basename(target%source%file_name)
+            else
+                target_name = basename(target%output_file)
+            end if
+
+            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
+
+            if (progress%plain_mode) then ! Plain output
+
+                !$omp critical
+                write(*,'(A7,A30)') overall_progress,target_name
+                !$omp end critical
+
+            else ! Pretty output
+
+                write(output_string,'(A,T40,A,A)') target_name, COLOR_YELLOW//'compiling...'//COLOR_RESET
+
+                call progress%console%write_line(trim(output_string),progress%output_lines(queue_index))
+
+                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
+
+            end if
+
+        end associate
+
+    end subroutine output_status_compiling
+
+    !> Output 'complete' status for build target and update overall percentage progress
+    subroutine output_status_complete(progress, queue_index, build_stat)
+        !> Progress object
+        class(build_progress_t), intent(inout) :: progress
+        !> Index of build target in the target queue
+        integer, intent(in) :: queue_index
+        !> Build status flag
+        integer, intent(in) :: build_stat
+
+        character(:), allocatable :: target_name
+        character(100) :: output_string
+        character(7) :: overall_progress
+
+        !$omp critical 
+        progress%n_complete = progress%n_complete + 1
+        !$omp end critical
+
+        associate(target=>progress%target_queue(queue_index)%ptr)
+
+            if (allocated(target%source)) then
+                target_name = basename(target%source%file_name)
+            else
+                target_name = basename(target%output_file)
+            end if
+
+            if (build_stat == 0) then
+                write(output_string,'(A,T40,A,A)') target_name,COLOR_GREEN//'done.'//COLOR_RESET
+            else
+                write(output_string,'(A,T40,A,A)') target_name,COLOR_RED//'failed.'//COLOR_RESET
+            end if
+
+            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
+
+            if (progress%plain_mode) then  ! Plain output
+
+                !$omp critical
+                write(*,'(A7,A30,A7)') overall_progress,target_name, 'done.'
+                !$omp end critical
+
+            else ! Pretty output
+
+                call progress%console%update_line(progress%output_lines(queue_index),trim(output_string))
+
+                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
+
+            end if
+
+        end associate
+
+    end subroutine output_status_complete
+
+    !> Output finished status for whole package
+    subroutine output_progress_success(progress)
+        class(build_progress_t), intent(inout) :: progress
+
+        if (progress%plain_mode) then ! Plain output
+
+            write(*,'(A)') '[100%] Project compiled successfully.'
+
+        else ! Pretty output
+
+            write(*,'(A)') LINE_RESET//COLOR_GREEN//'[100%] Project compiled successfully.'//COLOR_RESET
+
+        end if
+
+    end subroutine output_progress_success
+
+end module fpm_backend_output 
  
 !>>>>> ././src/fpm_backend.F90
 !># Build backend
