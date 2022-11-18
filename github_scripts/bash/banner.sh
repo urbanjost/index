@@ -1,5 +1,6 @@
-#!/bin/sh
-#@(#)emulate banner command (V1.0) 19940301 John S. Urban
+#!/bin/bash --norc
+# @(#)banner.sh(1sh) emulate banner command to print large block letters
+# @(#) 1.0 19940301 John S. Urban
 ONECHAR(){
 CHAR="$*"
 case "$CHAR" in
@@ -1493,40 +1494,40 @@ esac
 #for CHAR in \A \B \C \D \E \F \G \H \I \J \G \K \L \M \N \O \P \Q \R \S \T \U \V \W \X \Y \Z \a \b \c \d \e \f \g \h \i \j \g \k \l \m \n \o \p \q \r \s \t \u \v \w \x \y \z \1 \2 \3 \4 \5 \6 \7 \8 \9 \0 \  \` \~ \! \@ \# \$ \% \^ \& \* \( \) \- \_ \= \+ \[ \] \{ \} \\ \| \' \; \: \" \, \. \/ \< \> \?
 while [ "$1" != '' ]
 do
-for CHAR in `echo "$1"|tr ' ' '\019'|sed -e 's/./ &/g'`
-do
-ONECHAR "$CHAR"
-done|( while read LINE
-do
-           LINEa="${LINEa}${LINE}"
-read LINE; LINEb="${LINEb}${LINE}"
-read LINE; LINEc="${LINEc}${LINE}"
-read LINE; LINEd="${LINEd}${LINE}"
-read LINE; LINEe="${LINEe}${LINE}"
-read LINE; LINEf="${LINEf}${LINE}"
-read LINE; LINEg="${LINEg}${LINE}"
-read LINE; LINEh="${LINEh}${LINE}"
-read LINE; LINEi="${LINEi}${LINE}"
-read LINE; LINEj="${LINEj}${LINE}"
-read LINE; LINEk="${LINEk}${LINE}"
-read LINE; LINEl="${LINEl}${LINE}"
-read LINE; LINEm="${LINEm}${LINE}"
-done
-
-echo "${LINEa}"
-echo "${LINEb}"
-echo "${LINEc}"
-echo "${LINEd}"
-echo "${LINEe}"
-echo "${LINEf}"
-echo "${LINEg}"
-echo "${LINEh}"
-echo "${LINEi}"
-echo "${LINEj}"
-echo "${LINEk}"
-echo "${LINEl}"
-echo "${LINEm}"
-) | tr '_' ' '
-shift
+   for CHAR in `echo "$1"|tr ' ' '\019'|sed -e 's/./ &/g'`
+   do
+      ONECHAR "$CHAR"
+   done|( while read LINE
+   do
+                 LINEa="${LINEa}${LINE}"
+      read LINE; LINEb="${LINEb}${LINE}"
+      read LINE; LINEc="${LINEc}${LINE}"
+      read LINE; LINEd="${LINEd}${LINE}"
+      read LINE; LINEe="${LINEe}${LINE}"
+      read LINE; LINEf="${LINEf}${LINE}"
+      read LINE; LINEg="${LINEg}${LINE}"
+      read LINE; LINEh="${LINEh}${LINE}"
+      read LINE; LINEi="${LINEi}${LINE}"
+      read LINE; LINEj="${LINEj}${LINE}"
+      read LINE; LINEk="${LINEk}${LINE}"
+      read LINE; LINEl="${LINEl}${LINE}"
+      read LINE; LINEm="${LINEm}${LINE}"
+   done
+   
+   echo "${LINEa}"
+   echo "${LINEb}"
+   echo "${LINEc}"
+   echo "${LINEd}"
+   echo "${LINEe}"
+   echo "${LINEf}"
+   echo "${LINEg}"
+   echo "${LINEh}"
+   echo "${LINEi}"
+   echo "${LINEj}"
+   echo "${LINEk}"
+   echo "${LINEl}"
+   echo "${LINEm}"
+   ) | tr '_' ' '
+   shift
 done
 exit

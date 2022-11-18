@@ -1,0 +1,6 @@
+#!/bin/bash
+#@(#) search github for fortran topics
+topic="$*"
+cygstart 'https://github.com/search?q=language%3Afortran+topic%3A'"$topic"
+exit
+https://github.com/search?q=language%3Afortran+topic%3Anumerical-integration

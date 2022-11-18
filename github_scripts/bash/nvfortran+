@@ -1,4 +1,0 @@
-#!/bin/bash
-trap "exit 0" EXIT
-nvfortran -Mbackslash "$@"
-exit

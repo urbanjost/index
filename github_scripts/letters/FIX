@@ -1,4 +1,0 @@
-
--name-sub   NOT A LEGAL NAME in M_CLI because has to be a real variable name. change to _ automatically?
-
-In definition got "     F"  with it not left-adjusted with leading spaces if definition was "-x        F"

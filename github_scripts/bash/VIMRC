@@ -80,13 +80,6 @@ else
   set autoindent		" always set autoindenting on
 
 endif " has("autocmd")
-
-" No tabs in the source file.
-" All tab characters are 4 space characters.
-set tabstop=4
-set shiftwidth=4
-set expandtab
-
 "so $THOME/scripts/EXRC
 so $HOME/.exrc
 
