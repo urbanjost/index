@@ -1,0 +1,5 @@
+#!/bin/bash --norc
+#@(#) gray(1sh) - example of changing xterm(1) using esc(1)
+esc -bg gray30 -fg white -rows 33 -cols 132 -cr red -fn 6
+#esc -xrdb GRAY|xrdb -merge
+exit

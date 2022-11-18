@@ -1,0 +1,52 @@
+# FPM ENABLED GITHUB REPOSITORIES
+### July 12, 2020
+ 
+ Like others, I am trying out early releases of fpm ( 
+[Fortran Package Manager](https://github.com/fortran-lang/fpm)
+).  For the purpose of testing dependencies, and since there is not yet a central registry at
+[https://fortran-lang.org](https://fortran-lang.org)
+here is a list of my public repositories that are fpm-enabled:
+
+    [dependencies]
+     M_cli         = { git = "https://github.com/urbanjost/M_cli.git"  }
+     M_calculator  = { git = "https://github.com/urbanjost/M_calculator.git" }
+     M_change      = { git = "https://github.com/urbanjost/M_change.git" }
+     M_color       = { git = "https://github.com/urbanjost/M_color.git" }
+     M_history     = { git = "https://github.com/urbanjost/M_history.git" }
+     M_io          = { git = "https://github.com/urbanjost/M_io.git" }
+     M_msg         = { git = "https://github.com/urbanjost/M_msg.git" }
+     M_time        = { git = "https://github.com/urbanjost/M_time.git" }
+     M_process     = { git = "https://github.com/urbanjost/M_process.git" }
+     M_strings     = { git = "https://github.com/urbanjost/M_strings.git" }
+
+Which are also all available as github repositories with a Makefile build as
+well:
+
+     git clone https://github.com/urbanjost/$NAME.git
+
+It makes it a lot easier to test a package manager if you know where a few packages are!
+
+## DESCRIPTIONS
+
+  + [*M_time(1)*](https://github.com/urbanjost/M_time)    - Fortran module for manipulating and presenting time and date values
+  + [*M_strings(1)*](https://github.com/urbanjost/M_strings) - Fortran string module
+  + [*M_process(1)*](https://github.com/urbanjost/M_process) - Fortran Module for calling process-related C functions from Fortran
+  + [*M_CLI(1)*](https://github.com/urbanjost/M_CLI)     - command line argument parsing using a prototype command
+
+  + [*M_color*](https://github.com/urbanjost/M_color)      - a Fortran module that lets you convert between common color models
+  + [*M_history(1)*](https://github.com/urbanjost/M_history) - Fortran-based Input History Editor
+  + [*M_calculator*](https://github.com/urbanjost/M_calculator) - module of routines for parsing expressions and returning values
+  + [*M_msg*](https://github.com/urbanjost/M_msg)        - converts any standard scalar type to a string
+  + [*M_io(1)*](https://github.com/urbanjost/M_io)      - basic file operations
+
+ (1) -  A fortran-lang.org [package](https://fortran-lang.org/packages/) 
+
+## FEEDBACK WELCOME
+
+Please provide feedback on the github sites in the wiki or issues sections
+( ie. [M_CLI wiki](https://github.com/urbanjost/M_CLI/wiki) for example) or
+
+ - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
+ - [Fortran Discourse](https://fortran-lang.discourse.group)
+ - [Fortran Wiki](http://fortranwiki.org)
+

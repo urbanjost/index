@@ -1,0 +1,117 @@
+#!/bin/bash
+####################################################################################################################################
+#@(#) mank(1) - build table of contents of man pages as an html page.
+export OUTDIR=${OUTDIR:-GPF/docs}
+export MANPATH=${MANPATH:-GPF/man}
+####################################################################################################################################
+RANDOMCOLOR(){
+# generate a random light background color 
+# so each grouping has a color in the table
+printf -v KOLOR '#%2.2x%2.2x%2.2x' $((RANDOM % 64+3*64)) $((RANDOM % 64+3*64)) $((RANDOM % 64+3*64))
+}
+####################################################################################################################################
+MAKE_MANK(){
+SECTION=${1:-3}
+#----------------------------------------------------------------------------------------------------------------------------------#
+cat <<EOF
+<h1>$DOCUMENT_HEADER</h1>
+<font size=-1>
+<script language="JavaScript">
+<!---//hide script from old browsers; automatically update modification date
+   document.write( "<i>Date last updated: " + document.lastModified + "</i>");
+//end hiding contents --->
+</script>
+</font>
+EOF
+#----------------------------------------------------------------------------------------------------------------------------------#
+cat <<\EOF
+<table border="1">
+<tr> <th>grouping</th> <th>page</th> <th>description</th> </tr>
+EOF
+#----------------------------------------------------------------------------------------------------------------------------------#
+export OLDGROUP GROUP KOLOR
+OLDGROUP='&nbsp;'
+RANDOMCOLOR
+#----------------------------------------------------------------------------------------------------------------------------------#
+#
+# sort by 'member' assuming making lines for a module member using this syntax:
+#    NAME (section) - [member] description
+# example:
+#    M_Compare_Float_Numbers (3) - [M_Compare_Float_Numbers]perform relational comparisons on real numbers
+# but still work with regular lines like
+#    _pwd (1)        - list full pathname of current directory
+#
+DELIMITER=$(printf '\t')
+
+# make sure sort(1) does not sort case-insensitive
+export LC_ALL=C 
+echo "<GPF_manpage_index><MANPATH>$MANPATH" 1>&2
+env MANWIDTH=512 man -S $SECTION -k . |
+   eval $FILTER |
+   sed -e "s/\[/$DELIMITER[/" |
+   sed -e "s/]/]$DELIMITER/" |
+   env LC_ALL=C sort -s -t "$DELIMITER" -k 2,2 -k 1,1 |
+   tr -d "$DELIMITER" |
+while read NAME SECT DASH OTHER
+do
+   echo "<GPF_manpage_index><NAME>$NAME<SECT>$SECT<DASH>$DASH" 1>&2
+   GROUP=${OTHER/\]*/} GROUP=${GROUP/*\[/} GROUP=${GROUP:-'&nbsp;'}
+   if [ "$OLDGROUP" != "$GROUP" ]
+   then
+      OLDGROUP="$GROUP"
+      RANDOMCOLOR
+   fi
+   
+   # will truncate description if description has ] not as I expect
+   case "$OTHER" in
+   *\]*) 
+      IFS=']'
+      set $OTHER
+      shift
+      OTHER=${*/*\]/}
+   unset IFS
+   ;;
+   *) GROUP='&nbsp;' ;;
+   esac
+   SECT=$(echo "$SECT"|tr -d ')(')
+
+   echo "<tr><td style=\"background:$KOLOR;\">$GROUP</td><td><a href=\"$NAME.$SECT.html\">$NAME</a></td><td>$OTHER</td></tr>"
+done
+#----------------------------------------------------------------------------------------------------------------------------------#
+cat <<\EOF
+</table>
+EOF
+#----------------------------------------------------------------------------------------------------------------------------------#
+}
+####################################################################################################################################
+PATH=$PATH:$(pwd)/scripts
+#----------------------------------------------------------------------------------------------------------------------------------E
+# index skipping anything with '[FORTRAN' in the description
+export FILTER="grep -v '\[FORTRAN.*\]'"
+for SUBDIR in 1 2 3 4 5 6 7 8
+do
+   echo "making HTML index for section $SUBDIR in $OUTDIR/man${SUBDIR}.html" # 1>&2
+   DOCUMENT_HEADER="${MODULE:-libGPF} man(${SUBDIR}) pages"
+   FOUND=$(env MANPATH=$MANPATH man -S "$SUBDIR" -k . 2>/dev/null|$FILTER|wc -l)
+   echo "FOUND $FOUND for section ${SUBDIR}" 1>&2
+   [ "${FOUND:-0}" != 0 ] && MAKE_MANK "${SUBDIR}" |htm2html> $OUTDIR/man${SUBDIR}.html
+done
+#----------------------------------------------------------------------------------------------------------------------------------E
+# index skipping anything without '[FORTRAN' in the description
+for SUBDIR in 3 7
+do
+   echo "making HTML index for Fortran Intrinsics for section $SUBDIR in $OUTDIR/man${SUBDIR}i.html" # 1>&2
+   DOCUMENT_HEADER="libGPF man(${SUBDIR}) pages for Fortran Intrinsics"
+   FOUND=$(env MANPATH=$MANPATH man -S ${SUBDIR}fortran -k . 2>/dev/null|wc -l)
+   echo "FOUND $FOUND for section ${SUBDIR}" 1>&2
+   if [ "${FOUND:-0}" != 0 ] 
+   then
+      MAKE_MANK ${SUBDIR}fortran |htm2html> $OUTDIR/man${SUBDIR}i.html
+      sed -i -e 's/(LICENSE:PD)//' $OUTDIR/man${SUBDIR}i.html
+   fi
+done
+# remove content index from html documents
+sed -i -e '/HREF=#/d' -e '/name=contents/d' $OUTDIR/*.[37]fortran.html
+####################################################################################################################################
+exit
+####################################################################################################################################

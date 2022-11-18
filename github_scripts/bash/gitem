@@ -1,0 +1,19 @@
+#!/bin/bash --norc
+####################################################################################################################################
+#@(#) initial setup of $HOME/github from a new machine -- should be copied and customized
+####################################################################################################################################
+mkdir -p $HOME/github
+cd $HOME/github
+####################################################################################################################################
+# urbanjost repositories
+git clone https://github.com/urbanjost/general-purpose-fortran.git
+git clone https://github.com/urbanjost/scripts.git
+for NAME in FUNIX M_CLI M_calculator M_change M_color M_draw M_history M_io M_process M_strings M_system M_time scripts
+do
+   git clone https://github.com/urbanjost/$NAME.git
+done
+####################################################################################################################################
+# fypp
+# Fortran stdlib
+exit
+####################################################################################################################################

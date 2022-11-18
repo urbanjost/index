@@ -1,0 +1,41 @@
+#!/bin/bash
+cat <<EOF
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- Configuration data file for creamake with gfortran in Linux-->
+<content>
+<os>
+linux
+</os>
+<compiler>
+gfortran
+</compiler>
+<sources>
+$(ls *.f90)
+</sources>
+<object>
+bin
+</object>
+<main>
+PROGRAMS/ufpp.f90
+</main>
+<fflags> 
+-std=f2003 -fcheck=all -fbacktrace -Wall -g 
+</fflags>
+<exec>
+ufpp
+</exec>
+<include>
+$(echo *.h)
+</include>
+<prolog> 
+#prolog
+</prolog> 
+<epilog> 
+#epilog
+</epilog> 
+<rules>   
+#rules
+</rules>   
+</content>
+EOF
+

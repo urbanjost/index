@@ -1,0 +1,5 @@
+#!/bin/bash --norc
+#ident  "@(#)fullback.sh  1.0  restore xterm(1) to size before full(1) command was used - John S. Urban"
+######################################
+E -restore
+exit

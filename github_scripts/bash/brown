@@ -1,0 +1,9 @@
+#!/bin/bash --norc
+#@(#) brown(1sh) - example of changing xterm(1) using esc(1)
+esc -xrdb|xrdb -merge
+xrdb -merge <<\EOF
+XTerm*VT100.geometry:	80x24
+EOF
+esc -bg black -fg white -rows 40 -cols 132 -cr red -fn 5
+t
+exit

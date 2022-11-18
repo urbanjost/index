@@ -1,0 +1,85 @@
+#!/bin/bash --norc
+################################################################################
+# @(#) browser(1sh) - find browser and view pages 
+# @(#) (John S. Urban 19960401 1.0)
+################################################################################
+#-------------------------------------------------------------------------------
+FOUNDOUT(){
+for NAMES in $*
+do
+   case "$NAMES" in
+   */*) # If / in name, assume full pathname
+   if [ -x "$NAMES" ]
+   then
+      echo $NAMES
+      echo "FOUND $names: $NAMES" 1>&2
+      break
+   fi
+   ;;
+   *) # search path for command name
+   if [ -x "`which $NAMES 2>/dev/null`" ]
+   then
+      echo $NAMES
+      echo "FOUND $names: $NAMES" 1>&2
+      break
+   fi
+   ;;
+   esac
+done
+}
+#-------------------------------------------------------------------------------
+# given a list of commands find one and put in FOUND
+LIST(){
+export FOUND
+FOUND=`FOUNDOUT $*`
+
+if [ "$FOUND" = '' ]
+then
+   echo E-R-R-O-R: "$*" not found 1>&2
+   FOUND=:
+fi
+
+case "`which $FOUND 2>/dev/null`" in 
+*scripts_missing)
+   echo E-R-R-O-R: "$*" not found 
+   FOUND=:
+;;
+esac
+
+}
+#-------------------------------------------------------------------------------
+ONMSWINDOWS(){
+FILE=$1
+if [ -f "$FILE" ]
+then
+   FILEW=`cygpath --absolute --windows $FILE`
+   FILEW=file:$FILEW
+fi
+}
+#-------------------------------------------------------------------------------
+case $(uname -n) in
+*)
+LIST  $BROWSER   firefox            mozilla        netscape   dillo        \
+      konqueror  /usr/bin/cygstart  lynx           w3m        www-browser  \
+      safari     chrome             iexplore       iceweasel  seamonkey    \
+      iceape     chromium           google-chrome  opera      elinks       \
+      links      viewer
+esac
+set -x
+$FOUND $*
+#-------------------------------------------------------------------------------
+exit
+#-------------------------------------------------------------------------------
+################################################################################
+# NetScape
+/cygdrive/c/Program\ Files/Netscape/Netscape/Netscp "$FILEW" $*
+################################################################################
+# MicroSoft Internet Explorer
+/cygdrive/c/Program\ Files/Internet\ Explorer/IEXPLORE.EXE "$FILEW" $*
+################################################################################
+# MicroSoft Explorer
+/cygdrive/c/WINDOWS/explorer $FILE
+################################################################################
+done
+exit
+

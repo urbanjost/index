@@ -1,0 +1,44 @@
+#!/bin/bash --norc
+#ident  "@(#)full.sh  1.0  set xterm to full screen size - John S. Urban"
+######################################
+[ "$1" != '' ] && fixed $*
+######################################
+E -max
+# bug with some window managers
+RIGHT=`E -right`
+DOWN=`E -down`
+RIGHT=${RIGHT:-0}
+DOWN=${DOWN:-0}
+[ $RIGHT -lt 0 ] && E -right $((-RIGHT+1))
+[ $DOWN  -lt 0 ] && E -down  $((-DOWN+1))
+exit
+######################################
+OLDWAY(){
+E -max  -down 35
+}
+######################################
+OLDWAY(){
+# Does not account for decorations
+xrefresh
+E -rows 0 -cols 0 -down 0 -right 0
+xrefresh
+}
+######################################
+OLDWAY(){
+if [ -f "`which resize 2>>/dev/null`" ] 
+then
+   eval `resize -u`
+#  output of resize(1) is string, eg. 'COLUMNS=142; LINES=56; export COLUMNS LINES;'
+   COLUMNS=$((COLUMNS-1))
+   LINES=$((LINES-3))
+else
+   COLUMNS="`E -getpos|awk '{print $1}'`"
+   LINES="`E -getpos|awk '{print $2}'`"
+   COLUMNS=$((COLUMNS-1))
+   LINES=$((LINES-3))
+fi
+}
+######################################
+E -rows $LINES -cols $COLUMNS
+exit
+

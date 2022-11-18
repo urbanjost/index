@@ -1,0 +1,29 @@
+name = "TEST"
+version = "0.1.0"
+license = "license"
+author = "Jane Doe"
+maintainer = "jane.doe@example.com"
+copyright = "2020 Jane Doe"
+
+#[dependencies]
+#M_cli           = { git = "https://github.com/urbanjost/M_cli.git", tag="v1.0.1" }
+#M_history       = { git = "https://github.com/urbanjost/M_history.git", tag="v1.0.1" }
+#M_io            = { git = "https://github.com/urbanjost/M_io.git", tag="v1.0.1" }
+#M_strings       = { git = "https://github.com/urbanjost/M_strings.git", tag="v1.0.1" }
+#M_system        = { git = "https://github.com/urbanjost/M_system.git", tag="v1.0.1" }
+#M_time          = { git = "https://github.com/urbanjost/M_time.git", tag="v1.0.1" }
+#
+#M_calculator    = { git = "https://github.com/urbanjost/M_calculator.git", tag="v1.0.1" }
+#M_change        = { git = "https://github.com/urbanjost/M_change.git", tag="v1.0.1" }
+#M_color         = { git = "https://github.com/urbanjost/M_color.git", tag="v1.0.1" }
+#M_msg           = { git = "https://github.com/urbanjost/M_msg.git", tag="v1.0.1" }
+#M_kracken95     = { git = "https://github.com/urbanjost/M_kracken95.git", tag="v1.0.1" }
+#
+#M_process       = { git = "https://github.com/urbanjost/M_process.git", tag="v1.0.1" }
+
+#M_draw          = { git = "https://github.com/urbanjost/M_draw.git", tag="v1.0.1" }
+
+#M_commandline  = { git = "https://github.com/urbanjost/M_commandline.git" }
+#datetime-fortran       = { git = "https://github.com/wavebitscientific/datetime-fortran.git" }
+#tcp-client-server      = { git = "https://github.com/modern-fortran/tcp-client-server.git" }
+

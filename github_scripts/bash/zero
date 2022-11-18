@@ -1,0 +1,47 @@
+#!/bin/bash --norc
+#@(#) zero(1sh) - remove zero length and unwanted files 
+#ident  "@(#) zero.sh - remove zero length and unwanted files V 1.0; 20070909; John S. Urban"
+################################################################################
+export TTY
+if tty -s 
+then
+   PROMPT=YES
+   TTY=`tty`
+else
+   PROMPT=YES
+   TTY=/dev/null
+fi
+ls -d ${*:-*}|(while read paths
+do
+   ###################################
+   if  test -L "$paths"
+   then
+      :  # ignore links
+   ###################################
+   elif  test -d "$paths"
+   then
+      :  # directory
+   ###################################
+   elif  test ! -s "$paths"
+   then
+      #echo file "$paths" has no length
+      file "$paths"
+      ls -ltras "$paths"
+      if [ $PROMPT = 'YES' ]
+      then
+         rm -v -i "$paths" < $TTY
+      else
+         rm -v "$paths"
+      fi
+   ###################################
+   fi
+   ###################################
+done)
+################################################################################
+for NAME in *~ *.stackdump .*.swp
+do
+   rm -v -f "$NAME"
+done
+################################################################################
+exit
+################################################################################

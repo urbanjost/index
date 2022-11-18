@@ -1,0 +1,61 @@
+################################################################################
+MAKING NEW LIBRARY; NOT VERY FRIENDLY WITH EXISTING SETUP
+
+Initialize an existing .git directory without
+replacing README.md and src/NAME and so on hard.
+Moved original directory; made new one; removed .git
+and them moved files back
+
+
+What is the minimum to make it manually?
+
+################################################################################
+FPM
+
+20200707
+C code in src/
+
+Repository for officially released versions for stability?
+
+List of available fpm packages?
+
+What happened with M_calculator? Had to move src/PROGRAMS to PROGRAMS
+It was automatically assuming all files in src were modules?
+
+equivalent of make clean
+
+what about .F90 versus .f90 and preprocessing?
+
+any way to exclude a file that is in src?
+
+what about INCLUDE files?
+
+what about documentation?
+
+When make new one, have a file that sets defaults for author, etc. like .git
+################################################################################
+TXT2MAN
+
+20200706
+Great Utility. I had to tweek it a little to work with Fortran documenation
+where in the SYNTAX section a Fortran procedure usually looks like
+   function NAME( 
+or
+   subroutine NAME(
+instead of just
+   NAME(
+
+It would be nice if your original was more Fortran-friendly instead of primarily
+easy to use for C-like syntax so I could just use it directly.
+
+See the results so far at
+   [Fortran Intrinsics](https://github.com/urbanjost/fortran-intrinsic-manpages)
+
+Have your ever thought of adding an option to also generate HTML? You are already
+doing the parsing and I find that I very often am converting my manpages to HTML
+using manserver(1) or groff(1) which usually ends up in rather poor-quality
+HTML. The *roff directives you are generating have 1-1 equivalents in HTML2 so it
+seems like a natural and useful extension to your utility.
+
+Thanks again for the great tool!
+################################################################################

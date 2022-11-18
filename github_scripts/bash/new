@@ -1,0 +1,3 @@
+#!/bin/bash
+esc -xrdb|xrdb -merge
+xterm -e brown

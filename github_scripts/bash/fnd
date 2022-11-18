@@ -1,0 +1,130 @@
+#!/bin/bash --norc
+################################################################################
+#ident  "@(#) find and edit files in your home directory (1.0 John S. Urban)"
+# $0 -rebuild  # rebuilds index
+# $0 'expression'  # find and edit file(s) with expression in their name.
+# default is use variable $EDIT or vi(1) for a command; but can enter
+# commands like "ls -l" or "nedit" or "file"
+# should have a "confirm" mode
+# CMD environmental variable is the default command to use on the filenames
+# when the output is not a tty. The default is "echo"
+#    env CMD='/bin/ls -ltrasd' fnd NAME
+################################################################################
+export ARGS; ARGS=${*:-''}
+export LIST; LIST="$HOME/.LIST"
+################################################################################
+cd $HOME
+if [ ! -f $LIST -o "$ARGS" = '-rebuild_man' ]
+then
+   (
+   mandb 
+   whatis -M manpath -w '*' | sort > /usr/share/man/whatis
+   ) &
+fi
+################################################################################
+if [ ! -f $LIST -o "$ARGS" = '-rebuild' ]
+then
+   echo REBUILDING $LIST
+   (
+   cd "$HOME"
+   find . -print)|
+   fgrep -v './.git/'|
+#   fgrep -v './.swp$/'|
+#   fgrep -v './\~$/'|
+   grep -v '\./lib/[a-zA-Z_]*/expand_FORTRAN/'> $LIST.new
+   mv $LIST.new $LIST
+
+################################################################################
+elif [ "$ARGS" = '' -o "$ARGS" = '-help' -o "$ARGS" = '--help' ]
+then
+   nroff -man <<\EOF
+.TH fnd 1 "November 29, 1997"
+.SH NAME
+   fnd(1sh)- Find files below your home directory
+.SH SYNOPSIS
+   fnd 'expression'
+   fnd -rebuild
+.SH DESCRIPTION
+Build a list of files under your home directory and then let you
+locate the files and execute commands on them, ignoring case in
+the file names. Default command is $EDIT or vi(1) if $EDIT is not
+set.
+
+If input is not from a tty, simply lists files that match
+.SH EXAMPLES
+   fnd src.m_time
+   ./LIBRARY/libGPF/time/src/M_time.HTML
+   ls -l
+
+The command is often an editor, but can be a brower(browser(1),
+cygstart(1),...), or compiler (ccall(1),f90(1), ...), or what(1),
+file(1), spell(1), ...
+   
+The command '.' lets you edit the list. When you exit you are then
+prompted for a new command.
+   
+Any command with XX in it runs the filenames through the command
+      xargs -n 1 -iXX $command
+
+EOF
+################################################################################
+else
+   #if tty -s
+   if [ -t 1 ]
+   then
+      # reading from stdin
+      for ARG in $ARGS
+      do
+         grep -i "$ARG" $LIST
+         echo 'Enter <cr> or command (spell,ccall,vi,ls -l,browser,html_broken,tidy,_up, ...) to continue'
+         read LINE
+         case "$LINE" in
+         .|v)               # edit the list and then prompt for command
+            cd "$HOME"
+            JUNKO=/tmp/`uuidgen`
+            grep -i "$ARG" $LIST > $JUNKO
+            ${EDIT:-vim} $JUNKO
+            echo 'Enter <cr> or command to continue'
+            read LINE
+            [ "$LINE" != '' ] && EDIT="$LINE"
+            cd "$HOME"
+            ${EDIT:-vim} `cat $JUNKO`
+            rm -f $JUNKO
+         ;;
+         @)               # edit the list and then execute the list file as a bash shell script
+            cd "$HOME"
+            JUNKO=/tmp/`uuidgen`
+            grep -i "$ARG" $LIST > $JUNKO
+            ${EDIT:-vim} $JUNKO
+            echo 'Enter <cr> to continue'
+            read LINE
+            if [ "$LINE" = '' ] 
+	    then
+               cd "$HOME"
+               source $JUNKO
+            fi
+            rm -f $JUNKO
+         ;;
+         *XX*)
+            cd "$HOME"
+            grep -i "$ARG" $LIST|xargs -iXX "/bin/bash -c 'eval $LINE'"
+            #grep -i "$ARG" $LIST|xargs -iXX "$LINE"
+         ;;
+         *)
+            [ "$LINE" != '' ] && EDIT="$LINE"
+            cd "$HOME"
+            ${EDIT:-vim} `grep -i "$ARG" $LIST`
+         ;;
+         esac
+      done
+   else
+      cd "$HOME"
+      for ARG in $ARGS
+      do
+         eval ${CMD:-grep -i} "$ARG" $LIST
+      done
+   fi
+fi
+################################################################################
+exit
+################################################################################

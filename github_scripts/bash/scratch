@@ -1,0 +1,92 @@
+#!/bin/bash --norc
+#-------------------------------------------------------------------------------
+# @(#)scratch(1sh) - create good temporary scratch file name and echo name
+# @(#)(John S. Urban)
+#-------------------------------------------------------------------------------
+case "$1" in
+###########################
+-h|-help|--help|-i)
+nroff -man <<\EOF
+.TH scratch.sh 1 "March 2, 1987"
+.SH NAME
+scratch.sh
+.SH SYNOPSIS
+.B scratch.sh
+.SH DESCRIPTION
+.B scratch.sh
+is a simple script that creates a scratch file and returns the name to stdout.
+The environmental variables TMPDIR, TMP, TEMPDIR, and TEMP are tested in that
+order. The first one not blank is used for the directory to create the file in.
+If none of them are set, "/tmp" is used.
+
+If successful in creating the file, the respective file's name is written
+to standard output.
+.SH OPTIONS
+.IP "--help "
+Display help text
+.IP "--version "
+Display version
+
+.SH AUTHOR(S)
+.B John S. Urban
+EOF
+exit
+;;
+###########################
+-v|-V|--version|-version)
+cat <<\EOF
+Version 1.0, 19870302
+Version 2.0,          change suffix to use date +%s
+Version 3.0,          change to use new command mktemp(1) if found
+EOF
+exit
+;;
+###########################
+esac
+#-------------------------------------------------------------------------------
+export temporary_file
+#-------------------------------------------------------------------------------
+# set error processing 
+trap 'echo "Killed."; echo "Removing $temporary_file."; rm $temporary_file 2> /dev/null; exit 1' INT
+#-------------------------------------------------------------------------------
+# find if user has established a preferred directory for temporary files
+TMPDIR=\
+${TMPDIR:-\
+${TMP:-\
+${TEMPDIR:-\
+${TEMP:-\
+/tmp}}}}
+#-------------------------------------------------------------------------------
+# create temporary file
+# if mktemp(1) exists, use it
+if [ -x "$(which mktemp 2>/dev/null)" ]
+then
+   temporary_file="$(mktemp $TMPDIR/$USER.$$.XXXXXX 2> /dev/null)"
+else
+   # use the current username and PID and date information to try to get
+   # a unique scratch file. Don't use for critical data as someone could
+   # create the file before you do
+   COUNT=1
+   while [ $COUNT -lt 10000 ]
+   do
+      temporary_file="$TMPDIR/$USER.$$.$(date '+%s')"
+      if [ ! -e "$temporary_file" ]
+      then
+         touch $temporary_file && chmod o-xrw,g-xrw $temporary_file
+         break
+      fi
+      COUNT=$(( COUNT+1 ))
+   done
+fi
+#-------------------------------------------------------------------------------
+# test if successful
+if [ ! -f "$temporary_file" ]
+then
+    echo "Unable to create ${temporary_file:-$TMPDIR/$USER.$$.XXXXXX}." 1>&2 # direct errors to stderr
+    exit 1
+fi
+#-------------------------------------------------------------------------------
+echo $temporary_file
+#-------------------------------------------------------------------------------
+exit
+#-------------------------------------------------------------------------------

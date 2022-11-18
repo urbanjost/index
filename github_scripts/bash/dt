@@ -1,0 +1,23 @@
+#!/bin/bash --norc
+#@(#) dt(1sh) - ls(1) by modification date 
+#ident "@(#) 1.2 19920421 19960401 John S. Urban"
+
+case "$*" in
+'')
+   case "`uname -s`" in
+      sn*|HP-UX)     ls            -Lltrad  *  ;;
+      ULTRIX|SunOS)  /bin/ls       -Lltrad  *  ;;
+      SunOS)         /usr/5bin/ls  -lLtrad  *  ;;
+      *)             ls            -lLtrad  *  ;;
+   esac
+;;
+*)
+   case "`uname -s`" in
+      sn*|HP-UX)     ls            -Lltrad  "${@}"  ;;
+      ULTRIX|SunOS)  /bin/ls       -Lltrad  "${@}"  ;;
+      SunOS)         /usr/5bin/ls  -Lltrad  "${@}"  ;;
+      *)             ls            -Lltrad  "${@}"  ;;
+   esac
+;;
+esac
+exit

@@ -1,0 +1,99 @@
+#!/bin/bash --norc
+################################################################################
+#@(#) 80(1sh) - set ANSI VT102 terminal or compatible terminal emulator to 80 columns in width
+HELP(){
+(${TXT2MAN:-txt2man -T}|| cat ) 2>/dev/null <<\EOF
+NAME
+   80(1sh) - set ANSI VT102 terminal or compatible terminal emulator to 80 columns in width
+   (LICENSE:PD)
+SYNOPSIS
+   80 [--help|--version] [rows]
+DESCRIPTION
+   Use escape sequences sent to the terminal to set ANSI VT102 terminal
+   or compatible terminal emulator to 80 columns in width.
+
+OPTIONS
+    --help,-h     display this help and exit
+    --version,-v  output version information and exit
+    rows          optional number of rows
+EXAMPLE
+   Sample usage:
+
+     80    # set terminal width to 80
+     80 24 # set terminal height to 24 lines as well
+EOF
+}
+################################################################################
+VERSION(){
+cat <<\EOF
+VERSION:  1.0, 19920421
+VERSION:  2.0, 20200331
+AUTHOR:   John S. Urban
+LICENSE:  Public Domain
+EOF
+}
+################################################################################
+USAGE(){
+printf "$0 : Usage: %s: [-h|-v] [rows]\n"
+}
+################################################################################
+#
+# parse options
+#
+# Transform long options to short by editing arguments
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help'|'-help')       set -- "$@" "-h"   ;;
+    '--version'|'-version') set -- "$@" "-v"   ;;
+    *)                      set -- "$@" "$arg" ;;
+  esac
+done
+# parse short options
+OPTERR=1
+while getopts hv PARAM "$@"
+do
+   case "$PARAM" in
+    h)   HELP; exit 0 ;;
+    v)   VERSION; exit 0;;
+    ?)   USAGE; exit 2;;
+   esac
+done
+shift $(($OPTIND - 1))
+################################################################################
+#
+# main
+#
+# set to 80 columns
+   case $(findinpath esc E) in
+   esc) esc 80 ;;
+   E)   E -c 80 ;;
+   *)   printf '\e[?40h\e[?3l' ;; # try ANSI VT102 sequence
+esac
+
+# assume remaining parameter is number of lines
+# set to optional number of rows
+# note that zero ("0") should mean "height of display", but is sometimes
+# too tall, depending on window manager, and seems to not work in some
+# versions of xterm
+
+ROWS="$1"
+
+if [ "$ROWS" != '' ]
+then
+   case $(findinpath esc E) in
+   esc) esc -rows  $ROWS ;;
+   E)   E -rows $ROWS ;;
+   *)   printf '\e[8;%d;t' $ROWS ;; # try ANSI VT102 sequence
+esac
+fi
+echo 12345678901234567890123456789012345678901234567890123456789012345678901234567890 1>&2
+################################################################################
+exit
+################################################################################
+## if rows ends in a negative sign subtract it from current size
+#case "$ROWS" in
+#*-) 
+#: # ROWS=(( $(E -rows) $ROWS ))
+#;;
+#esac

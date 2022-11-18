@@ -1,0 +1,307 @@
+ To: J3                                                     J3/XX-XXX
+ From: John S. Urban
+ Subject: Allow unallocated alloctable string arguments in get_command/get_command_allocatable
+ Date: 2020-08-04
+ #Reference:
+ 
+ The string arguments returned by get_command(3f) and
+ get_command_argument(3f) are of indeterminent length. Currently,
+ allocatable CHARACTER variables are not automatically allocated upon
+ return by these procedures. This can mean truncation errors can occur
+ unless multiple calls are made to the routines (once to get the length
+ and then again to get the value. If allocatable variables are allowed
+ the chance of getting errors due to the length of the CHARACTER variable
+ passed in is eliminated, and the multiple calls can be reduced to one. An
+ illustrative example using overloading of the intrinsics demonstrates
+ the cleaner less error-prone interface that results:
+
+ Note that the example specifically only allocates the variable if it
+ is not allocated, so as not to change the behavior in existing code
+ that uses the intrinsic with an allocated allocatable variable, per
+ comments made in forum discussions.
+
+ An additional logical parameter like "refresh"|"reallocate"|"new" could
+ be added as a flag so that a single call could be made that always
+ re-allocates as one possible additional change.
+ 
+    1) allow "command" to be unallocated allocatable and allocate it
+ 
+       get_command(command,length,status) 
+ 
+    2) allow "value" to be unallocated allocatable and allocate it
+ 
+        get_command_argument(number,value,length,status)  
+
+    3) allow "value" to be allocated or unallocated allocatable and
+       allocate it
+ 
+        get_command_argument(number,value,length,status,realloc=.true.)   !
+ 
+       The intrinsics allow an allocated allocatable variable but do not
+       change its allocation so to force reallocation of an allocatable
+       variable the new logical argument "realloc" is added to force
+       reallocation.
+
+Additional changes might include returning an array for VALUE, STATUS,
+and LENGTH when the arguments are arrays, where the array returned is
+automatically allocated to the number of arguments on the command line
+and VALUE has the length of the longest command line argument(?).
+
+Example module demonstraing the suggest change and a unit test showing
+current usage remains unchanged.
+ 
+module m_overload
+implicit none
+! M_overload(3fm): overloads of standard operators and intrinsic procedures
+private
+public test_suite_M_overload
+public get_command
+public get_command_argument
+
+interface  get_command
+   module  procedure  get_command_allocatable
+end  interface
+interface  get_command_argument
+   module  procedure  get_command_argument_allocatable
+end  interface
+contains
+!==========================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+!==========================================================================
+subroutine get_command_allocatable(command, length, status,realloc)
+implicit none
+intrinsic get_command
+character(len=:), allocatable, intent(out) :: COMMAND   
+integer, intent(out), optional             :: LENGTH    
+integer, intent(out), optional             :: STATUS    
+logical, intent(in), optional              :: realloc
+integer                                    :: length_local
+integer                                    :: status_local
+logical                                    :: realloc_local
+   if(present(realloc))then
+           realloc_local=realloc
+   else
+           realloc_local=.false.
+   endif
+   ! get command line length
+   call get_command(length=length_local, status=status_local)  
+   if(status_local.eq.0)then
+      if(.not.allocated(command))then
+         allocate(character(len=length_local) :: command)          
+         ! allocate string big enough to hold command line
+      elseif(realloc_local)then
+         if(allocated(command))deallocate(command)
+         allocate(character(len=length_local) :: command)          
+         ! allocate string big enough to hold command line
+      endif
+      call get_command(command=command, status=status_local)    
+      ! get command line as a string
+   else
+      length_local=0
+      command=''
+   endif
+   if(present(length))length=length_local
+   if(present(status))status=status_local
+end subroutine get_command_allocatable
+!==========================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+!==========================================================================
+subroutine get_command_argument_allocatable(number, value, length, &
+ & status,realloc)
+implicit none
+intrinsic get_command_argument
+integer, intent(in)            :: number 
+character(len=:), allocatable  :: value  
+integer, intent(out), optional :: length 
+integer, intent(out), optional :: status 
+logical, intent(in), optional  :: realloc
+integer                        :: length_local
+integer                        :: status_local
+logical                        :: realloc_local
+   if(present(realloc))then
+           realloc_local=realloc
+   else
+           realloc_local=.false.
+   endif
+   call get_command_argument(number=number, length=length_local, &
+    & status=status_local)
+   if(status_local.eq.0)then
+      if(.not.allocated(value))then
+         ! allocate string big enough to hold command line
+         allocate(character(len=length_local) :: value)  
+      elseif(realloc_local)then
+         if(allocated(value))deallocate(value)
+         ! allocate string big enough to hold command line
+         allocate(character(len=length_local) :: value) 
+      endif
+      call get_command_argument(number, value, status=status_local, &
+       & length=length_local)
+   else
+      length_local=0
+      value=''
+   endif
+   if(present(length))length=length_local
+   if(present(status))status=status_local
+end subroutine get_command_argument_allocatable
+!==========================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+!==========================================================================
+!                                            
+!    t                                t      
+!    t                                t      
+! ttttttt                          ttttttt   
+!    t        eeeeee     ssssss       t      
+!    t       e      e   s             t      
+!    t       eeeeeee     ssssss       t      
+!    t       e                 s      t      
+!     ttt     eeeeee     ssssss        ttt   
+!
+subroutine test_suite_M_overload()
+implicit none
+character(len=:),allocatable :: cmd
+logical,allocatable          :: tally(:)
+integer,allocatable          :: istats(:), ilens(:)
+character(len=:),allocatable :: args
+character(len=:),allocatable :: argument
+allocate(tally(0))
+
+!! setup
+   if(command_argument_count().eq.0)then
+      call get_command(cmd,realloc=.true.)
+      cmd=cmd//' -x -y "hello there" xxxxxxxxxxxxxxxxxxxxxxxxx'
+      call execute_command_line(cmd)
+   else
+      call test_get_command()
+      call test_get_command_argument()
+   endif
+!! teardown
+contains
+!TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+subroutine test_get_command()
+end subroutine test_get_command
+!TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+subroutine test_get_command_argument()
+integer                      :: istat, ilen, i
+character(len=10)            :: regular
+! assuming program called with 
+!    cmd//' -x -y "hello there" xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+   
+!==========================================================================
+write(*,*)'TEST: unallocated allocatable variable and no realloc'
+call clear()
+args=''
+do i=1, command_argument_count()
+   call get_command_argument(i, argument, length=ilen, &
+   & status=istat, realloc=.true.)
+   istats=[istats,istat]
+   ilens=[ilens,ilen]
+   args=args//argument//' '
+enddo
+call printit()
+call t(all(istats.eq.0),'check if all status returns are zero')
+call t( all(ilens.eq.[2,2,11,25]), 'check lengths')
+call t(args.eq. '-x -y hello there xxxxxxxxxxxxxxxxxxxxxxxxx',args)
+!==========================================================================
+write(*,*)'TEST: unallocated allocatable variable and realloc=.true.'
+call clear()
+args=''
+do i=1, command_argument_count()
+   call get_command_argument(i, argument, length=ilen, &
+   & status=istat, realloc=.true.)
+   istats=[istats,istat]
+   ilens=[ilens,ilen]
+   args=args//argument//' '
+enddo
+call printit()
+call t(all(istats.eq.0),'check if all status returns are zero')
+call t( all(ilens.eq.[2,2,11,25]), 'check lengths')
+call t(args.eq. '-x -y hello there xxxxxxxxxxxxxxxxxxxxxxxxx',args)
+!==========================================================================
+write(*,*)
+write(*,*)'TEST: allocated allocatable variable and realloc=.true.'
+call clear()
+argument='12345678901234'
+args=''
+do i=1, command_argument_count()
+   call get_command_argument(i, argument, length=ilen,&
+   & status=istat, realloc=.true.)
+   istats=[istats,istat]
+   ilens=[ilens,ilen]
+   args=args//argument//' '
+enddo
+call printit()
+call t(all(istats.eq.0),'check if all status returns are zero')
+call t(all(ilens.eq.[2,2,11,25]),'check lengths')
+call t(args.eq.'-x -y hello there xxxxxxxxxxxxxxxxxxxxxxxxx',args)
+!==========================================================================
+write(*,*)
+write(*,*)'TEST: allocatable variable already allocated and no realloc=.true.'
+call clear()
+args=''
+allocate(character(len=10) :: argument)
+do i=1, command_argument_count()
+   call get_command_argument(i, argument, length=ilen, status=istat)
+   istats=[istats,istat]
+   ilens=[ilens,ilen]
+   args=args//argument//' '
+enddo
+call printit()
+call t(all(istats.eq.[0,0,-1,-1]),'check if get truncations as expected')
+call t(all(ilens.eq.[2,2,11,25]), 'check lengths')
+call t(args.eq.'-x         -y         hello ther xxxxxxxxxx',args)
+!==========================================================================
+write(*,*)
+write(*,*)'TEST: regular'
+call clear()
+args=''
+do i=1, command_argument_count()
+   call get_command_argument(i, regular, length=ilen, status=istat)
+   istats=[istats,istat]
+   ilens=[ilens,ilen]
+   args=args//regular//' '
+enddo
+call printit()
+call t(all(istats.eq.[0,0,-1,-1]),'check if get truncations as expected')
+call t(all(ilens.eq.[2,2,11,25]),'check lengths')
+call t(args.eq.'-x         -y         hello ther xxxxxxxxxx',args)
+!==========================================================================
+write(*,*)
+write(*,*)'tally=',tally
+if( all(tally.eqv..TRUE.))then
+   write(*,*)size(tally),'TESTS PASSED'
+else
+   write(*,*)'TESTS FAILED'
+endif
+end subroutine test_get_command_argument
+!==========================================================================
+subroutine printit()
+write(*,*)'   ISTATS=',istats
+write(*,*)'   ILENS= ',ilens
+end subroutine printit
+subroutine clear()
+if(allocated(istats))deallocate(istats)
+if(allocated(ilens))deallocate(ilens)
+if(allocated(argument))deallocate(argument)
+allocate(integer :: istats(0),ilens(0))
+end subroutine
+!==========================================================================
+subroutine t(expected,message)
+logical,intent(in) :: expected
+character(len=*),intent(in) :: message
+   tally=[tally,expected]
+   if (expected) then
+      write(*,*)"Passed :",message
+   else
+      write(*,*)"Failed :",message
+   endif
+end subroutine t
+end subroutine test_suite_M_overload
+!==========================================================================
+end module M_overload
+!==========================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+!==========================================================================
+program runtest
+use M_overload
+call test_suite_M_overload()
+end program runtest

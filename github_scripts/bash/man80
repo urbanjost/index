@@ -1,0 +1,3 @@
+#!/bin/bash
+env MANWIDTH=80 man --default --no-hyphenation --no-justification --ignore-case -a ${*}
+exit

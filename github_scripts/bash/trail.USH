@@ -1,0 +1,9 @@
+#<*ush* version 6.0.0> Feb 11 2022
+page -10 10 -10 10
+color 3
+polyfill .true.
+circle 0 0 5
+color 4
+circle 0 0 4
+page 0
+quit

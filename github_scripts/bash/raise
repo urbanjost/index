@@ -1,0 +1,80 @@
+#!/bin/bash --norc
+################################################################################
+#@(#)raise(1sh) - raise xterm in X11 window stack
+################################################################################
+HELP(){
+set -x
+(${TXT2MAN:-txt2man -T}|| cat ) 2>/dev/null <<\EOF
+NAME
+   raise(1sh) - Raise the current xterm(1) window on the display to the back of the stack
+   (LICENSE:PD)
+SYNOPSIS
+   raise [--help|--version]
+DESCRIPTION
+   Use escape sequences sent to the terminal to raise the current xterm(1)
+   window to the front of the display stack.
+
+   Depending on your system, you may have to add the following line to your
+   ~/.Xdefaults file
+
+      XTerm*VT100.allowWindowOps:        true
+
+   once before starting your X11 Windows client or for each new X11 session run
+
+      echo 'XTerm*VT100.allowWindowOps: true'|xrdb -merge
+
+   before starting your xterm(1) windows.
+OPTIONS
+    --help,-h     display this help and exit
+    --version,-v  output version information and exit
+EXAMPLE
+   Sample usage:
+
+     raise
+EOF
+}
+################################################################################
+VERSION(){
+cat <<\EOF
+VERSION:  1.0, 20200331
+AUTHOR:   John S. Urban
+LICENSE:  Public Domain
+EOF
+}
+################################################################################
+USAGE(){
+printf "$0 : Usage: %s: [-h|-v] \n"
+}
+################################################################################
+#
+# parse options
+#
+# Transform long options to short by editing arguments
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help'|'-help')       set -- "$@" "-h"   ;;
+    '--version'|'-version') set -- "$@" "-v"   ;;
+    *)                      set -- "$@" "$arg" ;;
+  esac
+done
+# parse short options
+OPTERR=1
+while getopts hv PARAM "$@"
+do
+   case "$PARAM" in
+    h)   HELP; exit 0 ;;
+    v)   VERSION; exit 0;;
+    ?)   USAGE; exit 2;;
+   esac
+done
+shift $(($OPTIND - 1))
+[[ "$*" != '' ]] && USAGE && exit 3
+################################################################################
+#
+# main
+#
+E -raise
+################################################################################
+exit
+################################################################################

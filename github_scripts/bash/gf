@@ -1,0 +1,30 @@
+#!/bin/bash
+export SYSTEMTYPE_R=Linux_gfortran
+export SYSTEMTYPE=Linux
+hash -r
+export PATH=$HOME/.local/bin:$PATH
+PATH=$HOME/bin/$SYSTEM_TYPE_R/:$PATH
+systemtype
+${*:-cygstart /usr/share/doc/gfortran-doc/fortran/gfortran.html}
+exit
+apt install gfortran-10 gfortran-10-doc
+
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt-get update
+sudo apt install gfortran-11
+sudo add-apt-repository --remove ppa:ubuntu-toolchain-r/test
+exit
+    For Version 10
+
+    sudo apt install gfortran-10
+    For Gfortran Version 11 and other latest one in development:
+
+    However, currently while writing the article Gfortran version 11
+    was not available in the default repository of Ubuntu 20.04. Hence,
+    if you want that then can add a PPA.
+
+    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+
+    (followed by)
+
+    sudo apt install gfortran-11

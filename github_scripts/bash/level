@@ -1,0 +1,84 @@
+#!/bin/bash --norc
+################################################################################
+#@(#) level(1sh) - echo shell level using environment variable SHLVL and pstree(1)
+# 20200329
+################################################################################
+HELP(){
+# suitable for use with markdown processor txt2man(1) for making manpage.
+(${TXT2MAN:-txt2man -T}|| cat ) 2>/dev/null <<\EOF
+NAME
+   level(1sh) - echo shell level using environment variable SHLVL and pstree(1)
+SYNOPSIS
+   level
+DESCRIPTION
+   Useful for those who often spawn interactives shells from within
+   other programs such as vim(1), ftp(1), ...
+
+   Sometimes, especially if a window has been setting there for a while
+   it is easy to loose track.
+EXAMPLE
+ Sample usage:
+
+ This shows that level was executed in a bash(1) shell spawned from
+ the vim(1) editor (which was spawned by a bash(1) shell from instead
+ of another script...). I am probably due for a few exit(1) commands.
+
+   level
+   bash>xterm>bash>viw>vim>bash>viw>vim>bash : 9
+EOF
+}
+################################################################################
+VERSION(){
+cat <<\EOF
+VERSION:  1.0, 19920421
+VERSION:  2.0, 20200331
+AUTHOR:   John S. Urban
+LICENSE:  Public Domain
+EOF
+}
+################################################################################
+USAGE(){
+printf "$0 : Usage: %s: [-h|--help|-v|--version]\n"
+}
+################################################################################
+#
+# parse options
+#
+# Transform long options to short by editing arguments
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help'|'-help')       set -- "$@" "-h"   ;;
+    '--version'|'-version') set -- "$@" "-v"   ;;
+    *)                      set -- "$@" "$arg" ;;
+  esac
+done
+# parse short options
+OPTERR=1
+while getopts hv PARAM "$@"
+do
+   case "$PARAM" in
+    h)   HELP; exit 0 ;;
+    v)   VERSION; exit 0;;
+    ?)   USAGE; exit 2;;
+   esac
+done
+shift $(($OPTIND - 1))
+################################################################################
+#
+# main
+#
+(
+if [[ $(which pstree 2>/dev/null) =~ .*/pstree ]]
+then
+   pstree --ascii --compact --show-parents "$$"|head -n 1 |
+     sed \
+        -e 's/[-+][-+][-+]*level[-+][-+][-+]*.*//' \
+        -e 's/.*systemd[-][-][-]*//' \
+        -e 's/[-+][-+][-+]*/>/g'
+fi
+echo ": $((SHLVL - 1))"
+)|xargs
+################################################################################
+exit
+################################################################################

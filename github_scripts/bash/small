@@ -1,0 +1,81 @@
+#!/bin/bash --norc
+###############################################################################
+#ident "@(#)small.sh 1.0 change size of current xterm window to "standard size" of 80x24
+#ident "@(#)John S. Urban"
+###############################################################################
+HELP(){
+(txt2man -T|| cat ) 2>/dev/null <<\EOF
+NAME
+   small(1sh) - change size of current xterm window to "standard size" of 80x24
+   (LICENSE:PD)
+SYNOPSIS
+   small [--help|--version] [FONT_NUMBER|FONT_SIZE]
+DESCRIPTION
+   Use escape sequences sent to the terminal to  set ANSI VT102 terminal
+   or compatible terminal emulator to a size of 80x24, optionally allowing
+   for a font size selection.
+
+OPTIONS
+    --help,-h     display this help and exit
+    --version,-v  output version information and exit
+    font_number   [0-6] optional parameter chooses Nth font from font menu
+                  displayed via ctrl-Mouse3.
+    font_size     for values >6 calls the fixed(1) command to select a font
+                  of the specified size.
+EXAMPLE
+   Sample usage:
+
+     small    # set terminal to 80 columns by 24 rows
+     small 20 # set terminal to 80 columns by 24 rows and guess at a good
+              # 20-point font.
+EOF
+}
+################################################################################
+VERSION(){
+cat <<\EOF
+VERSION:  1.0, 19920421
+VERSION:  2.0, 20200331
+AUTHOR:   John S. Urban
+LICENSE:  Public Domain
+EOF
+}
+################################################################################
+USAGE(){
+printf "$0 : Usage: %s: [-h|-v] [font_number|font_size]\n"
+}
+###############################################################################
+#
+# parse options
+#
+# Transform long options to short by editing arguments
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help'|'-help')       set -- "$@" "-h"   ;;
+    '--version'|'-version') set -- "$@" "-v"   ;;
+    *)                      set -- "$@" "$arg" ;;
+  esac
+done
+# parse short options
+OPTERR=1
+while getopts hv PARAM "$@"
+do
+   case "$PARAM" in
+    h)   HELP; exit 0 ;;
+    v)   VERSION; exit 0;;
+    ?)   USAGE; exit 2;;
+   esac
+done
+shift $(($OPTIND - 1))
+################################################################################
+#
+# main
+#
+SIZE=${1:-0}
+case "$SIZE" in
+'')               E            -rows 24 -cols 80 ;; # 24x80 using current font
+0|1|2|3|4|5|6)    E -f "$SIZE" -rows 24 -cols 80 ;; # assume 1 thru 6 picks XTerm menu fonts
+*) fixed ${*:-0}; E            -rows 24 -cols 80 ;; # assume size should be passed to fixed(1)
+esac
+#xrefresh
+################################################################################

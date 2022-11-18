@@ -1,0 +1,44 @@
+#cygstart  https://github.com/cure-honey # /uzura1_fpm/fpm.toml
+#(
+#cd $HOME/github/lookat
+#git clone https://github.com/cure-honey/ASCIIART
+#)
+
+# neural networks, tcp/ip, ...
+#cygstart  https://github.com/modern-fortran # /twitch-stream-tsunami/fpm.toml
+#(
+#cd $HOME/github/lookat
+#git clone https://github.com/modern-fortran/tcp-client-server.git
+#)
+
+#cygstart  https://github.com/lauvergn # /test-fpm/fpm.toml
+
+#cygstart  https://github.com/smeskos # /Fortran-Benchmarks/Nbody/Fortran/fpm.toml
+
+#cygstart  https://github.com/wavebitscientific/datetime-fortran # /fpm.toml
+
+#cygstart  https://github.com/fortran-lang/fpm/archive/tests/1/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/archive/tests/2/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/circular_example/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/circular_test/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/hello_complex/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/hello_fpm/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/hello_world/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/makefile_complex/fpm.toml
+#cygstart  https://github.com/fortran-lang/fpm/test/example_packages/with_makefile/fpm.toml
+
+
+#cygstart  https://github.com/urbanjost/M_calculator/fpm.toml
+#cygstart  https://github.com/urbanjost/M_change/fpm.toml
+#cygstart  https://github.com/urbanjost/M_CLI/fpm.toml
+#cygstart  https://github.com/urbanjost/M_color/fpm.toml
+#cygstart  https://github.com/urbanjost/M_history/fpm.toml
+#cygstart  https://github.com/urbanjost/M_io/fpm.toml
+#cygstart  https://github.com/urbanjost/M_kracken95/fpm.toml
+#cygstart  https://github.com/urbanjost/M_msg/fpm.toml
+#cygstart  https://github.com/urbanjost/M_process/fpm.toml
+#cygstart  https://github.com/urbanjost/M_strings/fpm.toml
+#cygstart  https://github.com/urbanjost/M_system/fpm.toml
+#cygstart  https://github.com/urbanjost/M_time/fpm.toml
+
+exit

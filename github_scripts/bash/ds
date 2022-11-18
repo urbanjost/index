@@ -1,0 +1,29 @@
+#!/bin/bash --norc
+#set -x
+# @(#) ds(1sh) - ls(1) by size 
+#ident  "@(#) 1.2  19960401 John S. Urban"
+#ident  "     1.0  19920421 John S. Urban"
+# on some systems, may have to change 3 to 4 or 5
+##########################################################
+case "`uname -s`" in
+##########################################################
+sn*)            exec ls -ltrdas ${*:-*}|sort -k 6n,6n   ;; # Cray UNICOS systems 9.0+
+HP-UX|OSF1)     exec ls -ltra "${@}"|sort +4n           ;;
+SunOS)          exec /usr/5bin/ls -ltra "${@}"|sort +4n ;;
+ULTRIX|SunOS)   exec /bin/ls -ltra "${@}"|sort +3n      ;;
+Linux)          exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+CYGWIN*)        exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+FreeBSD)        exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+Darwin)         exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+*)              exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+##########################################################
+# previous versions
+sn*)            exec ls -ltrdas ${*:-*}|sort +5n        ;; # Cray UNICOS systems
+CYGWIN*)        exec ls -ltrad ${@:-*}|sort -k 6n,6n    ;;
+CYGWIN*|MINGW*) exec ls -ltrad ${@:-*}|sort -k 5n,5n    ;;
+*)              exec ls -ltrad ${@:-*}|sort +n          ;;
+##########################################################
+esac
+##########################################################
+exit
+##########################################################

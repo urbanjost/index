@@ -1,0 +1,17 @@
+#!/bin/bash --norc
+#@(#) _rebuild(1sh) - rebuild manpages for this directory
+# makes a LOT of assumptions about the scripts. Not a generic utility
+# For this github site.
+cd $(dirname $0)
+mkdir -p man/man1
+#alias txt2man=false
+export TXT2MAN='cat'
+set -vx
+for NAME in $(grep -l 'TXT2MAN:-' *|grep -v _rebuild)
+do
+   $NAME --help|txt2man|gzip ->man/man1/$NAME.1.gz
+done
+rm man/man1/*~.1.gz
+rm man/man1/*~.1
+git status
+exit

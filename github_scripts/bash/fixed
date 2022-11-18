@@ -1,0 +1,107 @@
+#!/bin/bash --norc
+#set -x
+#===============================================================================
+#ident  '@(#)set/display  xterm fonts using E.sh'
+#ident  '@(#) 1.0 19960401 John S. Urban'
+#===============================================================================
+if test $# =  0 -o "$*" = '--help'
+then
+(${TXT2MAN:-txt2man -T}|| cat ) 2>/dev/null <<\EOF
+NAME
+    fixed(1sh) - try to find and change to font of specified size in an xterm(1) terminal emulator
+SYNOPSIS
+    fixed fontsize [fontnumber|0|choose]
+DESCRIPTION
+OPTIONS
+
+    fontsize:
+       select fixed font of point size $1
+    fontnumber:
+      >0  
+          number of font to select from a font list
+          when more than one font match is found
+      =0  
+          fonts are listed instead of selected.
+    choose
+          list and use selected fonts until prompted to stop 
+       
+EXAMPLES
+ Sample usage:
+
+    fixed 20          # choose first font size of 20 points
+    fixed 20 3        # choose 3rd  fixed font of point size 20
+    fixed 18 0        # just list all 18 point fonts
+    fixed 18 choose   # list and use all 18 point fonts
+    fixed '*' 0       # list all fixed-space fonts
+    fixed 0 300       # use 300th fixed=space font
+
+ note : if you use a second number, you must have an X connection.
+EOF
+exit
+fi
+#===============================================================================
+N=${2:-'9999'}
+#===============================================================================
+PATH=/usr/5bin:$PATH # use SysV pr on SunOS, not BSD pr (BSD does not have -n)
+#===============================================================================
+export FILTER
+FILTER=cat
+# The next line varies depending on operating system
+case `uname -s` in
+OSF1)    # Digital/Compaq Tru64 Unix
+   NUMBER="pr -t -n -" 
+   FILTER='grep -v dectech'
+;;
+HP*)     
+   # -n switch does not work without - on HP-UX
+   NUMBER="pr -t -n" 
+;; 
+sn*) # Cray UNICOS
+   NUMBER="cat -n" 
+;;
+*)        
+   NUMBER="cat -n" 
+;;
+esac
+#===============================================================================
+case "$N" in
+#===============================================================================
+9999)
+   # choose first font of specified size without needing X11 authoritation 
+   # (because doesn't use xlsfonts)
+   E -f  "*-${1}-*-c-*"||E -f  "*-${1}-*-m-*"
+;;
+#===============================================================================
+0)
+   # just list fixed-space fonts of that size
+   (xlsfonts "*-${1}-*-c-*"; xlsfonts "*-${1}-*-m-*") 2>/dev/null|eval $FILTER|eval $NUMBER
+;;
+#===============================================================================
+-|all|choose)
+   export TTY
+   TTY="`tty`"
+   export NUMBER
+   NUMBER=0
+   # go thru all these fonts
+   (xlsfonts "*-${1}-*-c-*"; xlsfonts "*-${1}-*-m-*") 2>/dev/null| eval $FILTER| while read FONT
+   do
+      NUMBER="`expr $NUMBER + 1`"
+      echo "$NUMBER $FONT"
+      E -f '*'"$FONT"
+      echo 'Keep? (y or n):'
+      read PAUSE < $TTY
+      case "$PAUSE" in
+      y*|Y*) break;;
+      esac
+   done
+;;
+#===============================================================================
+*)
+   # change to specified font
+   FONT=`(xlsfonts "*-${1}-*-c-*";xlsfonts "*-${1}-*-m-*") 2>/dev/null| eval $FILTER|tail --lines=+$N|head -1`
+   E -f '*'"$FONT"
+;;
+esac
+exit
+# fixed should fault back to font "fixed"
+# allow option for quiet mode

@@ -1,0 +1,454 @@
+#!/bin/bash
+####################################################################################################################################
+# @(#) menu interface for git(1) Revised: 20130119
+#set -x
+####################################################################################################################################
+export PATH=$PATH:`dirname $0`
+####################################################################################################################################
+export TERM=${TERM:-ansi}
+case "$TERM" in
+''|vt100)TERM=ansi;;
+esac
+tty -s || TERM=dumb
+####################################################################################################################################
+OUCH(){
+# what to do if someone tries to leave the menu loop via signals (like ctrl-c)
+reset
+clear
+cat <<EOF
+ ===============================================================================
+ `hostname`:`date`
+ Enter "q" to quit or enter command or menu option.
+ git add FILENAME
+ git rm  FILENAME
+ git mv  FILENAME NEW_FILENAME
+ git help
+ man gittutorial
+ man git
+ ===============================================================================
+EOF
+}
+####################################################################################################################################
+# the help function
+HELP(){
+more <<EOF
+Menu to help maintain GIT repository. Any entry not recognized is passed to the shell.
+A blank line causes the menu to appear. Enter name or number.
+
+'git help <command>' for more information on a specific command.
+
+add:        git add FILENAME
+untrack:    git rm --cache FILENAME
+
+mv:         git mv FILENAME
+rm:         git rm FILENAME
+
+branch:     git branch STEAM
+            git checkout STEAM
+            git checkout master
+==============================================
+IGNORE CHANGES IN A FILE:
+git update-index --assume-unchanged <file>
+If you want to start tracking changes again run the following command:
+git update-index --no-assume-unchanged <file>
+==============================================
+SIMPLE REBASE EXAMPLE:
+  git log --oneline
+  git rebase -i 0bfaf5c
+  vi LI*/EX*/NSA*/nsa.F
+  git add LI*/EX*/NSA*/nsa.F
+  git commit --amend
+  git rebase --continue
+==============================================
+git reset HEAD LIBRARY/libJSU/Calc/jucalc.HTML
+==============================================
+# Changes to be committed:
+#   (use "git reset HEAD^1 <file>..." to unstage)
+#       modified:   LIBRARY/EXE/NSAPLOT/nsa.F
+==============================================
+git grep STRING
+git checkout -- LIBRARY/libvogle/drivers/X11.html   # put back last version of file
+#-------------------
+git diff --cached # what is committed and what you have staged to commit
+git diff          # what is committed and what is not staged but tracked
+git add LIBRARY/libNSA/html/Versions/version600.html
+git commit -m 'Update version600.html version change log file with -add,-del,-clear options on dir command'
+#------------------------------------------------------------------------------#
+ NOTES:
+ "git rm --cached <file>..." to unstage
+ Changed but not updated:
+   (use "git checkout -- <file>..." to discard changes in working directory)
+#-------------------
+CHANGE EXISTING COMMIT:
+   git add ./LIBRARY/libNSA/IO/File/openpseudo.html
+   git commit --amend
+#-------------------
+DANGEROUS: DO NOT SPECIFY AN EXISTING CHANGE WITHOUT KNOWNING WHAT THIS DOES
+   git commit --amend -C d6f35b169c106e35373362f9c4534700e14602f6
+EOF
+}
+####################################################################################################################################
+ENTER(){
+# function to prompt and read a value from screen
+VAR=${1:-VALUE}
+trap ':' 1 2 3 15
+PROMPT="${2:-'Enter value'}"
+while : ; do
+   printf "$PROMPT":
+   read VALUE
+   [ "$VALUE" != ''  ] && break
+   echo 'E-R-R-O-R: Enter non-blank value'
+done
+eval $VAR="$VALUE"
+}
+#ENTER VALUE1 'this is a prompt message'
+#echo VALUE1 is $VALUE1
+####################################################################################################################################
+SETUPGIT(){
+# start new repository
+#------------------------------------------------------------------------------#
+if [ ! -e .gitconfig ] # start a config file
+then
+ENTER NAME 'Full Name'
+ENTER MAIL 'Full E-mail address ' # urbanjost@comcast.net
+   cat >.gitconfig <<EOF
+[user]
+        name = $NAME
+        email = $MAIL
+[color]
+        ui = auto
+EOF
+fi
+#------------------------------------------------------------------------------#
+   # start a ignore file
+if [ ! -e .gitignore ]
+then
+   echo creating .gitignore file ...
+cat >.gitignore <<\EOF
+bin
+lib
+FODDER
+EOF
+fi
+#------------------------------------------------------------------------------#
+if [ ! -d .git ]
+then
+   echo initializing GIT
+   git init      # prepare /path/to/my/codebase/.git directory
+   ####################################################
+   it config --global core.excludesFile '~/.gitignore'
+   if [ ! -e ~/.gitignore ] 
+   then
+    echo 'FODDER/*' >> ~/.gitignore
+   fi
+   ####################################################
+   git config --global user.name "$NAME"
+   git config --global user.email "$MAIL"
+   git config --global core.fileMode false
+   ####################################################
+   git add .     # add all existing file to the index
+   git status |tee git.txt
+   #git commit -m "Initial Repository of `pwd`"
+   echo 'Edit commit message. First line is title'
+   git commit
+fi
+#------------------------------------------------------------------------------#
+}
+##########################################################################################################################
+UPDATE_FPM_FORK(){
+# Syncing a fork from the command line
+
+# Before you can sync your fork with an upstream repository, you must
+# configure a remote that points to the upstream repository in Git.
+
+# Change the current working directory to your local project.
+
+cd $HOME/github/FORK/fpm
+
+# Add a new remote upstream repository
+
+UPSTREAM='https://github.com/fortran-lang/fpm.git'
+TOP=master
+TOP=main
+git remote add upstream $UPSTREAM
+
+# Sync your fork
+git fetch upstream
+git checkout $TOP
+#    Merge the changes from the upstream default branch - in this case,
+#    upstream/main - into your local default branch. This brings your
+#    fork's default branch into sync with the upstream repository,
+#    without losing your local changes.
+
+git merge upstream/$TOP
+
+#    If your local branch didn't have any unique commits, Git will instead
+#    perform a "fast-forward":
+
+# Syncing your fork only updates your local copy of the repository. To
+# update your fork on GitHub, you must push your changes.
+
+echo 'if everything worked push changes'
+git branch 
+#expand_tabs
+#* init_git_on_backfill
+#  intel
+#  master
+#  unused
+}
+##########################################################################################################################
+COMMIT_INDEX(){
+git log --pretty=oneline|cat -n|
+  (while read NUMBER COMMIT OTHER
+   do
+      printf ' %5.5s COMMIT ID: %s\n' $NUMBER $COMMIT
+      echo
+      # wrap the message into a paragraph
+      echo "$OTHER"|fmt --width=72|sed -e 's/^/        /'
+      echo
+   done # |tee commit.txt
+  )
+}
+##########################################################################################################################
+LOG_TO_HTML(){
+(
+cat <<\EOF
+Note that in addition to this document format
+the changes are available for review as a git(1) repository.
+The git(1) utility is a revision control package
+(Note that the Linux kernel is maintained with git(1)).
+
+This means commands like gitk(1) (the git(1) graphical user interface)
+and git commands can be used on-line to review the same material as
+appears in the following diff(1) sections.
+
+The index is a list of all the labels of the git(1) commits and their
+sequence number in the incremental diff(1) listings to follow, including
+git(1) tags.
+
+The diff(1) listings are in chronological order, from most recent to
+original check-in.
+
+The tags are of the form "Document_section"-"sequence_number".
+
+Useful git(1) commands for reviewing the following materials:
+
+   gitk          # launch git(1) GUI
+   git tag -l -n # list tag names
+   git log --pretty=oneline # short listing of all commit titles
+   git log $FILENAME # show all changes affecting named file
+   git show $COMMIT  # show description and diff(1) associated
+                     # with a particular diff
+   export START=c9ae1b5 # where the value is the first commit of the code
+   git diff HEAD $START $FILENAME # show all diffs affecting a file
+   git grep -i $STRING  # find files in repository with requested
+                       # string in them.
+
+EOF
+#-------------------------------------------------------------------------------------------------------------------------
+#   git tag -n100 -l
+########################
+#cat <<\EOF
+#
+#This is a listing of all the git(1) commit IDs and their
+#labels used to generate the repository
+#It is essentially the output from the command
+#reformatted.
+#
+#EOF
+########################
+#COMMIT_INDEX
+#-------------------------------------------------------------------------------------------------------------------------
+cat index.txt
+#-------------------------------------------------------------------------------------------------------------------------
+cat <<\EOF
+
+The following is a chronological listing of the git(1) "commits"
+
+This is essentially a log generated by git using
+   git log \
+      --full-diff \
+      --unified=3 \
+      --color=always \
+      --find-renames \
+      --ignore-space-change \
+      --decorate=short \
+      --pretty=full \
+      --diff-filter=M
+
+that is then formatted and merged with the documentation.
+
+For each commit its commit ID and tags are displayed along with the
+message for that modification; followed by diff(1) output showing the
+incremental change associated with that commit.
+
+This data may also be accessed via the gitk(1) GUI on
+platforms with git(1) installed.
+
+EOF
+#-------------------------------------------------------------------------------------------------------------------------
+# this did not produce page break when read back in
+#    sed -e 's@<span class="f3">@<br class="newpage"><hr>&@'|
+#-------------------------------------------------------------------------------------------------------------------------
+   git log \
+   --full-diff \
+   --unified=3 \
+   --color=always \
+   --find-renames \
+   --ignore-space-change \
+   --decorate=short \
+   --pretty=full \
+   --diff-filter=M |
+       sed -e 's/@@\x1b\[m \x1b\[m/@@\x1b\[m \x1b\[m\x0a/' # | tee full.txt
+)|
+    tr '\255' '-' |
+    ansi2html |
+       sed -e 's@<style type="text/css">@&\x0aBR.newpage{page-break-before:always;}\x0a@'|
+       sed -e 's@<span class="f3">@<br clear=all style="mso-special-character:line-break;page-break-before:always"><hr>&@'|
+       cat > git_log.html
+}
+##########################################################################################################################
+GIT(){
+echo "executing: git $@"
+git $*
+}
+##########################################################################################################################
+BR(){
+PS3_HOLD="$PS3"
+PS3=BRANCH:
+trap "echo '[EXIT]'" 1 2 3 15 # keep in loop
+select NAME in \
+'list branches[lb]' \
+'create branch[cb]' \
+'checkout branch[cob]' \
+'checkout master[cm]' \
+'merge branch[mb]' \
+'delete merged branch[db]' \
+'delete trash branch[Db]' \
+'quit[q]' \
+$NULL
+do
+   #echo "1: REPLY $REPLY NAME $NAME"
+   NAME=${NAME:-$REPLY}
+   #echo "2: REPLY $REPLY NAME $NAME"
+
+#--------------------------------------------
+   case "$NAME" in
+#--------------------------------------------
+# MANAGING BRANCHES
+#--------------------------------------------
+'list branches[lb]')                                        GIT branch          ;;
+#--------------------------------------------
+'create branch and enter[cb]')        ENTER NAME 'Enter branch name'; GIT branch $NAME    ;GIT checkout $NAME ;;
+#--------------------------------------------
+'checkout branch[cob]')     ENTER NAME 'Enter branch name'; GIT checkout $NAME  ;;
+#--------------------------------------------
+'checkout master[cm]')                                      GIT checkout master ;;
+#--------------------------------------------
+'merge branch[mb]')         ENTER NAME 'Enter branch name'; GIT merge $NAME     ;;
+#--------------------------------------------
+'delete merged branch[db]') ENTER NAME 'Enter branch name'; GIT branch -d $NAME ;;
+#--------------------------------------------
+'delete trash branch[Db]')  ENTER NAME 'Enter branch name'; GIT branch -D $NAME ;;
+#--------------------------------------------
+'quit[q]'|q|Q|quit) break ;;
+#--------------------------------------------
+*) eval $REPLY ;; # no match, try it as a command in current process (so cd(1) and export NAME=VALUE work)
+#--------------------------------------------
+esac
+done
+PS3="$PS3_HOLD"
+}
+##########################################################################################################################
+####################################################################################################################################
+trap "OUCH; exec $0" 1 2 3 15 # keep in loop
+PS3=GIT:  # set menu prompt
+#############################################
+NULL=
+select NAME in \
+'amend[a]' \
+'commit[c]' \
+'diff[d]' \
+'help[h]' \
+'list files in repository' \
+'init current directory[i]' \
+'git[k] GUI interface[k]' \
+'BRANCH' \
+'log[l]' \
+'log to html[lh]' \
+'update FPM fork' \
+'show SHALs[sh]' \
+'quit[q]' \
+'rebase[r]' \
+'status[s]' \
+'garbage collect[gc]' \
+$NULL
+#############################################
+do
+   #echo "1: REPLY $REPLY NAME $NAME"
+   NAME=${NAME:-$REPLY}
+   #echo "2: REPLY $REPLY NAME $NAME"
+
+#--------------------------------------------
+   case "$NAME" in
+#--------------------------------------------
+'help[h]'|h|H)                         HELP                            ;;
+'quit[q]'|q|Q|quit)                    break                           ;;
+'BRANCH'|B)                            BR                              ;;
+'log to html[lh]'|lh)
+    echo 'Generating git_log.html'
+    LOG_TO_HTML
+;;
+'update FPM fork')                     UPDATE_FPM_FORK                      ;;
+'init current directory[i]'|i|I) SETUPGIT                                   ;;
+'diff[d]'|d)                           git diff --ignore-space-change       ;;
+#--------------------------------------------
+'list files in repository')            git ls-tree --full-tree -r HEAD|less ;;
+'status[s]'|s|S)                       git status                           ;;
+'log[l]'|l|L)                          git log --stat --summary             ;;
+'commit[c]'|c|C)                       git commit                           ;;
+'amend[a]'|a|A)                        git commit --amend                   ;;
+'gitk GUI interface[k]'|k|K)           gitk &                               ;;
+#'show SHALs[sh]'|sh|SH)                git show -s --format='%H %s' -1000 ;;
+'show SHALs[sh]'|sh|SH)                git log --pretty='format:%Creset%H %s' --no-merges ;;
+#--------------------------------------------
+'rrebase[r]'|r)
+(
+   exec 2>&1
+   printf 'First, decide which of these commits to go back too'
+   read PAWS
+   git log --oneline
+   echo 'Enter last commit name to include in history to be changed'
+   read COMMIT
+   git rebase --autosquash -i $COMMIT
+)
+;;
+#--------------------------------------------
+#       You can see what is about to be committed using git diff with the --cached option:
+#           $ git diff --cached
+#       Without --cached, git diff will show you any changes that you’ve made
+#       but not yet added to the index.) You can also get a brief summary of
+#       the situation with git status:
+#
+#--------------------------------------------
+#--------------------------------------------
+'garbage collect[gc]'|gc)
+   git gc --aggressive
+;;
+#--------------------------------------------
+# no match, try it as a command in current process
+# so cd(1) and export NAME=VALUE work
+   *) eval $REPLY ;;
+#--------------------------------------------
+   esac
+#############################################
+done
+#############################################
+exit
+####################################################################################################################################
+#--#UPDATE_LOCAL(){
+#--##git fetch ssh://urbanj@susedev1/data/urbanj/daisy/V5.0.4/
+#--#git pull ssh://urbanj@susedev1/data/urbanj/daisy/NSAPLOT/
+####################################################################################################################################
+#--#   'git: pull to . from susedev1:NSAPLOT') UPDATE_LOCAL;;
+#--#   'git: push . to susedev1:NSAPLOT')UPDATE_REMOTE;;

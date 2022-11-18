@@ -1,0 +1,1013 @@
+#!/bin/bash --norc
+#!/bin/dash
+# dash works in cygwin, bash gets errors on raw reads on cygwin
+###################################################
+SKIP(){
+export SHELL_SWITCH
+if [ "$SHELL_SWITCH" = '' ]
+then
+# switch to bash or ksh
+   if [ -r /bin/ksh ] ; then
+      SHELL_SWITCH=/bin/ksh
+      exec /bin/ksh $0 $@
+   elif test  -r /bin/bash; then
+      SHELL_SWITCH=/bin/bash
+      exec /bin/bash "$0 $@"
+   elif test  -r /usr/bin/bash; then
+      SHELL_SWITCH=/usr/bin/bash
+      exec /usr/bin/bash "$0 $@"
+   elif test  -r /usr/bin/ksh; then
+      SHELL_SWITCH=/usr/bin/ksh
+      exec /usr/bin/ksh "$0 $@"
+   elif test  -r /usr/local/bin/bash; then
+      SHELL_SWITCH=/usr/local/bin/bash
+      exec /usr/local/bin/bash "$0 $@"
+   fi
+fi
+}
+#-------------------------------------------------------------------------------
+COLORNUM(){
+# number colors instead of named colors
+NCOL="$1"
+case "$NCOL" in
+'')
+   COUNT=0
+   while [ $COUNT -lt 256 ]
+   do
+      echo "[48;5;${COUNT}m This is color $COUNT"  </dev/null
+      COUNT=$((COUNT+1))
+   done
+;;
+*)
+   echo "[48;5;${NCOL}m This is color $COUNT"  </dev/null
+;;
+esac
+}
+#-------------------------------------------------------------------------------
+#echo shell is "$SHELL_SWITCH $0 $@"
+unset SHELL_SWITCH
+###################################################
+#ident  "@(#) send xterm control sequences. John S. Urban, 19910719"
+unset PS1
+# Copyright (c) 1991, by John S. Urban
+# Copyright (c) 2008, by John S. Urban
+# Revision 1, 07/19/1991
+# THIS PROCEDURE CONTAINS UNPRINTABLE CHARACTERS
+usage="$0 [-c [80 132]] [ -f fontname ] [-n [iconname] ] [-t [title] ]"
+################################################################################
+if (test $# -eq 0)
+then
+############################################
+# Text color variables
+# red green yellow blue magenta cyan white
+UNDE=$(tput sgr 0 1)     # Underline
+BOLD=$(tput bold)        # Bold
+E=${BOLD}$(tput setaf 0) #  ebony
+R=${BOLD}$(tput setaf 1) #  red
+G=${BOLD}$(tput setaf 2) #  green
+Y=${BOLD}$(tput setaf 3) #  yellow
+B=${BOLD}$(tput setaf 4) #  blue
+M=${BOLD}$(tput setaf 5) #  magenta
+C=${BOLD}$(tput setaf 6) #  cyan
+W=${BOLD}$(tput setaf 7) #  white
+RESE=$(tput sgr0)        # Reset
+info=${W}*${RESE}        # Feedback
+pass=${B}*${RESE}
+warn=${R}!${RESE}
+############################################
+clear
+echo "  $usage"
+if [ -t 1 ]
+then
+   S="$G"
+   R=$RESE
+   Q='(0aa(B'
+   q=$B$Q$RESE
+   r=$B$Q
+   F='(0ff(B'
+   #(0abcdefghijklmnopqrstuvwxyz(B
+else
+   R='' S='' r='' S=''
+   Q='__'
+   F='__'
+fi
+cat <<EOF
+send escape sequences to a X11R4 xterm to:   
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -f  fontname$R                                                               $q
+$q     where the fontname is any fix-spaced font available on your X11 server.$q
+$q     some xterms (XFree86, pre X11R4 and after X11R5??) support these       $q
+$q       U,+,up    progress up thru font menu (ctrl-mouse 3)                  $q
+$q       D,-,down  move down   thru font menu (ctrl-mouse 3)                  $q
+$q       [0-6] select from font menu (ctrl-mouse 3)                           $q
+$q You can list several available fixed-space font names by using:            $q
+$q    (xlsfonts -fn '*-c-*' ; xlsfonts -fn '*-m-*')                           $q
+$q Example names: (font names may vary from server to server):                $q
+$q    fixed     8x13       9x15        '*24*-c-*'                             $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -c  80|132$R  # change to 80 or 132 column mode                              $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q Window title (null  is to use current directory and hostname)              $q
+$q${S} -n  icon_name$R  # resource name too                                         $q
+$q${S} -t  title_name$R                                                             $q
+$q${S} -nt icon_and_title_name$R                                                    $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -e  emulation type. tek go to tektronix mode. vt102 go to vt102 mode.      $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q toggles ( allowable values are on or off, default is off)                  $q
+$q${S}  -a$R  # auto-repeat   ||  -r$R  # reverse-video   ||  -l$R    # logging         $q
+$q${S}  -b$R  # bold          ||  -j$R  # jump scroll     ||  -sb$R   # scroll bar      $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -msg string$R. Puts string in status line of a real vt100-compatible.        $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q some xterms (XFree86, pre X11R4 and after X11R5??)support these            $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q Color (value=name, '#rrggbb', rgb:rrrr/gggg/bbbb where rr,gg,bb are hex )  $q
+$q         if no value is given, the current value is returned                $q
+$q${S} -bg  color$R # background_color  |${S} -tbg color$R # Tektronix background color   $q
+$q${S} -fg  color$R # foreground_color  |${S} -tfg color$R # Tektronix foreground color   $q
+$q${S} -cr  color$R # cursor_color      |${S} -tcr color$R # Tektronix cursor color       $q
+$q${S} -mfg color$R # mouse foreground  |${S} -mbg color$R # mouse background             $q
+$q${S} -hc  color$R # highlight color                                               $q
+$q$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$F$q
+$q set N'th pen color (typically 0 thru 15 are supported, at least)           $q
+$q${S} -cn 0 blue 1 blue 2 blue 3 blue 4 blue 5 blue 6 ...                        $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q Window Geometry (if no N value is given, the current value is returned)    $q
+$q${S} -rows N|+-N$R   # number of characters high the window is                    $q
+$q${S} -cols N|+-N$R   # number of characters wide the window is                    $q
+$q${S} -right N$R      # rasters left edge of window is from left edge of display   $q
+$q${S} -down N$R       # rasters top edge of window is from top edge of display     $q
+$q${S} -max,-restore$R # maximize window size, return to pre-max size and position  $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -icon yes|no|toggle$R                                                        $q
+$q${S} -raise,-lower$R # raise to top of window stack, lower to back of window stack$q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q If your window manager supports multiple virtual displays (like ctwm(1))   $q
+$q by defining the property WM_OCCUPANCY (use xprop -id \$WINDOWID to see)     $q
+$q${S}  -o panel_number|panel_name|all$R  # move window to specified panel(s)       $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+$q${S} -xrdb  $R       # For E(1) to work with some xterm versions, use this once   $q
+$q${S}        $R       # after you start your X11 Windows client or add the         $q
+$q${S}        $R       # following X11 Windows resources to ~.Xresources:           $q
+$q   *VT100.allowWindowOps: true                                              $q
+$q   *VT100.allowTitleOps: true                                               $q
+$q   *VT100.allowFontOps: true                                                $q
+$r$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$Q$q
+"E --" is equivalent to "E -c 80 -f fixed -nt"
+"E ---" is equivalent to "E -rows 24 -cols 80 -bg black -fg white -cr red -f fixed -nt"
+EOF
+   exit 1
+fi
+
+if test "$TERM" != "xterm" -a "$TERM" != 'linux' -a $TERM != screen
+then
+   # this procedure should only be used on an xterm
+   case "$TERM" in
+   xterm*);;
+   *) exit ;;
+   esac
+fi
+# note that -n string shows up in twm icon manager, and -t shows in title
+# of window, so could just show host in icon, and directory in title.
+# csh:
+#       alias cd 'cd *;E -nt'
+#-------------------------------------------------------------------------------
+# if you cannot do functions or do not have printf change myecho to echo
+# in this script
+myecho(){
+# when using screen(1) if I set the tty to the original tty then I do not have
+# to deal with screen(1) capturing escape sequences
+if [ "$OTHERTTY" != '' ]
+then
+   printf "$*" >> $OTHERTTY
+else
+   #printf "$*" >> /dev/tty
+   printf "$*" 
+fi
+}
+#-------------------------------------------------------------------------------
+# normal so can go to pipe
+mywrite(){
+   printf -- "$*\n" 
+}
+#-------------------------------------------------------------------------------
+# if you are recovering a remote login via ssh(1)
+if [ "$OTHERTTY" = '' ]
+then
+   OTHERTTY="$SSH_TTY"
+fi
+#-------------------------------------------------------------------------------
+PATH=/bin:/usr/bin:/usr/local/bin
+PATH=$PATH:/usr/ucb # For Solaris 5.3; this is where hostname(1) is.
+PATH=$PATH:/usr/bsd # For IRIX 6.3 ; this is where hostname(1) is.
+
+# if this procedure does not work on an X11R4 xterm(1) check these lines:
+###################
+# Alternate way of defining special non-printable characters
+#esc=`printf '\x1b'`
+#etx=`printf '\x03'`
+#bel=`printf '\x07'``
+###################
+# Alternate way of defining special non-printable characters
+#(echo E |tr E '\034'; echo X |tr X '\003'; echo B |tr B '\007';)|xargs| read esc etx bel
+###################
+# Actual non-printable characters in the file
+# In vi(1), in insert mode you can prefix the ctrl-letter sequences with ctrl-V to
+# enter them directly into a file
+esc="" # actual escape (esc) character (ctrl-[)
+etx="" # actual end of text (etx) character (ctrl-c)
+bel="" # actual bell (bel) character (ctrl-g)
+## esc="{esc}" bel="{bel}" # for debugging the escape sequences
+###################
+SUF='\c'
+SUF=''
+###################
+prefix="${esc}["
+###################
+# note that using multiple grave characters eliminates the newlines
+def_name=`pwd``echo "@"``hostname`
+###################
+#-------------------------------------------------------------------------------
+export esc etx bel SUF prefix 
+#-------------------------------------------------------------------------------
+RAWGET(){
+   #exec >/dev/tty </dev/tty
+   exec </dev/tty
+   old=`stty -g`
+   #stty -cread
+   #stty raw -echo min 0  time 5  
+   stty raw -echo min 0  time 1
+   myecho "${*}"  >/dev/tty
+   IFS=";${bel}" read A B C D
+#  ###############################
+  while read ACHAR
+  do
+     :
+  done </dev/tty
+  flush=`dd if=/dev/tty bs=1 count=1 2>/dev/null</dev/tty`
+#  ###############################
+   stty $old
+   #echo "VALUES @ $A @ $B @ $C @ $D @" | cat -v -e -t 1>&2
+}
+#-------------------------------------------------------------------------------
+GETFONT(){
+   RAWGET "${esc}]50;?${bel}" >/dev/tty
+   fontname="$B"
+}
+#-------------------------------------------------------------------------------
+GETSIZE(){
+# Obtain current screen size and place in wide and high
+# Ps = 1 8  -> Report the size of the text area in characters as CSI  8	 ;  height ;  width t
+# also see stty -a, xwininfo -id $WINDOWID, env ROWS= LINES= COLUMNS=, xresize(1)
+   RAWGET "${esc}[18t${SUF}" 
+   rows="${rows:-$B}"
+   cols=`echo "${cols:-$C}"|sed -e 's/t.*//'`
+}
+#-------------------------------------------------------------------------------
+GETSIZEx(){
+eval `resize -u` #COLUMNS=163; LINES=66; export COLUMNS LINES;
+rows=$LINES
+cols=$COLUMNS
+}
+#-------------------------------------------------------------------------------
+GETICONSTATE(){
+# Ps = 1 1  -> Report xterm window state.  If the xterm
+#	       window is open (non-iconified), it returns CSI 1 t .  If
+#              the xterm window is iconified, it returns CSI 2 t .
+   RAWGET "${esc}[11t" 
+   CSISTATE="$A"
+case "$CSISTATE" in
+*1t)ICONSTATE=opened;;
+*2t)ICONSTATE=closed;;
+esac
+}
+#-------------------------------------------------------------------------------
+#	Ps = 1 4  -> Report xterm window in pixels as CSI  4  ; height ; width t
+#	Ps = 1 9  -> Report the size of the screen in characters as CSI  9  ;  height ;  width t
+#	Ps = 2 0  -> Report xterm window's icon label as OSC  L label ST
+#	Ps = 2 1  -> Report xterm window's title as OSC l title ST
+#-------------------------------------------------------------------------------
+GETPOSITION(){
+# Ps = 1 3  -> Report xterm window position as CSI 3 ; x; yt
+# Obtain current screen size and place in wide and high
+# also see stty -a, xwininfo -id $WINDOWID, env ROWS= LINES= COLUMNS=, xresize(1)
+#-------------------------------------------------------------------------------
+RAWGET "${esc}[13t${SUF}" 
+right="$B"
+down=`echo "$C"|sed -e 's/t.*//'`
+down=${down:-0}
+right=${right:-0}
+[ "$down" -gt 2147483648 ]  && down=$((-(4294967296-down)))
+[ "$right" -gt 2147483648 ] && right=$((-(4294967296-right)))
+[ "$down" -le 5 ]  && down=5
+[ "$right" -le 5 ] && right=5
+}
+#-------------------------------------------------------------------------------
+GETCOLOR(){
+# If a "?" is given rather than a name or RGB specification,
+# xterm replies with a control sequence of the same
+# form which can be used to set the corresponding dynamic
+# color.  Because more than one pair of color number and
+# specification can be given in one control sequence, xterm
+# can make more than one reply.
+#
+#   Ps = 1 0  -> Change VT100 text foreground color to Pt
+#   Ps = 1 1  -> Change VT100 text background color to Pt
+#   Ps = 1 2  -> Change text cursor color to Pt
+#   Ps = 1 3  -> Change mouse foreground color to Pt
+#   Ps = 1 4  -> Change mouse background color to Pt
+#   Ps = 1 5  -> Change Tektronix foreground color to Pt
+#   Ps = 1 6  -> Change Tektronix background color to Pt
+#   Ps = 1 7  -> Change highlight color to Pt
+#   Ps = 1 8  -> Change Tektronix cursor color to Pt
+code="${*}"
+RAWGET "${esc}]${code};?${bel}" 
+color="$B"
+echo "${color}"
+}
+#GETCOLOR 10
+#-------------------------------------------------------------------------------
+GETPENCOLOR(){
+code="${*}"
+RAWGET "${esc}]4;${code};?${bel}"
+color="$C"
+}
+#-------------------------------------------------------------------------------
+#
+# Get the parameters
+#
+while test -n "$1"
+do
+  case "$1" in
+#-------------------------------------------------------------------------------
+#      DEFAULT KEYWORD
+---)
+          exec $0 -f fixed -nt -bg white -fg black -cr red -rows 24 -cols 80 -cn 0 rgb:0000/0000/0000 1 rgb:cdcd/0000/0000 2 rgb:0000/cdcd/0000 3 rgb:cdcd/cdcd/0000 4 rgb:0000/0000/eeee 5 rgb:cdcd/0000/cdcd 6 rgb:0000/cdcd/cdcd 7 rgb:e5e5/e5e5/e5e5 8 rgb:7f7f/7f7f/7f7f 9 rgb:ffff/0000/0000 10 rgb:0000/ffff/0000 11 rgb:ffff/ffff/0000 12 rgb:5c5c/5c5c/ffff 13 rgb:ffff/0000/ffff 14 rgb:0000/ffff/ffff 15 rgb:ffff/ffff/ffff
+;;
+--)
+#      note that $0 is the full path name, so don't have to worry about
+#      search path used by exec, which is a problem on some machines. If in the directory
+#      where esc is, $0 is just the short name.
+#      if [ "$0" = "esc" ]
+       if test "$0" = "esc"
+       then
+          fullpath=`pwd`
+          cmd="${fullpath}/${0}  -c -f -nt"
+          exec ${cmd}
+       else
+          exec $0 -c -f fixed -nt
+       fi
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE FONT PARAMETER
+-f|-fn)
+       case "$2" in
+       D|DOWN|-|down) myecho "${esc}]50;#-${bel}" # move up predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       U|UP|+|up) myecho "${esc}]50;#+${bel}" # move down predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       [0-9]) myecho "${esc}]50;#${2}${bel}" # select from predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       small)  myecho "${esc}]50;#3${bel}" # select from predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       medium) myecho "${esc}]50;#4${bel}" # select from predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       large)  myecho "${esc}]50;#5${bel}" # select from predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       huge)   myecho "${esc}]50;#6${bel}" # select from predefined list in menu (ctrl-mouse 3)
+          shift
+       ;;
+       -??????????????*)
+          # something this long starting with a dash is probably a font name
+          myecho "${esc}]50;${2}${bel}"  # try the string that was found
+          shift
+	  ;;
+       -*)
+          GETFONT
+	  echo "$fontname"
+          # myecho "${esc}]50;fixed${bel}" # keyword following the fontname, use default
+          # $2 was a keyword, not a font name so do not shift
+       ;;
+       "")
+          GETFONT
+	  mywrite "$fontname"
+          # myecho "${esc}]50;fixed${bel}" # -f was at the end of the command
+       ;;
+       *)
+          myecho "${esc}]50;${2}${bel}"  # try the string that was found
+          shift
+       ;;
+       esac
+       shift
+;;
+#-------------------------------------------------------------------------------
+#CRACK ON-OFF PARAMETERS
+#      AUTO-REPEAT
+#      REVERSE VIDEO
+#      LOGGING MODE
+#      BOLD
+-a|-r|-l|-b|-j|-sb)
+       case "$1" in
+         -a)   off="l"   on="h"   number=?8   ;;  #  auto repeat
+         -r)   off="l"   on="h"   number=?5   ;;  #  reverse video
+         -r)   off="l"   on="h"   number=?4   ;;  #  fast jump scroll
+         -l)   off="l"   on="h"   number=?46  ;;  #  logging mode --> doesn't work unless compile with this option on
+         -sb)  off="l"   on="h"   number=?30  ;;  #  scroll bar mode
+         -b)   off="0m"  on="5m"  number=""   ;;  #  logging mode --> doesn't work unless compile with this option on
+       esac
+       case "$2" in
+       -*|"")
+          myecho "${prefix}${number}${off}" # another keyword following the keyword, use default
+          # $2 was a keyword, not a value for -x so do not shift
+          # or
+          # -x was at the end of the command and so $2 is null
+       ;;
+       on)
+          myecho "${prefix}${number}${on}"  # turn on
+          shift
+       ;;
+       off)
+          myecho "${prefix}${number}${off}"  # turn off
+          shift
+       ;;
+       *)
+          echo "illegal option for $1 : use on or off"  # error
+          shift
+       ;;
+       esac
+       shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE SHROUD AND UNVEIL
+-icon)
+       case "$2" in
+       -*|"")
+          # another keyword following the keyword, use default
+          # $2 was a keyword, not a value for -x so do not shift
+          # or
+          # -x was at the end of the command and so $2 is null
+        number=2
+       ;;
+       on|close|yes)
+          number=2
+          shift
+       ;;
+       off|open|no)
+          number=1
+          shift
+       ;;
+       report)
+          GETICONSTATE
+	  echo "$ICONSTATE"
+          number=7 # refresh
+          shift
+       ;;
+       toggle)
+          GETICONSTATE
+	  case "$ICONSTATE" in
+	  opened)number=2;;
+	  *)number=1;;
+	  esac
+          shift
+       ;;
+       oldtoggle)  # OLD TOGGLE METHOD
+          echo "${prefix}2t"
+          echo "${prefix}1t"
+          number=7
+          shift
+       ;;
+       *)
+          echo "illegal option [$2] for [$1] : use on|close|yes ,off|open|no, or toggle"  # error
+          number=7  # refresh
+          shift
+       ;;
+       esac
+       shift
+       myecho "${prefix}${number}t"
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE COLUMN NUMBER PARAMETER
+-c)
+       myecho ${prefix}'?40h' # enable 80/132 mode
+       case "$2" in
+       "80")
+          col="?3l" # 80 was specified
+          shift
+       ;;
+       "132")
+          col="?3h" # 132 was specified
+          shift
+       ;;
+       -*)
+          col="?3l" # next word is keyword so use 80 columns as a default, and don't shift
+       ;;
+       "")
+          col="?3l" # -c was at the end of the command
+       ;;
+       *)
+          # an invalid parameter value was specified
+          col="?3l"
+          echo "${0} :: Warning : column value must be 80 or 132, specified --- $2" >&2
+          shift
+       ;;
+       esac
+       myecho ${prefix}${col}
+       shift
+
+#        NOTE:
+#           one way to turn on 132-column switching for NEW xterm windows is:
+#           xrdb -merge <<\EOF
+#           XTerm*c132: on
+#           EOF
+#           Use ctrl-Mouse2 and select "Allow 80/132 column switching"
+#           to enable the mode in running xterm windows.
+
+;;
+#-------------------------------------------------------------------------------
+#      I have only tried this using the ctwm(1) window manager
+#      If your window manager has assigned the property WS_OCCUPATION
+#         WM_OCCUPATION(STRING) = "2"
+#         WM_OCCUPATION(STRING) = "Two"
+#      as seen by entering
+#         xprop -id $WINDOWID
+#      you can specify which virtual display to display on
+-o)
+       case "$2" in
+       [0-9]|[0-9][0-9]|[0-9][0-9][0-9]|[0-9][0-9][0-9][0-9])
+          col="$2" # number was specified
+          shift
+       ;;
+       all)
+          col="$2"
+          shift
+       ;;
+       -*)
+          col="all" # next word is keyword so use default, and don't shift
+       ;;
+       "")
+          col="all" # -o was at the end of the command
+       ;;
+       *)
+          # well, at least for ctwm(1) strings are allowed
+          ## an invalid parameter value was specified
+          #echo "${0} :: Warning : expected a number --- $2" >&2
+          col="$2"
+          shift
+       ;;
+       esac
+       myecho "${esc}]3;WM_OCCUPATION=${col}${bel}"
+       myecho "${esc}]3;WM_CURRENTWORKSPACE=${col}${bel}"
+       shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE TERMINAL EMULATION TYPE
+-e)
+         text="${esc}${etx}T" # vt102
+         case "$2" in
+         "vt102")
+            emulate=$text # vt102 was specified
+            shift
+         ;;
+         "tek")
+            emulate="${prefix}?38h" # tek was specified
+            shift
+         ;;
+         -*)
+            emulate=$text # next word is keyword so use vt102 as a default, and don't shift
+         ;;
+         "")
+            emulate=$text # -e was at the end of the command
+         ;;
+         *)
+            # an invalid parameter value was specified
+            emulate=$text
+            echo "${0}:: Warning: value must be vt102 or tek, specified --- $2" >&2
+            shift
+         ;;
+         esac
+         myecho $emulate
+         shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE BACKGROUND AND FOREGROUND COLOR
+-bg|-fg|-cr|-mfg|-mbg|-tfg|-tbg|-tcr|-hc)
+         case "$1" in
+         -bg)  code=11 ;; # background color
+         -fg)  code=10 ;; # foreground color
+         -cr)  code=12 ;; # cursor color
+         -mfg) code=13 ;; # Change mouse foreground color to Pt
+         -mbg) code=14 ;; # Change mouse background color to Pt
+         -tfg) code=15 ;; # Change Tektronix foreground color to Pt
+         -tbg) code=16 ;; # Change Tektronix background color to Pt
+         -hc)  code=17 ;; # Change highlight color to Pt
+         -tcr) code=18 ;; # Change Tektronix cursor color to Pt
+         esac
+         # if no value given report value
+         case "$2" in
+         -*) GETCOLOR $code ;; # next word is keyword so use default 
+         "") GETCOLOR $code ;; # -bg was at the end of the command
+         *) color=$2
+	    shift
+	    case "$color" in
+            [0-9]|[0-9][0-9]|[0-9][0-9][0-9]|[0-9][0-9][0-9][0-9]) text="${esc}[48;5;${color}m" ;;
+            *)text="${esc}]${code};${color}${bel}";;
+	    esac
+            myecho "$text"
+	 ;;
+         esac
+
+         shift
+;;
+#-------------------------------------------------------------------------------
+-BOXES)
+SKIP(){
+cat <<EOF
+(0 
+ 140  \` |141  a  142  b  143  c  144  d  145  e  146  f  147  g  
+ 150  h  151  i  152  j  153  k  154  l  155  m  156  n  157  o  
+ 160  p  161  q  162  r  163  s  164  t  165  u  166  v  167  w  
+ 170  x  171  y  172  z  173  {  174  |  175  }  176  ~  
+(B
+ 140  \` |141  a  142  b  143  c  144  d  145  e  146  f  147  g  
+ 150  h  151  i  152  j  153  k  154  l  155  m  156  n  157  o  
+ 160  p  161  q  162  r  163  s  164  t  165  u  166  v  167  w  
+ 170  x  171  y  172  z  173  {  174  |  175  }  176  ~  
+EOF
+tty
+}
+SKIP
+shift
+;;
+#-------------------------------------------------------------------------------
+-getsize)
+         GETSIZE
+	 myecho "$cols $rows"
+         shift
+;;
+#-------------------------------------------------------------------------------
+-getpos)
+         GETPOSITION
+	 myecho "$right $down"
+         shift
+;;
+#-------------------------------------------------------------------------------
+-getgeometry)
+         GETSIZE
+         GETPOSITION
+	 myecho "${cols}x${rows}+${right}+${down}"
+         shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE KEYWORDS
+-raise|-lower|-max|-restore)
+         case "$1" in
+         -raise) code=5;;
+         -lower) code=6;;
+         -max) code='9;1';;  # -> Maximize window (i.e., resize to screen size).
+         -restore) code='9;0';;    # -> Restore maximized window.
+         esac
+
+         text="${esc}[${code}t"
+         myecho $text
+         shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE KEYWORDS
+-xrdb)
+         xrdb -merge <<\EOF
+*VT100.allowWindowOps: true
+*VT100.allowTitleOps: true
+*VT100.allowFontOps: true
+EOF
+         shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE GEOMETRY
+-cols)
+	 GETSIZE # set rows and cols
+         
+         case "$2" in
+         [+-][0-9]*) # next word is signed number (hopefully)
+	    delta="$2"
+	    cols=$((cols + ($delta) ))
+              myecho "${prefix}8;${rows};${cols}t"
+	    shift
+	 ;;
+         -*|'') # next word is keyword or keyword was at end of command
+	       echo "${cols}"
+	 ;;
+         *) 
+	      cols="$2"
+              myecho "${prefix}8;${rows};${cols}t"
+	      shift
+	 ;;
+         esac
+
+         shift
+;;
+-rows)
+	 GETSIZE # set rows and cols
+
+         case "$2" in
+         [+-][0-9]*) # next word is signed number (hopefully)
+	    delta="$2"
+	    rows=$((rows + ($delta) ))
+            myecho "${prefix}8;${rows};${cols}t"
+	    shift
+	 ;;
+         -*|'') # next word is keyword or keyword was at end of command
+	        echo "$rows"
+         ;;
+         *) 
+	    rows="$2"
+	    shift
+            myecho "${prefix}8;${rows};${cols}t"
+	 ;;
+         esac
+
+
+         shift
+;;
+-right)
+         right=0
+
+         case "$2" in
+	 -[0-9]*) # assume this is a negative value
+                  right=$((4294967296+($2)))
+	          shift
+                  myecho "${prefix}3;${right}t"
+	 ;;
+         -*|'')   # next word is keyword or keyword was at end of command
+	          GETPOSITION
+                  echo "$right"
+	 ;;
+         *)
+	          right=$2
+	          shift
+                  myecho "${prefix}3;${right}t"
+	 ;;
+         esac
+
+         shift
+;;
+-down)
+         down=0
+	 GETPOSITION
+
+         case "$2" in
+	 -[0-9]*) # assume this is a negative value
+                  down=$((4294967296+($2)))
+	          shift
+                  myecho "${prefix}3;${right};${down}t"
+	 ;;
+         -*|'')   # next word is keyword or keyword was at end of command
+	          echo "${down}"
+	 ;;
+         *) 
+	          down=$2
+		  shift
+                  myecho "${prefix}3;${right};${down}t"
+	 ;;
+         esac
+
+         shift
+;;
+#-------------------------------------------------------------------------------
+# lines scrolled off screen are not redrawn
+#CSI Ps S       Scroll up Ps lines (default = 1) (SU)
+#CSI Ps T       Scroll down Ps lines (default = 1) (SD)
+-forward)
+	 GETSIZE
+	 forward=$rows
+
+         
+         case "$2" in
+         -*|'') forward=$LINES ;; # next word is keyword or keyword was at end of command
+         *) forward=$2; shift ;;
+         esac
+
+         myecho "${prefix}${forward}S"
+         shift
+;;
+-back)
+	 GETSIZE
+	 back=$rows
+
+         case "$2" in
+         -*|'') back=$LINES ;; # next word is keyword or keyword was at end of command
+         *) back=$2; shift ;;
+         esac
+
+         myecho "${prefix}${back}T"
+         shift
+;;
+#-------------------------------------------------------------------------------
+#      CRACK THE NAME OR TITLE PARAMETER, concatenating until end of command or
+#      string starting with a minus (-) (assumed to be a parameter)
+-n|-t|-nt|-prop|-cn)
+       parname="$1"
+
+       if test -n "$2"
+       then
+          name=""
+       else
+          name="${def_name}"
+       fi
+
+       while test -n "$2"
+       do
+              case "$2" in
+              -*)
+                 # $2 was a keyword, not part of name so quit and do not shift
+                 if  test  -z  "$name"
+                 then
+                   name="${def_name}"
+                 fi
+                 break
+              ;;
+              "")
+                 echo "cannot get here"
+                 break # -XX was at the end of the command
+              ;;
+              *)
+                 name="$name $2" # add the string to the name string
+                 shift
+              ;;
+              esac
+              #echo  "next word = $2, so far = $name"
+       done
+
+#      DEC will see -t as test switch [ -t filename ] instead of string if remove XX
+       if test "XX${parname}" = 'XX-n'
+       then
+          myecho "${esc}]1;${name}${bel}"
+       elif test "XX${parname}" = 'XX-t'
+       then
+          myecho "${esc}]2;${name}${bel}"
+       elif test "XX${parname}" = 'XX-nt'
+       then
+          myecho "${esc}]0;${name}${bel}"
+       elif test "XX${parname}" = 'XX-prop'
+       then
+          myecho "${esc}]3;${name}${bel}"
+       elif test "XX${parname}" = 'XX-cn'
+       then
+          [ "$name" = "${def_name}" ] && name=''
+          #--------------------------------------------------
+          case "$name" in
+          *[a-z]*|*[A-Z]*)
+             name=`echo "$name"|tr ' ' ';'`
+             myecho "${esc}]4${name}${bel}"
+          ;;
+          #--------------------------------------------------
+          *) # if no letters in color names, assume query
+             for NAME in ${name:-0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15}
+             do
+                GETPENCOLOR $NAME
+		echo $NAME "$color"
+             done
+          ;;
+          #--------------------------------------------------
+          esac
+          #--------------------------------------------------
+       else
+          echo "cannot get here"
+       fi
+       shift # make sure shifted for
+;;
+#-------------------------------------------------------------------------------
+# WRITE MESSAGE TO TERMINAL STATUS LINE (NICE FOR REMINDERS)
+-msg)
+       parname="$1"
+
+       if test -n "$2"
+       then
+          name=""
+       else
+          name="${def_name}"
+       fi
+
+       while test -n "$2"
+       do
+              case "$2" in
+              -*)
+                 # $2 was a keyword, not part of name so quit and do not shift
+                 if  test  -z  "$name"
+                 then
+                   name="${def_name}"
+                 fi
+                 break
+              ;;
+              "")
+                 echo "cannot get here"
+                 break # -f was at the end of the command
+              ;;
+              *)
+                 name="$name $2" # add the string to the name string
+                 shift
+              ;;
+              esac
+             # echo  "next word = $2, so far = $name"
+       done
+# WRITE MESSAGE TO TERMINAL STATUS LINE (NICE FOR REMINDERS)
+
+       myecho "${esc}7${esc}[25;1f${esc}[0K${name}${esc}8"
+
+       shift # make sure shifted for
+;;
+#-------------------------------------------------------------------------------
+-*)    #      UNKNOWN KEYWORD
+       echo "${0}:: Error:  unknown parameter --- $1" >&2
+       exit 1
+;;
+#-------------------------------------------------------------------------------
+*)     #      UNKNOWN PARAMETER
+       echo "${0}:: Warning: unused parameter value --- $1" >&2
+       shift
+;;
+#-------------------------------------------------------------------------------
+esac
+#-------------------------------------------------------------------------------
+done
+#-------------------------------------------------------------------------------
+exit
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+# FODDER
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+# full reset
+# Report window title and icon name.
+#	Ps = 2 0  -> Report xterm window's icon label as OSC  L label ST
+#	Ps = 2 1  -> Report xterm window's title as OSC l title ST
+
+# -xrdb # loads X11 resources, key translations, and so on
+
+# -getsize  # show width and height in characters                         
+# -getpos   # show x y position of left upper corner of window in pixels   
+# -back N, -forward N # scroll N lines                                      
+
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+e="`echo e | tr e '\033'`"  # Make an ESCape character portably
+
+*Clear) seq="${e}[;H${e}[2J"  ;;# move to top left, clear screen
+
+# ALTERNATE CHARACTER SETS.  YOU USUALLY WANT "NOG" TO CLEAR THESE
+# WHEN YOUR TERMINAL GETS IN THIS MODE ACCIDENTALLY:
+
+*NOG) seq="${e}(B" ;;       # cancel graphics and European
+*Graphics) seq="${e}(0" ;;  # lower-case letters become graphics
+*Eur) seq="${e}(1" ;;       # lower-case letters become European
+
+# WRITE MESSAGE TO TERMINAL STATUS LINE (NICE FOR REMINDERS)
+# CLEAR IT.
+
+*ToStatus) seq="${e}7${e}[25;1f${e}[0K$*${e}8" ;;
+*ClrStatus) seq="${e}7${e}[25;1f${e}[0K${e}8" ;;
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-
+#-- You can set and see the column and line variables with the stty command
+#-- To see it, the stty command is either
+#-- stty -a
+#--  or
+#-- stty -all
+#-- (depends on the vendor)
+#-- and you can set it with
+#-- stty columns 60
+#-- 
+#-- you can also set the uppercase variables with setenv (csh) or export (ksh/sh)
+#-- 
+#-- setenv COLUMNS 60
+#-- 
+#-- Most machines now automatically change those values as you change the size 
+#-- of the window by sending a WINCHG (window change) signal. For this to work,
+#-- your TERMINFO or TERMID description has to support dynamically changing
+#-- sizes, your program (such as vi) has to be looking for WINCHG signals, and
+#-- your communication path has to transmit WINCHG signals. Typically, telnet
+#-- does not send it, rlogin and ssh does.
+#-- 
+#-- SunOS TERMINFO and curses-based programs seem to all be OK for sun-cmd and
+#-- sun setups and xterm windows. So it should all happen automatically, unless
+#-- you are logged into a remote sun and used telnet instead of rlogin to get
+#-- to the remote machine.
+#-- 
+#-- If for whatever reason it is not working, use stty instead of the enviromental
+#-- variables (because stty effects all processes, while variables only effect
+#-- themselves and child processes and other reasons).
+#-- 
+#-- The enviromental variables should change when stty does if you have a good stty.
+#-- .
+#-- 
+#-- on an xterm(1) try
+#-- 
+#--    in the K shell try
+#--    eval `resize -u`
+#-- 
+#--    If that does not work, in the csh shell try:
+#--    set noglob
+#--    eval `resize -c`
+#--    unset noglob

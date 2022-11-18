@@ -1,0 +1,7 @@
+Most of the documentation is in HTML, not markdown
+
+   The most comfortable way to preview HTML files on GitHub is to go to http://htmlpreview.github.com/ 
+   or just prepend it to the original URL, i.e.: 
+      http://htmlpreview.github.com/?https://github.com/bartaz/impress.js/blob/master/index.html
+
+      http://htmlpreview.github.io/?https://github.com/urbanjost/general-purpose-fortran/blob/download/tmp/download.html

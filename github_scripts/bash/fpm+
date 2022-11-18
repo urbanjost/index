@@ -1,0 +1,14 @@
+#!/bin/bash
+if [ ! -d "$HOME/github/fmpit/" ]
+then
+   mkdir -p $HOME/github
+   fpm new $HOME/github/fpmit --app --backfill
+fi
+cp $1 $HOME/github/fpmit/app/main.f90
+cd $HOME/github/fpmit
+fpm run
+exit
+
+Should be able to install just a single name application
+
+Should be able to continue a build even on failure

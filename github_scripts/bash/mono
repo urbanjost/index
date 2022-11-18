@@ -1,0 +1,19 @@
+#!/bin/bash --norc
+#@(#) mono(1sh) -set all the pen colors to the current foreground color in an xterm(1) using esc(1)
+
+# terminfo entries for xterm (often found in /usr/share/terminfo/x/) that are monochrome are not
+# available on all machines, so just changing the value of $TERM does not always work. In a pinch,
+# in a color xterm set the pen colors to the foreground color using esc(1).
+
+# can also play with environment variables $LS_COLORS $COLORTERM
+
+BACKGROUND=$(esc -bg|sed -e 's/.*rgb:/rgb:/')
+BACKGROUND=${BACKGROUND:-'rgb:ffff/ffff/ffff'}
+FOREGROUND=$(esc -fg|sed -e 's/.*rgb:/rgb:/')
+FOREGROUND=${FOREGROUND:-'rgb:0000/0000/0000'}
+for (( COLOR=1; COLOR-36; COLOR=COLOR+1 ))
+do
+   esc -cn $COLOR $FOREGROUND
+done
+esc -cn 0 $BACKGROUND
+exit

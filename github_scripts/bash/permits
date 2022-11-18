@@ -1,0 +1,31 @@
+#!/bin/bash --norc
+################################################################################
+#@(#) permits(1sh) - ls(1) a file leaf and all directories above it
+#version 19920421 John S. Urban
+################################################################################
+# lets you quickly see permits to a file and the parent directories
+################################################################################
+# Unix ls(1) OK; but GNU ls(1) only puts a space between columns one file at a time
+[ "`which column 2>/dev/null`" != '' ] && FILTER='column -t' || FILTER='cat'
+################################################################################
+DIRNAME(){
+   NAME=${NAME%/*} # replaced: NAME=$(dirname $NAME)
+   NAME=${NAME:-/} 
+   [[ ! -d "$NAME" ]] && NAME=.
+}
+################################################################################
+for NAME in ${*:-.}
+do
+   while [ "$NAME" != '/' ]
+   do
+      [ "$NAME" = '.' ] && NAME="`pwd`"
+      ls -ld $NAME
+      #NAME=$(dirname $NAME)
+      DIRNAME
+   done
+   ls -ld /
+done| $FILTER
+exit
+################################################################################
+find $NAME -follow -ls
+################################################################################

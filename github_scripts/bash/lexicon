@@ -1,0 +1,104 @@
+#!/bin/bash --norc
+###############################################################################
+#@(#) Get definition of a word using DICT Protocol and curl(1)
+###############################################################################
+HELP(){
+(${TXT2MAN:-txt2man -T}|| cat ) 2>/dev/null <<\EOF
+NAME
+   dict(1sh) - Get definition of a word using DICT Protocol and curl(1)
+   (LICENSE:PD)
+SYNOPSIS
+   dict [--help|--version] [word]
+DESCRIPTION
+   Using the DICT Protocol as described in RFC2229 and the curl(1)
+   utility look up the given word in the dictionaries at dict://dict.org/.
+
+   With no options a table of the available dictionaries is produced.
+
+OPTIONS
+    --help,-h     display this help and exit
+    --version,-v  output version information and exit
+    word          word to look up in the dictionaries
+EXAMPLE
+  Sample usage:
+
+  Find the actual meaning of Bash in the "computer terms"
+  dictionary (search in the foldoc dictionary) :
+
+      > dict bash:foldoc  # just use dictionary "folddoc"
+
+      > dict bash   # to search all the dictionaries
+      > dict bash:  # to use just the default dictionary
+
+  Other examples of using specific dictionaries
+      
+      > dict gold:elements     # just use the "elements" dictionary
+      > dict slovakia:world02
+
+EOF
+}
+################################################################################
+VERSION(){
+cat <<\EOF
+VERSION:  1.0, 19920421
+VERSION:  2.0, 20200331
+AUTHOR:   John S. Urban
+LICENSE:  Public Domain
+EOF
+}
+################################################################################
+USAGE(){
+printf "$0 : Usage: %s: [-h|-v] [word[:dictionary]]\n"
+}
+################################################################################
+#
+# parse options
+#
+# Transform long options to short by editing arguments
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    '--help'|'-help')       set -- "$@" "-h"   ;;
+    '--version'|'-version') set -- "$@" "-v"   ;;
+    *)                      set -- "$@" "$arg" ;;
+  esac
+done
+# parse short options
+OPTERR=1
+while getopts hv PARAM "$@"
+do
+   case "$PARAM" in
+    h)   HELP; exit 0 ;;
+    v)   VERSION; exit 0;;
+    ?)   USAGE; exit 2;;
+   esac
+done
+shift $(($OPTIND - 1))
+###############################################################################
+#
+# main
+#
+WORD=$1
+WORD=$@
+for WORD in ${*:-''}
+   do
+   case "$1" in
+   '')
+      # list all the dictionaries
+      (
+         exec 2>&1
+         echo 'LIST OF DICTIONARIES:'
+         curl --silent dict://dict.org/show:db
+      )|more
+   ;;
+   *:*)
+      curl --silent dict://dict.org/d:"$WORD"|more
+   ;;
+   *)
+      curl --silent dict://dict.org/d:"$WORD:all"|more
+   ;;
+   esac
+done
+###############################################################################
+exit
+################################################################################
