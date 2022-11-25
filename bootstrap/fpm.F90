@@ -1,121 +1,6 @@
 #undef linux 
 #undef unix
 #define FPM_BOOTSTRAP
-!>>>>> ././src/fpm_backend_console.f90
-!># Build Backend Console
-!> This module provides a lightweight implementation for printing to the console
-!> and updating previously-printed console lines. It used by `[[fpm_backend_output]]`
-!> for pretty-printing build status and progress.
-!>
-!> @note The implementation for updating previous lines relies on no other output
-!> going to `stdout`/`stderr` except through the `console_t` object provided.
-!>
-!> @note All write statements to `stdout` are enclosed within OpenMP `critical` regions
-!>
-module fpm_backend_console
-use iso_fortran_env, only: stdout=>output_unit
-implicit none
-
-private
-public :: console_t
-public :: LINE_RESET
-public :: COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-
-character(len=*), parameter :: ESC = char(27)
-!> Escape code for erasing current line
-character(len=*), parameter :: LINE_RESET = ESC//"[2K"//ESC//"[1G"
-!> Escape code for moving up one line
-character(len=*), parameter :: LINE_UP = ESC//"[1A"
-!> Escape code for moving down one line
-character(len=*), parameter :: LINE_DOWN = ESC//"[1B"
-!> Escape code for red foreground color
-character(len=*), parameter :: COLOR_RED = ESC//"[31m"
-!> Escape code for green foreground color
-character(len=*), parameter :: COLOR_GREEN = ESC//"[32m"
-!> Escape code for yellow foreground color
-character(len=*), parameter :: COLOR_YELLOW = ESC//"[93m"
-!> Escape code to reset foreground color
-character(len=*), parameter :: COLOR_RESET = ESC//"[0m"
-
-!> Console object
-type console_t
-    !> Number of lines printed
-    integer :: n_line = 1
-
-contains
-    !> Write a single line to the console
-    procedure :: write_line => console_write_line
-    !> Update a previously-written console line
-    procedure :: update_line => console_update_line
-end type console_t
-
-contains
-
-!> Write a single line to the standard output
-subroutine console_write_line(console,str,line,advance)
-    !> Console object
-    class(console_t), intent(inout) :: console
-    !> String to write
-    character(*), intent(in) :: str
-    !> Integer needed to later update console line
-    integer, intent(out), optional :: line
-    !> Advancing output (print newline?)
-    logical, intent(in), optional :: advance
-
-    character(3) :: adv
-
-    adv = "yes"
-    if (present(advance)) then
-        if (.not.advance) then
-            adv = "no"
-        end if
-    end if
-
-    !$omp critical
-
-    if (present(line)) then
-        line = console%n_line
-    end if
-    
-    write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
-
-    if (adv=="yes") then
-        console%n_line = console%n_line + 1
-    end if
-
-    !$omp end critical
-
-end subroutine console_write_line
-
-!> Overwrite a previously-written line in standard output
-subroutine console_update_line(console,line_no,str)
-    !> Console object
-    class(console_t), intent(in) :: console
-    !> Integer output from `[[console_write_line]]`
-    integer, intent(in) :: line_no
-    !> New string to overwrite line
-    character(*), intent(in) :: str
-
-    integer :: n
-
-    !$omp critical
-
-    n = console%n_line - line_no
-
-    ! Step back to line
-    write(stdout,'(A)',advance="no") repeat(LINE_UP,n)//LINE_RESET
-
-    write(stdout,'(A)',advance="no") str
-
-    ! Step forward to end
-    write(stdout,'(A)',advance="no") repeat(LINE_DOWN,n)//LINE_RESET
-
-    !$omp end critical
-
-end subroutine console_update_line
-
-end module fpm_backend_console 
- 
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -1234,6 +1119,121 @@ end subroutine notabs
 end module fpm_strings
  
  
+!>>>>> ././src/fpm_backend_console.f90
+!># Build Backend Console
+!> This module provides a lightweight implementation for printing to the console
+!> and updating previously-printed console lines. It used by `[[fpm_backend_output]]`
+!> for pretty-printing build status and progress.
+!>
+!> @note The implementation for updating previous lines relies on no other output
+!> going to `stdout`/`stderr` except through the `console_t` object provided.
+!>
+!> @note All write statements to `stdout` are enclosed within OpenMP `critical` regions
+!>
+module fpm_backend_console
+use iso_fortran_env, only: stdout=>output_unit
+implicit none
+
+private
+public :: console_t
+public :: LINE_RESET
+public :: COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
+
+character(len=*), parameter :: ESC = char(27)
+!> Escape code for erasing current line
+character(len=*), parameter :: LINE_RESET = ESC//"[2K"//ESC//"[1G"
+!> Escape code for moving up one line
+character(len=*), parameter :: LINE_UP = ESC//"[1A"
+!> Escape code for moving down one line
+character(len=*), parameter :: LINE_DOWN = ESC//"[1B"
+!> Escape code for red foreground color
+character(len=*), parameter :: COLOR_RED = ESC//"[31m"
+!> Escape code for green foreground color
+character(len=*), parameter :: COLOR_GREEN = ESC//"[32m"
+!> Escape code for yellow foreground color
+character(len=*), parameter :: COLOR_YELLOW = ESC//"[93m"
+!> Escape code to reset foreground color
+character(len=*), parameter :: COLOR_RESET = ESC//"[0m"
+
+!> Console object
+type console_t
+    !> Number of lines printed
+    integer :: n_line = 1
+
+contains
+    !> Write a single line to the console
+    procedure :: write_line => console_write_line
+    !> Update a previously-written console line
+    procedure :: update_line => console_update_line
+end type console_t
+
+contains
+
+!> Write a single line to the standard output
+subroutine console_write_line(console,str,line,advance)
+    !> Console object
+    class(console_t), intent(inout) :: console
+    !> String to write
+    character(*), intent(in) :: str
+    !> Integer needed to later update console line
+    integer, intent(out), optional :: line
+    !> Advancing output (print newline?)
+    logical, intent(in), optional :: advance
+
+    character(3) :: adv
+
+    adv = "yes"
+    if (present(advance)) then
+        if (.not.advance) then
+            adv = "no"
+        end if
+    end if
+
+    !$omp critical
+
+    if (present(line)) then
+        line = console%n_line
+    end if
+    
+    write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
+
+    if (adv=="yes") then
+        console%n_line = console%n_line + 1
+    end if
+
+    !$omp end critical
+
+end subroutine console_write_line
+
+!> Overwrite a previously-written line in standard output
+subroutine console_update_line(console,line_no,str)
+    !> Console object
+    class(console_t), intent(in) :: console
+    !> Integer output from `[[console_write_line]]`
+    integer, intent(in) :: line_no
+    !> New string to overwrite line
+    character(*), intent(in) :: str
+
+    integer :: n
+
+    !$omp critical
+
+    n = console%n_line - line_no
+
+    ! Step back to line
+    write(stdout,'(A)',advance="no") repeat(LINE_UP,n)//LINE_RESET
+
+    write(stdout,'(A)',advance="no") str
+
+    ! Step forward to end
+    write(stdout,'(A)',advance="no") repeat(LINE_DOWN,n)//LINE_RESET
+
+    !$omp end critical
+
+end subroutine console_update_line
+
+end module fpm_backend_console 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/constants.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -2107,13 +2107,12 @@ end subroutine check_commandline
 !!  that is, an option in a response file cannot be given the value "@NAME2"
 !!  to call another response file.
 !!
-!!  Primarily to support MSWindows Powershell, ":NAME" may be used instead
-!!  of "@NAME" as "@" is a special character in Powershell, and requires
-!!  being quoted with a grave character.
-!!
-!!  Note that more than one response name may appear on a command line.
+!!  More than one response name may appear on a command line.
 !!
 !!  They are case-sensitive names.
+!!
+!!  Note "@" s a special character in Powershell, and requires being escaped
+!!  with a grave character.
 !!
 !!   LOCATING RESPONSE FILES
 !!
@@ -2566,7 +2565,7 @@ integer                       :: j
    ! look for @NAME if CLI_RESPONSE_FILE=.TRUE. AND LOAD THEM
    do i = 1, command_argument_count()
       call get_command_argument(i, cmdarg)
-      if(scan(adjustl(cmdarg(1:1)),'@:')  ==  1)then
+      if(scan(adjustl(cmdarg(1:1)),'@')  ==  1)then
          call get_prototype(cmdarg,prototype)
          call split(prototype,array)
          ! assume that if using subcommands first word not starting with dash is the subcommand
@@ -3229,11 +3228,14 @@ end subroutine prototype_and_cmd_args_to_nlist
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
 subroutine expand_response(name)
-character(len=*),intent(in) :: name
+character(len=*),intent(in)  :: name
 character(len=:),allocatable :: prototype
-logical :: hold
+logical                      :: hold
+
    if(debug_m_cli2)write(*,gen)'<DEBUG>EXPAND_RESPONSE:START:NAME=',name
+
    call get_prototype(name,prototype)
+
    if(prototype /= '')then
       hold=G_append
       G_append=.false.
@@ -3241,7 +3243,9 @@ logical :: hold
       call prototype_to_dictionary(prototype)       ! build dictionary from prototype
       G_append=hold
    endif
+
    if(debug_m_cli2)write(*,gen)'<DEBUG>EXPAND_RESPONSE:END'
+
 end subroutine expand_response
 !===================================================================================================================================
 subroutine get_prototype(name,prototype) ! process @name abbreviations
@@ -3258,6 +3262,7 @@ character(len=4096)                      :: line !x! assuming input never this l
 character(len=256)                       :: message
 character(len=:),allocatable             :: array(:) ! output array of tokens
 integer                                  :: lines_processed
+
    lines_processed=0
    plain_name=name//'  '
    plain_name=trim(name(2:))
@@ -3558,6 +3563,8 @@ logical :: with_suffix
       call split(path,file_parts,delimiters='\/.')
       if(size(file_parts) >= 2)then
          base = trim(file_parts(size(file_parts)-1))
+      elseif(size(file_parts) == 1)then
+         base = trim(file_parts(1))
       else
          base = ''
       endif
@@ -3819,7 +3826,7 @@ logical                      :: next_mandatory
             args=[character(len=imax) :: args,current_argument]
          else
             imax=max(len(unnamed),len(current_argument))
-            if(scan(current_argument//' ','@:') == 1.and.G_response)then
+            if(scan(current_argument//' ','@') == 1.and.G_response)then
                if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:1:CALL EXPAND_RESPONSE:CURRENT_ARGUMENT=',current_argument
                call expand_response(current_argument)
             else
@@ -3846,7 +3853,7 @@ logical                      :: next_mandatory
                   args=[character(len=imax) :: args,current_argument]
                else
                   imax=max(len(unnamed),len(current_argument))
-                  if(scan(current_argument//' ','@:') == 1.and.G_response)then
+                  if(scan(current_argument//' ','@') == 1.and.G_response)then
                if(debug_m_cli2)write(*,gen)'<DEBUG>CMD_ARGS_TO_DICTIONARY:2:CALL EXPAND_RESPONSE:CURRENT_ARGUMENT=',current_argument
                      call expand_response(current_argument)
                   else
@@ -4897,9 +4904,6 @@ class(*),intent(in)           :: g0
 class(*),intent(in),optional  :: g1, g2, g3, g4, g5, g6, g7, g8 ,g9
 class(*),intent(in),optional  :: ga, gb, gc, gd, ge, gf, gg, gh ,gi, gj
 character(len=*),intent(in),optional :: sep
-if(debug_m_cli2)write(*,*)'<DEBUG>JOURNAL:',present(g1)
-if(debug_m_cli2)write(*,*)'<DEBUG>JOURNAL:',present(g2)
-if(debug_m_cli2)write(*,*)'<DEBUG>JOURNAL:',present(sep)
 write(*,'(a)')str(g0, g1, g2, g3, g4, g5, g6, g7, g8, g9, ga, gb, gc, gd, ge, gf, gg, gh, gi, gj, sep)
 end subroutine journal
 !===================================================================================================================================
@@ -4999,7 +5003,6 @@ character(len=:), allocatable :: msg_scalar
 character(len=4096)           :: line
 integer                       :: istart
 integer                       :: increment
-   if(debug_m_cli2)write(*,gen)'<DEBUG>:MSG_SCALAR'
    if(present(sep))then
       sep_local=sep
       increment=len(sep_local)+1
@@ -5007,13 +5010,10 @@ integer                       :: increment
       sep_local=' '
       increment=2
    endif
-   if(debug_m_cli2)write(*,gen)'<DEBUG>:MSG_SCALAR'
 
    istart=1
    line=''
-   if(debug_m_cli2)write(*,gen)'<DEBUG>:MSG_SCALAR:CALL GENERIC:GENERIC0'
    if(present(generic0))call print_generic(generic0)
-   if(debug_m_cli2)write(*,gen)'<DEBUG>:MSG_SCALAR:CALL GENERIC:GENERIC1'
    if(present(generic1))call print_generic(generic1)
    if(present(generic2))call print_generic(generic2)
    if(present(generic3))call print_generic(generic3)
@@ -5039,8 +5039,6 @@ contains
 subroutine print_generic(generic)
 use,intrinsic :: iso_fortran_env, only : int8, int16, int32, int64, real32, real64, real128
 class(*),intent(in) :: generic
-   if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:START'
-   if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:LINE',trim(line)
    select type(generic)
       type is (integer(kind=int8));     write(line(istart:),'(i0)') generic
       type is (integer(kind=int16));    write(line(istart:),'(i0)') generic
@@ -5048,19 +5046,14 @@ class(*),intent(in) :: generic
       type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
       type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
       type is (real(kind=real64))
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:REAL64'
          write(line(istart:),'(1pg0)') generic
       !x! DOES NOT WORK WITH NVFORTRAN: type is (real(kind=real128));     write(line(istart:),'(1pg0)') generic
       type is (logical)
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:REAL64'
          write(line(istart:),'(l1)') generic
       type is (character(len=*))
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:CHARACTER'
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:ISTART:',istart
          write(line(istart:),'(a)') trim(generic)
       type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
    end select
-   if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:START'
    istart=len_trim(line)+increment
    line=trim(line)//sep_local
 end subroutine print_generic
@@ -5121,8 +5114,6 @@ integer :: i
       !x! DOES NOT WORK WITH ifort:     type is (real(kind=real256));     write(error_unit,'(1pg0)',advance='no') generic
       type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
       type is (character(len=*))
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:CHARACTER'
-         if(debug_m_cli2)write(*,gen)'<DEBUG>PRINT_GENERIC:ISTART:',istart
          write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
       type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
       class default
@@ -10966,7 +10957,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.7.1, alpha', new M_CLI2                    &
+         &  'Version:     0.7.0, alpha,bootstrap',                     &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -12057,274 +12048,6 @@ contains
 end module fpm_command_line
  
  
-!>>>>> ././src/fpm/git.f90
-!> Implementation for interacting with git repositories.
-module fpm_git
-    use fpm_error, only: error_t, fatal_error
-    use fpm_filesystem, only : get_temp_filename, getline, join_path
-    implicit none
-
-    public :: git_target_t
-    public :: git_target_default, git_target_branch, git_target_tag, &
-        & git_target_revision
-    public :: git_revision
-
-
-    !> Possible git target
-    type :: enum_descriptor
-
-        !> Default target
-        integer :: default = 200
-
-        !> Branch in git repository
-        integer :: branch = 201
-
-        !> Tag in git repository
-        integer :: tag = 202
-
-        !> Commit hash
-        integer :: revision = 203
-
-    end type enum_descriptor
-
-    !> Actual enumerator for descriptors
-    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
-
-
-    !> Description of an git target
-    type :: git_target_t
-
-        !> Kind of the git target
-        integer, private :: descriptor = git_descriptor%default
-
-        !> Target URL of the git repository
-        character(len=:), allocatable :: url
-
-        !> Additional descriptor of the git object
-        character(len=:), allocatable :: object
-
-    contains
-
-        !> Fetch and checkout in local directory
-        procedure :: checkout
-
-        !> Show information on instance
-        procedure :: info
-
-    end type git_target_t
-
-
-contains
-
-
-    !> Default target
-    function git_target_default(url) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%default
-        self%url = url
-
-    end function git_target_default
-
-
-    !> Target a branch in the git repository
-    function git_target_branch(url, branch) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Name of the branch of interest
-        character(len=*), intent(in) :: branch
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%branch
-        self%url = url
-        self%object = branch
-
-    end function git_target_branch
-
-
-    !> Target a specific git revision
-    function git_target_revision(url, sha1) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Commit hash of interest
-        character(len=*), intent(in) :: sha1
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%revision
-        self%url = url
-        self%object = sha1
-
-    end function git_target_revision
-
-
-    !> Target a git tag
-    function git_target_tag(url, tag) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Tag name of interest
-        character(len=*), intent(in) :: tag
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%tag
-        self%url = url
-        self%object = tag
-
-    end function git_target_tag
-
-
-    subroutine checkout(self, local_path, error)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat
-        character(len=:), allocatable :: object, workdir
-
-        if (allocated(self%object)) then
-            object = self%object
-        else
-            object = 'HEAD'
-        end if
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-
-        call execute_command_line("git init "//local_path, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while initiating git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
-                                  self%url//" "//object, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while fetching git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while checking out git repository for remote dependency')
-            return
-        end if
-
-    end subroutine checkout
-
-
-    subroutine git_revision(local_path, object, error)
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Git object reference
-        character(len=:), allocatable, intent(out) :: object
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat, unit, istart, iend
-        character(len=:), allocatable :: temp_file, line, iomsg, workdir
-        character(len=*), parameter :: hexdigits = '0123456789abcdef'
-
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-        allocate(temp_file, source=get_temp_filename())
-        line = "git "//workdir//" log -n 1 > "//temp_file
-        call execute_command_line(line, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error, "Error while retrieving commit information")
-            return
-        end if
-
-        open(file=temp_file, newunit=unit)
-        call getline(unit, line, stat, iomsg)
-
-        if (stat /= 0) then
-            call fatal_error(error, iomsg)
-            return
-        end if
-        close(unit, status="delete")
-
-        ! Tokenize:
-        ! commit 0123456789abcdef (HEAD, ...)
-        istart = scan(line, ' ') + 1
-        iend = verify(line(istart:), hexdigits) + istart - 1
-        if (iend < istart) iend = len(line)
-        object = line(istart:iend)
-
-    end subroutine git_revision
-
-
-    !> Show information on git target
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Git target"
-        if (allocated(self%url)) then
-            write(unit, fmt) "- URL", self%url
-        end if
-        if (allocated(self%object)) then
-            select case(self%descriptor)
-            case default
-                write(unit, fmt) "- object", self%object
-            case(git_descriptor%tag)
-                write(unit, fmt) "- tag", self%object
-            case(git_descriptor%branch)
-                write(unit, fmt) "- branch", self%object
-            case(git_descriptor%revision)
-                write(unit, fmt) "- sha1", self%object
-            end select
-        end if
-
-    end subroutine info
-
-
-end module fpm_git
- 
- 
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
 !>
@@ -12638,6 +12361,274 @@ contains
 end module fpm_installer
  
  
+!>>>>> ././src/fpm/git.f90
+!> Implementation for interacting with git repositories.
+module fpm_git
+    use fpm_error, only: error_t, fatal_error
+    use fpm_filesystem, only : get_temp_filename, getline, join_path
+    implicit none
+
+    public :: git_target_t
+    public :: git_target_default, git_target_branch, git_target_tag, &
+        & git_target_revision
+    public :: git_revision
+
+
+    !> Possible git target
+    type :: enum_descriptor
+
+        !> Default target
+        integer :: default = 200
+
+        !> Branch in git repository
+        integer :: branch = 201
+
+        !> Tag in git repository
+        integer :: tag = 202
+
+        !> Commit hash
+        integer :: revision = 203
+
+    end type enum_descriptor
+
+    !> Actual enumerator for descriptors
+    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
+
+
+    !> Description of an git target
+    type :: git_target_t
+
+        !> Kind of the git target
+        integer, private :: descriptor = git_descriptor%default
+
+        !> Target URL of the git repository
+        character(len=:), allocatable :: url
+
+        !> Additional descriptor of the git object
+        character(len=:), allocatable :: object
+
+    contains
+
+        !> Fetch and checkout in local directory
+        procedure :: checkout
+
+        !> Show information on instance
+        procedure :: info
+
+    end type git_target_t
+
+
+contains
+
+
+    !> Default target
+    function git_target_default(url) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%default
+        self%url = url
+
+    end function git_target_default
+
+
+    !> Target a branch in the git repository
+    function git_target_branch(url, branch) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Name of the branch of interest
+        character(len=*), intent(in) :: branch
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%branch
+        self%url = url
+        self%object = branch
+
+    end function git_target_branch
+
+
+    !> Target a specific git revision
+    function git_target_revision(url, sha1) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Commit hash of interest
+        character(len=*), intent(in) :: sha1
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%revision
+        self%url = url
+        self%object = sha1
+
+    end function git_target_revision
+
+
+    !> Target a git tag
+    function git_target_tag(url, tag) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Tag name of interest
+        character(len=*), intent(in) :: tag
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%tag
+        self%url = url
+        self%object = tag
+
+    end function git_target_tag
+
+
+    subroutine checkout(self, local_path, error)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat
+        character(len=:), allocatable :: object, workdir
+
+        if (allocated(self%object)) then
+            object = self%object
+        else
+            object = 'HEAD'
+        end if
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+
+        call execute_command_line("git init "//local_path, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while initiating git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
+                                  self%url//" "//object, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while fetching git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while checking out git repository for remote dependency')
+            return
+        end if
+
+    end subroutine checkout
+
+
+    subroutine git_revision(local_path, object, error)
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Git object reference
+        character(len=:), allocatable, intent(out) :: object
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat, unit, istart, iend
+        character(len=:), allocatable :: temp_file, line, iomsg, workdir
+        character(len=*), parameter :: hexdigits = '0123456789abcdef'
+
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+        allocate(temp_file, source=get_temp_filename())
+        line = "git "//workdir//" log -n 1 > "//temp_file
+        call execute_command_line(line, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error, "Error while retrieving commit information")
+            return
+        end if
+
+        open(file=temp_file, newunit=unit)
+        call getline(unit, line, stat, iomsg)
+
+        if (stat /= 0) then
+            call fatal_error(error, iomsg)
+            return
+        end if
+        close(unit, status="delete")
+
+        ! Tokenize:
+        ! commit 0123456789abcdef (HEAD, ...)
+        istart = scan(line, ' ') + 1
+        iend = verify(line(istart:), hexdigits) + istart - 1
+        if (iend < istart) iend = len(line)
+        object = line(istart:iend)
+
+    end subroutine git_revision
+
+
+    !> Show information on git target
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Git target"
+        if (allocated(self%url)) then
+            write(unit, fmt) "- URL", self%url
+        end if
+        if (allocated(self%object)) then
+            select case(self%descriptor)
+            case default
+                write(unit, fmt) "- object", self%object
+            case(git_descriptor%tag)
+                write(unit, fmt) "- tag", self%object
+            case(git_descriptor%branch)
+                write(unit, fmt) "- branch", self%object
+            case(git_descriptor%revision)
+                write(unit, fmt) "- sha1", self%object
+            end select
+        end if
+
+    end subroutine info
+
+
+end module fpm_git
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -12786,6 +12777,84 @@ end function match_key
 
 
 end module tomlf_type_value
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> TOML key-value pair
+module tomlf_type_keyval
+   use tomlf_constants, only : tfc
+   use tomlf_type_value, only : toml_value, toml_visitor
+   implicit none
+   private
+
+   public :: toml_keyval, new_keyval, new
+
+
+   !> TOML key-value pair
+   type, extends(toml_value) :: toml_keyval
+
+      !> Raw content of the TOML value
+      character(kind=tfc, len=:), allocatable :: raw
+
+   contains
+
+      !> Release allocation hold by TOML key-value pair
+      procedure :: destroy
+
+   end type toml_keyval
+
+
+   !> Overloaded constructor for TOML values
+   interface new
+      module procedure :: new_keyval
+   end interface
+
+
+contains
+
+
+!> Constructor to create a new TOML key-value pair
+subroutine new_keyval(self)
+
+   !> Instance of the TOML key-value pair
+   type(toml_keyval), intent(out) :: self
+
+   associate(self => self); end associate
+
+end subroutine new_keyval
+
+
+!> Deconstructor to cleanup allocations (optional)
+subroutine destroy(self)
+
+   !> Instance of the TOML key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   if (allocated(self%key)) then
+      deallocate(self%key)
+   end if
+
+   if (allocated(self%raw)) then
+      deallocate(self%raw)
+   end if
+
+end subroutine destroy
+
+
+end module tomlf_type_keyval
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/base.f90
@@ -12974,84 +13043,6 @@ module tomlf_structure_base
 
 
 end module tomlf_structure_base
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> TOML key-value pair
-module tomlf_type_keyval
-   use tomlf_constants, only : tfc
-   use tomlf_type_value, only : toml_value, toml_visitor
-   implicit none
-   private
-
-   public :: toml_keyval, new_keyval, new
-
-
-   !> TOML key-value pair
-   type, extends(toml_value) :: toml_keyval
-
-      !> Raw content of the TOML value
-      character(kind=tfc, len=:), allocatable :: raw
-
-   contains
-
-      !> Release allocation hold by TOML key-value pair
-      procedure :: destroy
-
-   end type toml_keyval
-
-
-   !> Overloaded constructor for TOML values
-   interface new
-      module procedure :: new_keyval
-   end interface
-
-
-contains
-
-
-!> Constructor to create a new TOML key-value pair
-subroutine new_keyval(self)
-
-   !> Instance of the TOML key-value pair
-   type(toml_keyval), intent(out) :: self
-
-   associate(self => self); end associate
-
-end subroutine new_keyval
-
-
-!> Deconstructor to cleanup allocations (optional)
-subroutine destroy(self)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   if (allocated(self%key)) then
-      deallocate(self%key)
-   end if
-
-   if (allocated(self%raw)) then
-      deallocate(self%raw)
-   end if
-
-end subroutine destroy
-
-
-end module tomlf_type_keyval
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/sort.f90
@@ -14847,604 +14838,6 @@ end subroutine resize
 end module tomlf_ser
  
  
-!>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Functions to build a TOML values
-!>
-!> The build module defines an interface to work with TOML values instead
-!> of accessing the raw value directly. Both setter and getter routines defined
-!> here are rarely needed in any user context, but serve as a basic building
-!> block to define uniform access methods for TOML tables and arrays.
-module tomlf_build_keyval
-   use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
-      & tf_sp, tf_dp, TOML_NEWLINE
-   use tomlf_error, only : toml_stat
-   use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
-      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
-   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
-      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp, &
-      & toml_raw_verify_string, toml_escape_string
-   implicit none
-   private
-
-   public :: get_value, set_value
-
-
-   !> Setter functions to manipulate TOML values
-   interface set_value
-      module procedure :: set_value_float_sp
-      module procedure :: set_value_float_dp
-      module procedure :: set_value_integer_i1
-      module procedure :: set_value_integer_i2
-      module procedure :: set_value_integer_i4
-      module procedure :: set_value_integer_i8
-      module procedure :: set_value_bool
-      module procedure :: set_value_string
-   end interface set_value
-
-
-   !> Getter functions to manipulate TOML values
-   interface get_value
-      module procedure :: get_value_float_sp
-      module procedure :: get_value_float_dp
-      module procedure :: get_value_integer_i1
-      module procedure :: get_value_integer_i2
-      module procedure :: get_value_integer_i4
-      module procedure :: get_value_integer_i8
-      module procedure :: get_value_bool
-      module procedure :: get_value_string
-   end interface get_value
-
-
-   !> Length for the static character variables
-   integer, parameter :: buffersize = 128
-
-
-contains
-
-
-!> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_value_float_sp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Real value
-   real(tf_sp), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   real(tfr) :: dummy
-
-   istat = toml_raw_to_float(self%raw, dummy)
-   if (istat) then
-      val = real(dummy, tf_sp)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_float_sp
-
-
-!> Retrieve TOML value as double precision float
-subroutine get_value_float_dp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Real value
-   real(tf_dp), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   real(tfr) :: dummy
-
-   istat = toml_raw_to_float(self%raw, dummy)
-   if (istat) then
-      val = real(dummy, tf_dp)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_float_dp
-
-
-!> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_value_integer_i1(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i1), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i1)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i1
-
-
-!> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_value_integer_i2(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i2), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i2)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i2
-
-
-!> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_value_integer_i4(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i4), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i4)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i4
-
-
-!> Retrieve TOML value as eight byte integer
-subroutine get_value_integer_i8(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Integer value
-   integer(tf_i8), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-   integer(tfi) :: dummy
-
-   istat = toml_raw_to_integer(self%raw, dummy)
-   if (istat) then
-      val = int(dummy, tf_i8)
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_integer_i8
-
-
-!> Retrieve TOML value as logical
-subroutine get_value_bool(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Boolean value
-   logical, intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-
-   istat = toml_raw_to_bool(self%raw, val)
-   if (istat) then
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_bool
-
-
-!> Retrieve TOML value as deferred-length character
-subroutine get_value_string(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> String value
-   character(kind=tfc, len=:), allocatable, intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   logical :: istat
-
-   istat = toml_raw_to_string(self%raw, val)
-   if (istat) then
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_value_string
-
-
-!> Set TOML value to single precision float
-subroutine set_value_float_sp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Real value
-   real(tf_sp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(es30.6)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_float_sp
-
-
-!> Set TOML value to double precision float
-subroutine set_value_float_dp(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Real value
-   real(tf_dp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(es30.16)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_float_dp
-
-
-!> Set TOML value to one byte integer
-subroutine set_value_integer_i1(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i1), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i1
-
-
-!> Set TOML value to two byte integer
-subroutine set_value_integer_i2(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i2), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i2
-
-
-!> Set TOML value to four byte integer
-subroutine set_value_integer_i4(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i4), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i4
-
-
-!> Set TOML value to eight byte integer
-subroutine set_value_integer_i8(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Integer value
-   integer(tf_i8), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(kind=tfc, len=buffersize) :: tmp
-   integer :: istat
-
-   write(tmp, '(i0)', iostat=istat) val
-   if (istat == 0) then
-      self%raw = trim(adjustl(tmp))
-      if (present(stat)) stat = toml_stat%success
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_value_integer_i8
-
-
-!> Set TOML value to logical
-subroutine set_value_bool(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Boolean value
-   logical, intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   if (val) then
-      self%raw = 'true'
-   else
-      self%raw = 'false'
-   end if
-
-   if (present(stat)) stat = toml_stat%success
-
-end subroutine set_value_bool
-
-
-!> Set TOML value to deferred-length character
-subroutine set_value_string(self, val, stat)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> String value
-   character(kind=tfc, len=*), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   character(len=:), allocatable :: escaped
-
-   if (toml_raw_verify_string(val)) then
-      self%raw = val
-   else
-      call toml_escape_string(val, self%raw, .true.)
-   end if
-
-   if (present(stat)) stat = toml_stat%success
-
-end subroutine set_value_string
-
-
-end module tomlf_build_keyval
- 
- 
-!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Merge TOML data structures.
-!>
-!> Merge policy:
-!> - copy key-value pair in case it is not present in table
-!> - copy subtable in case it is not present in table
-!> - copy array in case it is not present in table
-!> - merge subtable in case it is present in table
-!> - append array in case it is present in table
-module tomlf_build_merge
-   use tomlf_constants, only : tfc
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
-      & toml_key, len
-   implicit none
-   private
-
-   public :: merge_table, merge_array
-
-
-contains
-
-
-!> Merge TOML tables by appending their values
-recursive subroutine merge_table(lhs, rhs)
-
-   !> Instance of table to merge into
-   class(toml_table), intent(inout) :: lhs
-
-   !> Instance of table to be merged
-   class(toml_table), intent(inout) :: rhs
-
-   type(toml_key), allocatable :: list(:)
-   class(toml_value), pointer :: ptr1, ptr2
-   class(toml_value), allocatable :: tmp
-   logical :: has_key
-   integer :: i, n, stat
-
-   call rhs%get_keys(list)
-   n = size(list, 1)
-
-   do i = 1, n
-      if (allocated(tmp)) deallocate(tmp)
-      call rhs%get(list(i)%key, ptr1)
-      has_key = lhs%has_key(list(i)%key)
-      select type(ptr1)
-      class is(toml_keyval)
-         if (.not.has_key) then
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_array)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_array)
-               call merge_array(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      class is(toml_table)
-         if (has_key) then
-            call lhs%get(list(i)%key, ptr2)
-            select type(ptr2)
-            class is(toml_table)
-               call merge_table(ptr2, ptr1)
-            end select
-         else
-            allocate(tmp, source=ptr1)
-            call lhs%push_back(tmp, stat)
-         end if
-      end select
-   end do
-
-end subroutine merge_table
-
-
-!> Append values from one TOML array to another
-recursive subroutine merge_array(lhs, rhs)
-
-   !> Instance of array to merge into
-   class(toml_array), intent(inout) :: lhs
-
-   !> Instance of array to be merged
-   class(toml_array), intent(inout) :: rhs
-
-   class(toml_value), pointer :: ptr
-   class(toml_value), allocatable :: tmp
-   integer :: n, i, stat
-
-   n = len(rhs)
-
-   do i = 1, n
-      call rhs%get(i, ptr)
-      if (allocated(tmp)) deallocate(tmp)
-      allocate(tmp, source=ptr)
-      call lhs%push_back(tmp, stat)
-   end do
-
-end subroutine merge_array
-
-
-end module tomlf_build_merge
- 
- 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/tokenizer.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -16191,6 +15584,909 @@ end subroutine next
 
 
 end module tomlf_de_tokenizer
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Merge TOML data structures.
+!>
+!> Merge policy:
+!> - copy key-value pair in case it is not present in table
+!> - copy subtable in case it is not present in table
+!> - copy array in case it is not present in table
+!> - merge subtable in case it is present in table
+!> - append array in case it is present in table
+module tomlf_build_merge
+   use tomlf_constants, only : tfc
+   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
+      & toml_key, len
+   implicit none
+   private
+
+   public :: merge_table, merge_array
+
+
+contains
+
+
+!> Merge TOML tables by appending their values
+recursive subroutine merge_table(lhs, rhs)
+
+   !> Instance of table to merge into
+   class(toml_table), intent(inout) :: lhs
+
+   !> Instance of table to be merged
+   class(toml_table), intent(inout) :: rhs
+
+   type(toml_key), allocatable :: list(:)
+   class(toml_value), pointer :: ptr1, ptr2
+   class(toml_value), allocatable :: tmp
+   logical :: has_key
+   integer :: i, n, stat
+
+   call rhs%get_keys(list)
+   n = size(list, 1)
+
+   do i = 1, n
+      if (allocated(tmp)) deallocate(tmp)
+      call rhs%get(list(i)%key, ptr1)
+      has_key = lhs%has_key(list(i)%key)
+      select type(ptr1)
+      class is(toml_keyval)
+         if (.not.has_key) then
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_array)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_array)
+               call merge_array(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      class is(toml_table)
+         if (has_key) then
+            call lhs%get(list(i)%key, ptr2)
+            select type(ptr2)
+            class is(toml_table)
+               call merge_table(ptr2, ptr1)
+            end select
+         else
+            allocate(tmp, source=ptr1)
+            call lhs%push_back(tmp, stat)
+         end if
+      end select
+   end do
+
+end subroutine merge_table
+
+
+!> Append values from one TOML array to another
+recursive subroutine merge_array(lhs, rhs)
+
+   !> Instance of array to merge into
+   class(toml_array), intent(inout) :: lhs
+
+   !> Instance of array to be merged
+   class(toml_array), intent(inout) :: rhs
+
+   class(toml_value), pointer :: ptr
+   class(toml_value), allocatable :: tmp
+   integer :: n, i, stat
+
+   n = len(rhs)
+
+   do i = 1, n
+      call rhs%get(i, ptr)
+      if (allocated(tmp)) deallocate(tmp)
+      allocate(tmp, source=ptr)
+      call lhs%push_back(tmp, stat)
+   end do
+
+end subroutine merge_array
+
+
+end module tomlf_build_merge
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Functions to build a TOML values
+!>
+!> The build module defines an interface to work with TOML values instead
+!> of accessing the raw value directly. Both setter and getter routines defined
+!> here are rarely needed in any user context, but serve as a basic building
+!> block to define uniform access methods for TOML tables and arrays.
+module tomlf_build_keyval
+   use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
+      & tf_sp, tf_dp, TOML_NEWLINE
+   use tomlf_error, only : toml_stat
+   use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
+      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
+   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
+      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp, &
+      & toml_raw_verify_string, toml_escape_string
+   implicit none
+   private
+
+   public :: get_value, set_value
+
+
+   !> Setter functions to manipulate TOML values
+   interface set_value
+      module procedure :: set_value_float_sp
+      module procedure :: set_value_float_dp
+      module procedure :: set_value_integer_i1
+      module procedure :: set_value_integer_i2
+      module procedure :: set_value_integer_i4
+      module procedure :: set_value_integer_i8
+      module procedure :: set_value_bool
+      module procedure :: set_value_string
+   end interface set_value
+
+
+   !> Getter functions to manipulate TOML values
+   interface get_value
+      module procedure :: get_value_float_sp
+      module procedure :: get_value_float_dp
+      module procedure :: get_value_integer_i1
+      module procedure :: get_value_integer_i2
+      module procedure :: get_value_integer_i4
+      module procedure :: get_value_integer_i8
+      module procedure :: get_value_bool
+      module procedure :: get_value_string
+   end interface get_value
+
+
+   !> Length for the static character variables
+   integer, parameter :: buffersize = 128
+
+
+contains
+
+
+!> Retrieve TOML value as single precision float (might lose accuracy)
+subroutine get_value_float_sp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Real value
+   real(tf_sp), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   real(tfr) :: dummy
+
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
+      val = real(dummy, tf_sp)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_float_sp
+
+
+!> Retrieve TOML value as double precision float
+subroutine get_value_float_dp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Real value
+   real(tf_dp), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   real(tfr) :: dummy
+
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
+      val = real(dummy, tf_dp)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_float_dp
+
+
+!> Retrieve TOML value as one byte integer (might loose precision)
+subroutine get_value_integer_i1(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i1), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i1)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i1
+
+
+!> Retrieve TOML value as two byte integer (might loose precision)
+subroutine get_value_integer_i2(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i2), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i2)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i2
+
+
+!> Retrieve TOML value as four byte integer (might loose precision)
+subroutine get_value_integer_i4(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i4), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i4)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i4
+
+
+!> Retrieve TOML value as eight byte integer
+subroutine get_value_integer_i8(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Integer value
+   integer(tf_i8), intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+   integer(tfi) :: dummy
+
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
+      val = int(dummy, tf_i8)
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_integer_i8
+
+
+!> Retrieve TOML value as logical
+subroutine get_value_bool(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> Boolean value
+   logical, intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+
+   istat = toml_raw_to_bool(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_bool
+
+
+!> Retrieve TOML value as deferred-length character
+subroutine get_value_string(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(in) :: self
+
+   !> String value
+   character(kind=tfc, len=:), allocatable, intent(out) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   logical :: istat
+
+   istat = toml_raw_to_string(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine get_value_string
+
+
+!> Set TOML value to single precision float
+subroutine set_value_float_sp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Real value
+   real(tf_sp), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(es30.6)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_float_sp
+
+
+!> Set TOML value to double precision float
+subroutine set_value_float_dp(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Real value
+   real(tf_dp), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(es30.16)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_float_dp
+
+
+!> Set TOML value to one byte integer
+subroutine set_value_integer_i1(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i1), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i1
+
+
+!> Set TOML value to two byte integer
+subroutine set_value_integer_i2(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i2), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i2
+
+
+!> Set TOML value to four byte integer
+subroutine set_value_integer_i4(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i4), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i4
+
+
+!> Set TOML value to eight byte integer
+subroutine set_value_integer_i8(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Integer value
+   integer(tf_i8), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
+
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
+
+end subroutine set_value_integer_i8
+
+
+!> Set TOML value to logical
+subroutine set_value_bool(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> Boolean value
+   logical, intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   if (val) then
+      self%raw = 'true'
+   else
+      self%raw = 'false'
+   end if
+
+   if (present(stat)) stat = toml_stat%success
+
+end subroutine set_value_bool
+
+
+!> Set TOML value to deferred-length character
+subroutine set_value_string(self, val, stat)
+
+   !> Instance of the key-value pair
+   class(toml_keyval), intent(inout) :: self
+
+   !> String value
+   character(kind=tfc, len=*), intent(in) :: val
+
+   !> Status of operation
+   integer, intent(out), optional :: stat
+
+   character(len=:), allocatable :: escaped
+
+   if (toml_raw_verify_string(val)) then
+      self%raw = val
+   else
+      call toml_escape_string(val, self%raw, .true.)
+   end if
+
+   if (present(stat)) stat = toml_stat%success
+
+end subroutine set_value_string
+
+
+end module tomlf_build_keyval
+ 
+ 
+!>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Implementation of a tokenizer for character variables
+module tomlf_de_character
+   use tomlf_constants
+   use tomlf_error, only : syntax_error
+   use tomlf_de_tokenizer
+   use tomlf_utils
+   implicit none
+   private
+
+   public :: toml_character_tokenizer, new_character_tokenizer, new
+
+
+   !> Tokenizer for a sequence of characters
+   type, extends(toml_tokenizer) :: toml_character_tokenizer
+
+      !> Link to the input configuration.
+      character(len=:), pointer :: conf
+
+   contains
+
+      !> Return next token
+      procedure :: next_token
+
+   end type toml_character_tokenizer
+
+
+   interface new
+      module procedure :: new_character_tokenizer
+   end interface new
+
+
+contains
+
+
+!> Constructor for the deserializer implementation.
+subroutine new_character_tokenizer(de, conf)
+   type(toml_character_tokenizer), intent(out) :: de
+   character(len=*), intent(in), target :: conf
+   !> connect deserializer to configuration
+   de%conf => conf
+   de%line%ptr => conf
+   de%line%num = 1
+   !> first token is an artifical newline
+   de%tok = new_token(toml_tokentype%newline, de%conf, 0)
+end subroutine new_character_tokenizer
+
+
+!> Return next token
+subroutine next_token(de, dot_is_token)
+
+   !> Instance of the tokenizer
+   class(toml_character_tokenizer), intent(inout) :: de
+
+   !> Dot should be handled as token
+   logical, intent(in) :: dot_is_token
+
+   character(len=:), pointer :: ptr
+   integer :: i, skip
+   if (de%finished) return
+   ptr => de%tok%ptr
+
+   !> consume token
+   do i = 1, de%tok%len
+      de%line%pos = de%line%pos + 1
+      if (ptr(i:i) == TOML_NEWLINE) then
+         de%line%ptr => ptr(min(i+1, len(ptr)):)
+         de%line%num = de%line%num+1
+         de%line%pos = 1
+      end if
+   end do
+   ptr => ptr(de%tok%len+1:)
+
+   !> make next token
+   do while(len(ptr) > 0)
+      select case(ptr(1:1))
+      case('#')
+         i = index(ptr, TOML_NEWLINE)
+         if (i > 0) then
+            ptr => ptr(i:)
+            cycle
+         end if
+         exit
+      case('.')
+         if (dot_is_token) then
+            de%tok = new_token(toml_tokentype%dot, ptr, 1)
+            return
+         end if
+      case(','); de%tok = new_token(toml_tokentype%comma, ptr, 1); return
+      case('='); de%tok = new_token(toml_tokentype%equal, ptr, 1); return
+      case('{'); de%tok = new_token(toml_tokentype%lbrace, ptr, 1); return
+      case('}'); de%tok = new_token(toml_tokentype%rbrace, ptr, 1); return
+      case('['); de%tok = new_token(toml_tokentype%lbracket, ptr, 1); return
+      case(']'); de%tok = new_token(toml_tokentype%rbracket, ptr, 1); return
+      case(TOML_NEWLINE); de%tok = new_token(toml_tokentype%newline, ptr, 1); return
+      case(' ', char(9));
+         skip = verify(ptr, TOML_WHITESPACE)-1
+         de%tok = new_token(toml_tokentype%whitespace, ptr, skip)
+         return
+      end select
+
+      call scan_string(de, ptr, dot_is_token)
+      return
+   end do
+
+   !> return with EOF token
+   de%finished = .true.
+   de%tok = new_token(toml_tokentype%newline, ptr, 0)
+
+contains
+
+   subroutine scan_string(de, ptr, dot_is_token)
+   class(toml_character_tokenizer), intent(inout) :: de
+   character(len=:), pointer, intent(inout) :: ptr
+   logical, intent(in) :: dot_is_token
+   character(len=:), pointer :: orig
+   integer :: i, skip
+   integer :: hexreq
+   integer :: qcount
+   logical :: escape
+   orig => ptr
+
+   if (len(ptr) >= 6) then
+      if (ptr(1:3) == repeat(TOML_SQUOTE, 3)) then
+         ptr => ptr(4:)
+         i = index(ptr, repeat(TOML_SQUOTE, 3))
+         if (i == 0) then
+            call syntax_error(de%error, de%line, "unterminated triple-s-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, i+5)
+         return
+      end if
+
+      if (ptr(1:3) == repeat(TOML_DQUOTE, 3)) then
+         ptr => ptr(4:)
+         escape = .false.
+         hexreq = 0
+         qcount = 0
+         do i = 1, len(ptr)
+            if (escape) then
+               escape = .false.
+               if (ptr(i:i) == 'u') then
+                  hexreq = 4
+                  cycle
+               end if
+               if (ptr(i:i) == 'U') then
+                  hexreq = 8
+                  cycle
+               end if
+               if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+               ! allow for line ending backslash
+               skip = verify(ptr(i:), TOML_WHITESPACE)-1
+               if (ptr(i+skip:i+skip) == TOML_NEWLINE) cycle
+               call syntax_error(de%error, de%line, "bad escape char")
+               return
+            end if
+            if (hexreq > 0) then
+               hexreq = hexreq - 1
+               if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+               call syntax_error(de%error, de%line, "expect hex char")
+               return
+            end if
+            if (ptr(i:i) == TOML_DQUOTE) then
+               if (qcount < 5) then
+                  qcount = qcount + 1
+               else
+                  call syntax_error(de%error, de%line, "too many quotation marks")
+                  return
+               end if
+            else
+               if (qcount >= 3) then
+                  ptr => ptr(i:)
+                  exit
+               end if
+               qcount = 0
+            end if
+            if (ptr(i:i) == '\') then
+               escape = .true.
+               cycle
+            end if
+         end do
+         if (qcount < 3) then
+            call syntax_error(de%error, de%line, "unterminated triple-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr))
+         return
+      end if
+   end if
+
+   if (ptr(1:1) == TOML_SQUOTE) then
+      ptr => ptr(2:)
+      i = index(ptr, TOML_NEWLINE)
+      if (i == 0) i = len(ptr)
+      i = index(ptr(:i), TOML_SQUOTE)
+      if (i == 0) then
+         call syntax_error(de%error, de%line, "unterminated s-quote")
+         return
+      end if
+
+      de%tok = new_token(toml_tokentype%string, orig, i+1)
+      return
+   end if
+
+   if (ptr(1:1) == TOML_DQUOTE) then
+      ptr => ptr(2:)
+      escape = .false.
+      hexreq = 0
+      do i = 1, len(ptr)
+         if (escape) then
+            escape = .false.
+            if (ptr(i:i) == 'u') then
+               hexreq = 4
+               cycle
+            end if
+            if (ptr(i:i) == 'U') then
+               hexreq = 8
+               cycle
+            end if
+            if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+            call syntax_error(de%error, de%line, "bad escape char")
+            return
+         end if
+         if (hexreq > 0) then
+            hexreq = hexreq - 1
+            if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+            call syntax_error(de%error, de%line, "expect hex char")
+            return
+         end if
+         if (ptr(i:i) == '\') then
+            escape = .true.
+            cycle
+         end if
+         if (ptr(i:i) == TOML_NEWLINE) then
+            ptr => ptr(i:)
+            exit
+         end if
+         if (ptr(i:i) == TOML_DQUOTE) then
+            ptr => ptr(i:)
+            exit
+         end if
+      end do
+      if (ptr(1:1) /= TOML_DQUOTE) then
+            call syntax_error(de%error, de%line, "expect hex char")
+         return
+      end if
+
+      de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr)+1)
+      return
+   end if
+
+   if (toml_raw_verify_date(ptr) .or. toml_raw_verify_time(ptr)) then
+      i = verify(ptr, TOML_TIMESTAMP)-1
+      if (i < 0) i = len(ptr)
+      de%tok = new_token(toml_tokentype%string, orig, i)
+      return
+   end if
+
+   do i = 1, len(ptr)
+      if (ptr(i:i) == '.' .and. dot_is_token) then
+         ptr => ptr(i:)
+         exit
+      end if
+      if (verify(ptr(i:i), TOML_LITERALS) == 0) cycle
+      ptr => ptr(i:)
+      exit
+   end do
+
+   de%tok = new_token(toml_tokentype%string, orig, len(orig) - len(ptr))
+
+end subroutine scan_string
+
+end subroutine next_token
+
+
+!> custom constructor to get pointer assignment right
+type(toml_token) function new_token(tok, ptr, len)
+   integer, intent(in) :: tok
+   character(len=:), pointer, intent(in) :: ptr
+   integer, intent(in) :: len
+   new_token%tok = tok
+   new_token%ptr => ptr
+   new_token%len = len
+end function new_token
+
+
+end module tomlf_de_character
  
  
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
@@ -18082,311 +18378,6 @@ end subroutine set_child_value_string
 end module tomlf_build_table
  
  
-!>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Implementation of a tokenizer for character variables
-module tomlf_de_character
-   use tomlf_constants
-   use tomlf_error, only : syntax_error
-   use tomlf_de_tokenizer
-   use tomlf_utils
-   implicit none
-   private
-
-   public :: toml_character_tokenizer, new_character_tokenizer, new
-
-
-   !> Tokenizer for a sequence of characters
-   type, extends(toml_tokenizer) :: toml_character_tokenizer
-
-      !> Link to the input configuration.
-      character(len=:), pointer :: conf
-
-   contains
-
-      !> Return next token
-      procedure :: next_token
-
-   end type toml_character_tokenizer
-
-
-   interface new
-      module procedure :: new_character_tokenizer
-   end interface new
-
-
-contains
-
-
-!> Constructor for the deserializer implementation.
-subroutine new_character_tokenizer(de, conf)
-   type(toml_character_tokenizer), intent(out) :: de
-   character(len=*), intent(in), target :: conf
-   !> connect deserializer to configuration
-   de%conf => conf
-   de%line%ptr => conf
-   de%line%num = 1
-   !> first token is an artifical newline
-   de%tok = new_token(toml_tokentype%newline, de%conf, 0)
-end subroutine new_character_tokenizer
-
-
-!> Return next token
-subroutine next_token(de, dot_is_token)
-
-   !> Instance of the tokenizer
-   class(toml_character_tokenizer), intent(inout) :: de
-
-   !> Dot should be handled as token
-   logical, intent(in) :: dot_is_token
-
-   character(len=:), pointer :: ptr
-   integer :: i, skip
-   if (de%finished) return
-   ptr => de%tok%ptr
-
-   !> consume token
-   do i = 1, de%tok%len
-      de%line%pos = de%line%pos + 1
-      if (ptr(i:i) == TOML_NEWLINE) then
-         de%line%ptr => ptr(min(i+1, len(ptr)):)
-         de%line%num = de%line%num+1
-         de%line%pos = 1
-      end if
-   end do
-   ptr => ptr(de%tok%len+1:)
-
-   !> make next token
-   do while(len(ptr) > 0)
-      select case(ptr(1:1))
-      case('#')
-         i = index(ptr, TOML_NEWLINE)
-         if (i > 0) then
-            ptr => ptr(i:)
-            cycle
-         end if
-         exit
-      case('.')
-         if (dot_is_token) then
-            de%tok = new_token(toml_tokentype%dot, ptr, 1)
-            return
-         end if
-      case(','); de%tok = new_token(toml_tokentype%comma, ptr, 1); return
-      case('='); de%tok = new_token(toml_tokentype%equal, ptr, 1); return
-      case('{'); de%tok = new_token(toml_tokentype%lbrace, ptr, 1); return
-      case('}'); de%tok = new_token(toml_tokentype%rbrace, ptr, 1); return
-      case('['); de%tok = new_token(toml_tokentype%lbracket, ptr, 1); return
-      case(']'); de%tok = new_token(toml_tokentype%rbracket, ptr, 1); return
-      case(TOML_NEWLINE); de%tok = new_token(toml_tokentype%newline, ptr, 1); return
-      case(' ', char(9));
-         skip = verify(ptr, TOML_WHITESPACE)-1
-         de%tok = new_token(toml_tokentype%whitespace, ptr, skip)
-         return
-      end select
-
-      call scan_string(de, ptr, dot_is_token)
-      return
-   end do
-
-   !> return with EOF token
-   de%finished = .true.
-   de%tok = new_token(toml_tokentype%newline, ptr, 0)
-
-contains
-
-   subroutine scan_string(de, ptr, dot_is_token)
-   class(toml_character_tokenizer), intent(inout) :: de
-   character(len=:), pointer, intent(inout) :: ptr
-   logical, intent(in) :: dot_is_token
-   character(len=:), pointer :: orig
-   integer :: i, skip
-   integer :: hexreq
-   integer :: qcount
-   logical :: escape
-   orig => ptr
-
-   if (len(ptr) >= 6) then
-      if (ptr(1:3) == repeat(TOML_SQUOTE, 3)) then
-         ptr => ptr(4:)
-         i = index(ptr, repeat(TOML_SQUOTE, 3))
-         if (i == 0) then
-            call syntax_error(de%error, de%line, "unterminated triple-s-quote")
-            return
-         end if
-
-         de%tok = new_token(toml_tokentype%string, orig, i+5)
-         return
-      end if
-
-      if (ptr(1:3) == repeat(TOML_DQUOTE, 3)) then
-         ptr => ptr(4:)
-         escape = .false.
-         hexreq = 0
-         qcount = 0
-         do i = 1, len(ptr)
-            if (escape) then
-               escape = .false.
-               if (ptr(i:i) == 'u') then
-                  hexreq = 4
-                  cycle
-               end if
-               if (ptr(i:i) == 'U') then
-                  hexreq = 8
-                  cycle
-               end if
-               if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
-               ! allow for line ending backslash
-               skip = verify(ptr(i:), TOML_WHITESPACE)-1
-               if (ptr(i+skip:i+skip) == TOML_NEWLINE) cycle
-               call syntax_error(de%error, de%line, "bad escape char")
-               return
-            end if
-            if (hexreq > 0) then
-               hexreq = hexreq - 1
-               if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
-               call syntax_error(de%error, de%line, "expect hex char")
-               return
-            end if
-            if (ptr(i:i) == TOML_DQUOTE) then
-               if (qcount < 5) then
-                  qcount = qcount + 1
-               else
-                  call syntax_error(de%error, de%line, "too many quotation marks")
-                  return
-               end if
-            else
-               if (qcount >= 3) then
-                  ptr => ptr(i:)
-                  exit
-               end if
-               qcount = 0
-            end if
-            if (ptr(i:i) == '\') then
-               escape = .true.
-               cycle
-            end if
-         end do
-         if (qcount < 3) then
-            call syntax_error(de%error, de%line, "unterminated triple-quote")
-            return
-         end if
-
-         de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr))
-         return
-      end if
-   end if
-
-   if (ptr(1:1) == TOML_SQUOTE) then
-      ptr => ptr(2:)
-      i = index(ptr, TOML_NEWLINE)
-      if (i == 0) i = len(ptr)
-      i = index(ptr(:i), TOML_SQUOTE)
-      if (i == 0) then
-         call syntax_error(de%error, de%line, "unterminated s-quote")
-         return
-      end if
-
-      de%tok = new_token(toml_tokentype%string, orig, i+1)
-      return
-   end if
-
-   if (ptr(1:1) == TOML_DQUOTE) then
-      ptr => ptr(2:)
-      escape = .false.
-      hexreq = 0
-      do i = 1, len(ptr)
-         if (escape) then
-            escape = .false.
-            if (ptr(i:i) == 'u') then
-               hexreq = 4
-               cycle
-            end if
-            if (ptr(i:i) == 'U') then
-               hexreq = 8
-               cycle
-            end if
-            if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
-            call syntax_error(de%error, de%line, "bad escape char")
-            return
-         end if
-         if (hexreq > 0) then
-            hexreq = hexreq - 1
-            if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
-            call syntax_error(de%error, de%line, "expect hex char")
-            return
-         end if
-         if (ptr(i:i) == '\') then
-            escape = .true.
-            cycle
-         end if
-         if (ptr(i:i) == TOML_NEWLINE) then
-            ptr => ptr(i:)
-            exit
-         end if
-         if (ptr(i:i) == TOML_DQUOTE) then
-            ptr => ptr(i:)
-            exit
-         end if
-      end do
-      if (ptr(1:1) /= TOML_DQUOTE) then
-            call syntax_error(de%error, de%line, "expect hex char")
-         return
-      end if
-
-      de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr)+1)
-      return
-   end if
-
-   if (toml_raw_verify_date(ptr) .or. toml_raw_verify_time(ptr)) then
-      i = verify(ptr, TOML_TIMESTAMP)-1
-      if (i < 0) i = len(ptr)
-      de%tok = new_token(toml_tokentype%string, orig, i)
-      return
-   end if
-
-   do i = 1, len(ptr)
-      if (ptr(i:i) == '.' .and. dot_is_token) then
-         ptr => ptr(i:)
-         exit
-      end if
-      if (verify(ptr(i:i), TOML_LITERALS) == 0) cycle
-      ptr => ptr(i:)
-      exit
-   end do
-
-   de%tok = new_token(toml_tokentype%string, orig, len(orig) - len(ptr))
-
-end subroutine scan_string
-
-end subroutine next_token
-
-
-!> custom constructor to get pointer assignment right
-type(toml_token) function new_token(tok, ptr, len)
-   integer, intent(in) :: tok
-   character(len=:), pointer, intent(in) :: ptr
-   integer, intent(in) :: len
-   new_token%tok = tok
-   new_token%ptr => ptr
-   new_token%len = len
-end function new_token
-
-
-end module tomlf_de_character
- 
- 
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -18854,267 +18845,6 @@ contains
 end module fpm_manifest_build
  
  
-!>>>>> ././src/fpm/manifest/dependency.f90
-!> Implementation of the meta data for dependencies.
-!>
-!> A dependency table can currently have the following fields
-!>
-!>```toml
-!>[dependencies]
-!>"dep1" = { git = "url" }
-!>"dep2" = { git = "url", branch = "name" }
-!>"dep3" = { git = "url", tag = "name" }
-!>"dep4" = { git = "url", rev = "sha1" }
-!>"dep0" = { path = "path" }
-!>```
-!>
-!> To reduce the amount of boilerplate code this module provides two constructors
-!> for dependency types, one basic for an actual dependency (inline) table
-!> and another to collect all dependency objects from a dependencies table,
-!> which is handling the allocation of the objects and is forwarding the
-!> individual dependency tables to their respective constructors.
-!> The usual entry point should be the constructor for the super table.
-!>
-!> This objects contains a target to retrieve required `fpm` projects to
-!> build the target declaring the dependency.
-!> Resolving a dependency will result in obtaining a new package configuration
-!> data for the respective project.
-module fpm_manifest_dependency
-    use fpm_error, only : error_t, syntax_error
-    use fpm_git, only : git_target_t, git_target_tag, git_target_branch, &
-        & git_target_revision, git_target_default
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
-    use fpm_filesystem, only: windows_path
-    use fpm_environment, only: get_os_type, OS_WINDOWS
-    implicit none
-    private
-
-    public :: dependency_config_t, new_dependency, new_dependencies
-
-
-    !> Configuration meta data for a dependency
-    type :: dependency_config_t
-
-        !> Name of the dependency
-        character(len=:), allocatable :: name
-
-        !> Local target
-        character(len=:), allocatable :: path
-
-        !> Git descriptor
-        type(git_target_t), allocatable :: git
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type dependency_config_t
-
-
-contains
-
-
-    !> Construct a new dependency configuration from a TOML data structure
-    subroutine new_dependency(self, table, root, error)
-
-        !> Instance of the dependency configuration
-        type(dependency_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Root directory of the manifest
-        character(*), intent(in), optional :: root
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        character(len=:), allocatable :: url, obj
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call table%get_key(self%name)
-
-        call get_value(table, "path", url)
-        if (allocated(url)) then
-            if (get_os_type() == OS_WINDOWS) url = windows_path(url)
-            if (present(root)) url = root//url  ! Relative to the fpm.toml it   s written in
-            call move_alloc(url, self%path)
-        else
-            call get_value(table, "git", url)
-
-            call get_value(table, "tag", obj)
-            if (allocated(obj)) then
-                self%git = git_target_tag(url, obj)
-            end if
-
-            if (.not.allocated(self%git)) then
-                call get_value(table, "branch", obj)
-                if (allocated(obj)) then
-                    self%git = git_target_branch(url, obj)
-                end if
-            end if
-
-            if (.not.allocated(self%git)) then
-                call get_value(table, "rev", obj)
-                if (allocated(obj)) then
-                    self%git = git_target_revision(url, obj)
-                end if
-            end if
-
-            if (.not.allocated(self%git)) then
-                self%git = git_target_default(url)
-            end if
-
-        end if
-
-    end subroutine new_dependency
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        character(len=:), allocatable :: name
-        type(toml_key), allocatable :: list(:)
-        logical :: url_present, git_target_present, has_path
-        integer :: ikey
-
-        has_path = .false.
-        url_present = .false.
-        git_target_present = .false.
-
-        call table%get_key(name)
-        call table%get_keys(list)
-
-        if (size(list) < 1) then
-            call syntax_error(error, "Dependency "//name//" does not provide sufficient entries")
-            return
-        end if
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in dependency "//name)
-                exit
-
-            case("git", "path")
-                if (url_present) then
-                    call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
-                    exit
-                end if
-                url_present = .true.
-                has_path = list(ikey)%key == 'path'
-
-            case("branch", "rev", "tag")
-                if (git_target_present) then
-                    call syntax_error(error, "Dependency "//name//" can only have one of branch, rev or tag present")
-                    exit
-                end if
-                git_target_present = .true.
-
-            end select
-        end do
-        if (allocated(error)) return
-
-        if (.not.url_present) then
-            call syntax_error(error, "Dependency "//name//" does not provide a method to actually retrieve itself")
-            return
-        end if
-
-        if (has_path .and. git_target_present) then
-            call syntax_error(error, "Dependency "//name//" uses a local path, therefore no git identifiers are allowed")
-        end if
-
-    end subroutine check
-
-
-    !> Construct new dependency array from a TOML data structure
-    subroutine new_dependencies(deps, table, root, error)
-
-        !> Instance of the dependency configuration
-        type(dependency_config_t), allocatable, intent(out) :: deps(:)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Root directory of the manifest
-        character(*), intent(in), optional :: root
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_table), pointer :: node
-        type(toml_key), allocatable :: list(:)
-        integer :: idep, stat
-
-        call table%get_keys(list)
-        ! An empty table is okay
-        if (size(list) < 1) return
-
-        allocate(deps(size(list)))
-        do idep = 1, size(list)
-            call get_value(table, list(idep)%key, node, stat=stat)
-            if (stat /= toml_stat%success) then
-                call syntax_error(error, "Dependency "//list(idep)%key//" must be a table entry")
-                exit
-            end if
-            call new_dependency(deps(idep), node, root, error)
-            if (allocated(error)) exit
-        end do
-
-    end subroutine new_dependencies
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the dependency configuration
-        class(dependency_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        write(unit, fmt) "Dependency"
-        if (allocated(self%name)) then
-            write(unit, fmt) "- name", self%name
-        end if
-
-        if (allocated(self%git)) then
-            write(unit, fmt) "- kind", "git"
-            call self%git%info(unit, pr - 1)
-        end if
-
-        if (allocated(self%path)) then
-            write(unit, fmt) "- kind", "local"
-            write(unit, fmt) "- path", self%path
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_dependency
- 
- 
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
 !>
@@ -19224,348 +18954,6 @@ contains
   end subroutine info
 
 end module fpm_manifest_install
- 
- 
-!>>>>> ././src/fpm/manifest/library.f90
-!> Implementation of the meta data for libraries.
-!>
-!> A library table can currently have the following fields
-!>
-!>```toml
-!>[library]
-!>source-dir = "path"
-!>include-dir = ["path1","path2"]
-!>build-script = "file"
-!>```
-module fpm_manifest_library
-    use fpm_error, only : error_t, syntax_error
-    use fpm_strings, only: string_t, string_cat
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-    implicit none
-    private
-
-    public :: library_config_t, new_library
-
-
-    !> Configuration meta data for a library
-    type :: library_config_t
-
-        !> Source path prefix
-        character(len=:), allocatable :: source_dir
-
-        !> Include path prefix
-        type(string_t), allocatable :: include_dir(:)
-
-        !> Alternative build script to be invoked
-        character(len=:), allocatable :: build_script
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type library_config_t
-
-
-contains
-
-
-    !> Construct a new library configuration from a TOML data structure
-    subroutine new_library(self, table, error)
-
-        !> Instance of the library configuration
-        type(library_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call get_value(table, "source-dir", self%source_dir, "src")
-        call get_value(table, "build-script", self%build_script)
-
-        call get_list(table, "include-dir", self%include_dir, error)
-        if (allocated(error)) return
-
-        ! Set default value of include-dir if not found in manifest
-        if (.not.allocated(self%include_dir)) then
-            self%include_dir = [string_t("include")]
-        end if
-
-    end subroutine new_library
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_key), allocatable :: list(:)
-        integer :: ikey
-
-        call table%get_keys(list)
-
-        ! table can be empty
-        if (size(list) < 1) return
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in library")
-                exit
-
-            case("source-dir", "include-dir", "build-script")
-                continue
-
-            end select
-        end do
-
-    end subroutine check
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the library configuration
-        class(library_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Library target"
-        if (allocated(self%source_dir)) then
-            write(unit, fmt) "- source directory", self%source_dir
-        end if
-        if (allocated(self%include_dir)) then
-            write(unit, fmt) "- include directory", string_cat(self%include_dir,",")
-        end if
-        if (allocated(self%build_script)) then
-            write(unit, fmt) "- custom build", self%build_script
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_library
- 
- 
-!>>>>> ././src/fpm/manifest/preprocess.f90
-!> Implementation of the meta data for preprocessing.
-!>
-!> A preprocess table can currently have the following fields
-!>
-!> ```toml
-!> [preprocess]
-!> [preprocess.cpp]
-!> suffixes = ["F90", "f90"]
-!> directories = ["src/feature1", "src/models"]
-!> macros = []
-!> ```
-
-module fpm_mainfest_preprocess
-   use fpm_error, only : error_t, syntax_error
-   use fpm_strings, only : string_t
-   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-   implicit none
-   private
-
-   public :: preprocess_config_t, new_preprocess_config, new_preprocessors
-
-   !> Configuration meta data for a preprocessor
-   type :: preprocess_config_t
-
-      !> Name of the preprocessor
-      character(len=:), allocatable :: name
-
-      !> Suffixes of the files to be preprocessed
-      type(string_t), allocatable :: suffixes(:)
-
-      !> Directories to search for files to be preprocessed
-      type(string_t), allocatable :: directories(:)
-
-      !> Macros to be defined for the preprocessor
-      type(string_t), allocatable :: macros(:)
-
-   contains
-
-      !> Print information on this instance
-      procedure :: info
-
-   end type preprocess_config_t
-
-contains
-
-   !> Construct a new preprocess configuration from TOML data structure
-   subroutine new_preprocess_config(self, table, error)
-
-      !> Instance of the preprocess configuration
-      type(preprocess_config_t), intent(out) :: self
-
-      !> Instance of the TOML data structure.
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(out) :: error
-
-      call check(table, error)
-      if (allocated(error)) return
-
-      call table%get_key(self%name)
-
-      call get_list(table, "suffixes", self%suffixes, error)
-      if (allocated(error)) return
-
-      call get_list(table, "directories", self%directories, error)
-      if (allocated(error)) return
-
-      call get_list(table, "macros", self%macros, error)
-      if (allocated(error)) return
-
-   end subroutine new_preprocess_config
-
-   !> Check local schema for allowed entries
-   subroutine check(table, error)
-
-      !> Instance of the TOML data structure.
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(inout) :: error
-
-      character(len=:), allocatable :: name
-      type(toml_key), allocatable :: list(:)
-      logical :: suffixes_present, directories_present, macros_present
-      integer :: ikey
-
-      suffixes_present = .false.
-      directories_present = .false.
-      macros_present = .false.
-
-      call table%get_key(name)
-      call table%get_keys(list)
-
-      do ikey = 1, size(list)
-         select case(list(ikey)%key)
-          case default
-            call syntax_error(error, "Key " // list(ikey)%key // "is not allowed in preprocessor"//name)
-            exit
-          case("suffixes")
-            suffixes_present = .true.
-          case("directories")
-            directories_present = .true.
-          case("macros")
-            macros_present = .true.
-         end select
-      end do
-   end subroutine check
-
-   !> Construct new preprocess array from a TOML data structure.
-   subroutine new_preprocessors(preprocessors, table, error)
-
-      !> Instance of the preprocess configuration
-      type(preprocess_config_t), allocatable, intent(out) :: preprocessors(:)
-
-      !> Instance of the TOML data structure
-      type(toml_table), intent(inout) :: table
-
-      !> Error handling
-      type(error_t), allocatable, intent(out) :: error
-
-      type(toml_table), pointer :: node
-      type(toml_key), allocatable :: list(:)
-      integer :: iprep, stat
-
-      call table%get_keys(list)
-
-      ! An empty table is not allowed
-      if (size(list) == 0) then
-         call syntax_error(error, "No preprocessors defined")
-      end if
-
-      allocate(preprocessors(size(list)))
-      do iprep = 1, size(list)
-         call get_value(table, list(iprep)%key, node, stat=stat)
-         if (stat /= toml_stat%success) then
-            call syntax_error(error, "Preprocessor "//list(iprep)%key//" must be a table entry")
-            exit
-         end if
-         call new_preprocess_config(preprocessors(iprep), node, error)
-         if (allocated(error)) exit
-      end do
-
-   end subroutine new_preprocessors
-
-   !> Write information on this instance
-   subroutine info(self, unit, verbosity)
-
-      !> Instance of the preprocess configuration
-      class(preprocess_config_t), intent(in) :: self
-
-      !> Unit for IO
-      integer, intent(in) :: unit
-
-      !> Verbosity of the printout
-      integer, intent(in), optional :: verbosity
-
-      integer :: pr, ilink
-      character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-      if (present(verbosity)) then
-         pr = verbosity
-      else
-         pr = 1
-      end if
-
-      if (pr < 1) return 
-
-      write(unit, fmt) "Preprocessor"
-      if (allocated(self%name)) then
-         write(unit, fmt) "- name", self%name
-      end if
-      if (allocated(self%suffixes)) then
-         write(unit, fmt) " - suffixes"
-         do ilink = 1, size(self%suffixes)
-            write(unit, fmt) "   - " // self%suffixes(ilink)%s
-         end do
-      end if
-      if (allocated(self%directories)) then
-         write(unit, fmt) " - directories"
-         do ilink = 1, size(self%directories)
-            write(unit, fmt) "   - " // self%directories(ilink)%s
-         end do
-      end if
-      if (allocated(self%macros)) then
-         write(unit, fmt) " - macros"
-         do ilink = 1, size(self%macros)
-            write(unit, fmt) "   - " // self%macros(ilink)%s
-         end do
-      end if
-
-   end subroutine info
-
-end module fpm_mainfest_preprocess
  
  
 !>>>>> ././src/fpm/manifest/profiles.f90
@@ -20528,6 +19916,609 @@ module fpm_manifest_profile
 end module fpm_manifest_profile
  
  
+!>>>>> ././src/fpm/manifest/library.f90
+!> Implementation of the meta data for libraries.
+!>
+!> A library table can currently have the following fields
+!>
+!>```toml
+!>[library]
+!>source-dir = "path"
+!>include-dir = ["path1","path2"]
+!>build-script = "file"
+!>```
+module fpm_manifest_library
+    use fpm_error, only : error_t, syntax_error
+    use fpm_strings, only: string_t, string_cat
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+    implicit none
+    private
+
+    public :: library_config_t, new_library
+
+
+    !> Configuration meta data for a library
+    type :: library_config_t
+
+        !> Source path prefix
+        character(len=:), allocatable :: source_dir
+
+        !> Include path prefix
+        type(string_t), allocatable :: include_dir(:)
+
+        !> Alternative build script to be invoked
+        character(len=:), allocatable :: build_script
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type library_config_t
+
+
+contains
+
+
+    !> Construct a new library configuration from a TOML data structure
+    subroutine new_library(self, table, error)
+
+        !> Instance of the library configuration
+        type(library_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call get_value(table, "source-dir", self%source_dir, "src")
+        call get_value(table, "build-script", self%build_script)
+
+        call get_list(table, "include-dir", self%include_dir, error)
+        if (allocated(error)) return
+
+        ! Set default value of include-dir if not found in manifest
+        if (.not.allocated(self%include_dir)) then
+            self%include_dir = [string_t("include")]
+        end if
+
+    end subroutine new_library
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_key), allocatable :: list(:)
+        integer :: ikey
+
+        call table%get_keys(list)
+
+        ! table can be empty
+        if (size(list) < 1) return
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in library")
+                exit
+
+            case("source-dir", "include-dir", "build-script")
+                continue
+
+            end select
+        end do
+
+    end subroutine check
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the library configuration
+        class(library_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Library target"
+        if (allocated(self%source_dir)) then
+            write(unit, fmt) "- source directory", self%source_dir
+        end if
+        if (allocated(self%include_dir)) then
+            write(unit, fmt) "- include directory", string_cat(self%include_dir,",")
+        end if
+        if (allocated(self%build_script)) then
+            write(unit, fmt) "- custom build", self%build_script
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_library
+ 
+ 
+!>>>>> ././src/fpm/manifest/preprocess.f90
+!> Implementation of the meta data for preprocessing.
+!>
+!> A preprocess table can currently have the following fields
+!>
+!> ```toml
+!> [preprocess]
+!> [preprocess.cpp]
+!> suffixes = ["F90", "f90"]
+!> directories = ["src/feature1", "src/models"]
+!> macros = []
+!> ```
+
+module fpm_mainfest_preprocess
+   use fpm_error, only : error_t, syntax_error
+   use fpm_strings, only : string_t
+   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+   implicit none
+   private
+
+   public :: preprocess_config_t, new_preprocess_config, new_preprocessors
+
+   !> Configuration meta data for a preprocessor
+   type :: preprocess_config_t
+
+      !> Name of the preprocessor
+      character(len=:), allocatable :: name
+
+      !> Suffixes of the files to be preprocessed
+      type(string_t), allocatable :: suffixes(:)
+
+      !> Directories to search for files to be preprocessed
+      type(string_t), allocatable :: directories(:)
+
+      !> Macros to be defined for the preprocessor
+      type(string_t), allocatable :: macros(:)
+
+   contains
+
+      !> Print information on this instance
+      procedure :: info
+
+   end type preprocess_config_t
+
+contains
+
+   !> Construct a new preprocess configuration from TOML data structure
+   subroutine new_preprocess_config(self, table, error)
+
+      !> Instance of the preprocess configuration
+      type(preprocess_config_t), intent(out) :: self
+
+      !> Instance of the TOML data structure.
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(out) :: error
+
+      call check(table, error)
+      if (allocated(error)) return
+
+      call table%get_key(self%name)
+
+      call get_list(table, "suffixes", self%suffixes, error)
+      if (allocated(error)) return
+
+      call get_list(table, "directories", self%directories, error)
+      if (allocated(error)) return
+
+      call get_list(table, "macros", self%macros, error)
+      if (allocated(error)) return
+
+   end subroutine new_preprocess_config
+
+   !> Check local schema for allowed entries
+   subroutine check(table, error)
+
+      !> Instance of the TOML data structure.
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(inout) :: error
+
+      character(len=:), allocatable :: name
+      type(toml_key), allocatable :: list(:)
+      logical :: suffixes_present, directories_present, macros_present
+      integer :: ikey
+
+      suffixes_present = .false.
+      directories_present = .false.
+      macros_present = .false.
+
+      call table%get_key(name)
+      call table%get_keys(list)
+
+      do ikey = 1, size(list)
+         select case(list(ikey)%key)
+          case default
+            call syntax_error(error, "Key " // list(ikey)%key // "is not allowed in preprocessor"//name)
+            exit
+          case("suffixes")
+            suffixes_present = .true.
+          case("directories")
+            directories_present = .true.
+          case("macros")
+            macros_present = .true.
+         end select
+      end do
+   end subroutine check
+
+   !> Construct new preprocess array from a TOML data structure.
+   subroutine new_preprocessors(preprocessors, table, error)
+
+      !> Instance of the preprocess configuration
+      type(preprocess_config_t), allocatable, intent(out) :: preprocessors(:)
+
+      !> Instance of the TOML data structure
+      type(toml_table), intent(inout) :: table
+
+      !> Error handling
+      type(error_t), allocatable, intent(out) :: error
+
+      type(toml_table), pointer :: node
+      type(toml_key), allocatable :: list(:)
+      integer :: iprep, stat
+
+      call table%get_keys(list)
+
+      ! An empty table is not allowed
+      if (size(list) == 0) then
+         call syntax_error(error, "No preprocessors defined")
+      end if
+
+      allocate(preprocessors(size(list)))
+      do iprep = 1, size(list)
+         call get_value(table, list(iprep)%key, node, stat=stat)
+         if (stat /= toml_stat%success) then
+            call syntax_error(error, "Preprocessor "//list(iprep)%key//" must be a table entry")
+            exit
+         end if
+         call new_preprocess_config(preprocessors(iprep), node, error)
+         if (allocated(error)) exit
+      end do
+
+   end subroutine new_preprocessors
+
+   !> Write information on this instance
+   subroutine info(self, unit, verbosity)
+
+      !> Instance of the preprocess configuration
+      class(preprocess_config_t), intent(in) :: self
+
+      !> Unit for IO
+      integer, intent(in) :: unit
+
+      !> Verbosity of the printout
+      integer, intent(in), optional :: verbosity
+
+      integer :: pr, ilink
+      character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+      if (present(verbosity)) then
+         pr = verbosity
+      else
+         pr = 1
+      end if
+
+      if (pr < 1) return 
+
+      write(unit, fmt) "Preprocessor"
+      if (allocated(self%name)) then
+         write(unit, fmt) "- name", self%name
+      end if
+      if (allocated(self%suffixes)) then
+         write(unit, fmt) " - suffixes"
+         do ilink = 1, size(self%suffixes)
+            write(unit, fmt) "   - " // self%suffixes(ilink)%s
+         end do
+      end if
+      if (allocated(self%directories)) then
+         write(unit, fmt) " - directories"
+         do ilink = 1, size(self%directories)
+            write(unit, fmt) "   - " // self%directories(ilink)%s
+         end do
+      end if
+      if (allocated(self%macros)) then
+         write(unit, fmt) " - macros"
+         do ilink = 1, size(self%macros)
+            write(unit, fmt) "   - " // self%macros(ilink)%s
+         end do
+      end if
+
+   end subroutine info
+
+end module fpm_mainfest_preprocess
+ 
+ 
+!>>>>> ././src/fpm/manifest/dependency.f90
+!> Implementation of the meta data for dependencies.
+!>
+!> A dependency table can currently have the following fields
+!>
+!>```toml
+!>[dependencies]
+!>"dep1" = { git = "url" }
+!>"dep2" = { git = "url", branch = "name" }
+!>"dep3" = { git = "url", tag = "name" }
+!>"dep4" = { git = "url", rev = "sha1" }
+!>"dep0" = { path = "path" }
+!>```
+!>
+!> To reduce the amount of boilerplate code this module provides two constructors
+!> for dependency types, one basic for an actual dependency (inline) table
+!> and another to collect all dependency objects from a dependencies table,
+!> which is handling the allocation of the objects and is forwarding the
+!> individual dependency tables to their respective constructors.
+!> The usual entry point should be the constructor for the super table.
+!>
+!> This objects contains a target to retrieve required `fpm` projects to
+!> build the target declaring the dependency.
+!> Resolving a dependency will result in obtaining a new package configuration
+!> data for the respective project.
+module fpm_manifest_dependency
+    use fpm_error, only : error_t, syntax_error
+    use fpm_git, only : git_target_t, git_target_tag, git_target_branch, &
+        & git_target_revision, git_target_default
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
+    use fpm_filesystem, only: windows_path
+    use fpm_environment, only: get_os_type, OS_WINDOWS
+    implicit none
+    private
+
+    public :: dependency_config_t, new_dependency, new_dependencies
+
+
+    !> Configuration meta data for a dependency
+    type :: dependency_config_t
+
+        !> Name of the dependency
+        character(len=:), allocatable :: name
+
+        !> Local target
+        character(len=:), allocatable :: path
+
+        !> Git descriptor
+        type(git_target_t), allocatable :: git
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type dependency_config_t
+
+
+contains
+
+
+    !> Construct a new dependency configuration from a TOML data structure
+    subroutine new_dependency(self, table, root, error)
+
+        !> Instance of the dependency configuration
+        type(dependency_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Root directory of the manifest
+        character(*), intent(in), optional :: root
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        character(len=:), allocatable :: url, obj
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call table%get_key(self%name)
+
+        call get_value(table, "path", url)
+        if (allocated(url)) then
+            if (get_os_type() == OS_WINDOWS) url = windows_path(url)
+            if (present(root)) url = root//url  ! Relative to the fpm.toml it   s written in
+            call move_alloc(url, self%path)
+        else
+            call get_value(table, "git", url)
+
+            call get_value(table, "tag", obj)
+            if (allocated(obj)) then
+                self%git = git_target_tag(url, obj)
+            end if
+
+            if (.not.allocated(self%git)) then
+                call get_value(table, "branch", obj)
+                if (allocated(obj)) then
+                    self%git = git_target_branch(url, obj)
+                end if
+            end if
+
+            if (.not.allocated(self%git)) then
+                call get_value(table, "rev", obj)
+                if (allocated(obj)) then
+                    self%git = git_target_revision(url, obj)
+                end if
+            end if
+
+            if (.not.allocated(self%git)) then
+                self%git = git_target_default(url)
+            end if
+
+        end if
+
+    end subroutine new_dependency
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        character(len=:), allocatable :: name
+        type(toml_key), allocatable :: list(:)
+        logical :: url_present, git_target_present, has_path
+        integer :: ikey
+
+        has_path = .false.
+        url_present = .false.
+        git_target_present = .false.
+
+        call table%get_key(name)
+        call table%get_keys(list)
+
+        if (size(list) < 1) then
+            call syntax_error(error, "Dependency "//name//" does not provide sufficient entries")
+            return
+        end if
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in dependency "//name)
+                exit
+
+            case("git", "path")
+                if (url_present) then
+                    call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
+                    exit
+                end if
+                url_present = .true.
+                has_path = list(ikey)%key == 'path'
+
+            case("branch", "rev", "tag")
+                if (git_target_present) then
+                    call syntax_error(error, "Dependency "//name//" can only have one of branch, rev or tag present")
+                    exit
+                end if
+                git_target_present = .true.
+
+            end select
+        end do
+        if (allocated(error)) return
+
+        if (.not.url_present) then
+            call syntax_error(error, "Dependency "//name//" does not provide a method to actually retrieve itself")
+            return
+        end if
+
+        if (has_path .and. git_target_present) then
+            call syntax_error(error, "Dependency "//name//" uses a local path, therefore no git identifiers are allowed")
+        end if
+
+    end subroutine check
+
+
+    !> Construct new dependency array from a TOML data structure
+    subroutine new_dependencies(deps, table, root, error)
+
+        !> Instance of the dependency configuration
+        type(dependency_config_t), allocatable, intent(out) :: deps(:)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Root directory of the manifest
+        character(*), intent(in), optional :: root
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_table), pointer :: node
+        type(toml_key), allocatable :: list(:)
+        integer :: idep, stat
+
+        call table%get_keys(list)
+        ! An empty table is okay
+        if (size(list) < 1) return
+
+        allocate(deps(size(list)))
+        do idep = 1, size(list)
+            call get_value(table, list(idep)%key, node, stat=stat)
+            if (stat /= toml_stat%success) then
+                call syntax_error(error, "Dependency "//list(idep)%key//" must be a table entry")
+                exit
+            end if
+            call new_dependency(deps(idep), node, root, error)
+            if (allocated(error)) exit
+        end do
+
+    end subroutine new_dependencies
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the dependency configuration
+        class(dependency_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        write(unit, fmt) "Dependency"
+        if (allocated(self%name)) then
+            write(unit, fmt) "- name", self%name
+        end if
+
+        if (allocated(self%git)) then
+            write(unit, fmt) "- kind", "git"
+            call self%git%info(unit, pr - 1)
+        end if
+
+        if (allocated(self%path)) then
+            write(unit, fmt) "- kind", "local"
+            write(unit, fmt) "- path", self%path
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_dependency
+ 
+ 
 !>>>>> ././src/fpm/manifest/executable.f90
 !> Implementation of the meta data for an executables.
 !>
@@ -20720,187 +20711,6 @@ contains
 end module fpm_manifest_executable
  
  
-!>>>>> ././src/fpm/manifest/example.f90
-!> Implementation of the meta data for an example.
-!>
-!> The example data structure is effectively a decorated version of an executable
-!> and shares most of its properties, except for the defaults and can be
-!> handled under most circumstances just like any other executable.
-!>
-!> A example table can currently have the following fields
-!>
-!>```toml
-!>[[ example ]]
-!>name = "string"
-!>source-dir = "path"
-!>main = "file"
-!>link = ["lib"]
-!>[example.dependencies]
-!>```
-module fpm_manifest_example
-    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies
-    use fpm_manifest_executable, only : executable_config_t
-    use fpm_error, only : error_t, syntax_error, bad_name_error
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
-    implicit none
-    private
-
-    public :: example_config_t, new_example
-
-
-    !> Configuation meta data for an example
-    type, extends(executable_config_t) :: example_config_t
-
-    contains
-
-        !> Print information on this instance
-        procedure :: info
-
-    end type example_config_t
-
-
-contains
-
-
-    !> Construct a new example configuration from a TOML data structure
-    subroutine new_example(self, table, error)
-
-        !> Instance of the example configuration
-        type(example_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_table), pointer :: child
-
-        call check(table, error)
-        if (allocated(error)) return
-
-        call get_value(table, "name", self%name)
-        if (.not.allocated(self%name)) then
-           call syntax_error(error, "Could not retrieve example name")
-           return
-        end if
-        if (bad_name_error(error,'example',self%name))then
-           return
-        endif
-        call get_value(table, "source-dir", self%source_dir, "example")
-        call get_value(table, "main", self%main, "main.f90")
-
-        call get_value(table, "dependencies", child, requested=.false.)
-        if (associated(child)) then
-            call new_dependencies(self%dependency, child, error=error)
-            if (allocated(error)) return
-        end if
-
-        call get_list(table, "link", self%link, error)
-        if (allocated(error)) return
-
-    end subroutine new_example
-
-
-    !> Check local schema for allowed entries
-    subroutine check(table, error)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_key), allocatable :: list(:)
-        logical :: name_present
-        integer :: ikey
-
-        name_present = .false.
-
-        call table%get_keys(list)
-
-        if (size(list) < 1) then
-            call syntax_error(error, "Example section does not provide sufficient entries")
-            return
-        end if
-
-        do ikey = 1, size(list)
-            select case(list(ikey)%key)
-            case default
-                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in example entry")
-                exit
-
-            case("name")
-                name_present = .true.
-
-            case("source-dir", "main", "dependencies", "link")
-                continue
-
-            end select
-        end do
-        if (allocated(error)) return
-
-        if (.not.name_present) then
-            call syntax_error(error, "Example name is not provided, please add a name entry")
-        end if
-
-    end subroutine check
-
-
-    !> Write information on instance
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the example configuration
-        class(example_config_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr, ii
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)', &
-            & fmti = '("#", 1x, a, t30, i0)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Example target"
-        if (allocated(self%name)) then
-            write(unit, fmt) "- name", self%name
-        end if
-        if (allocated(self%source_dir)) then
-            if (self%source_dir /= "example" .or. pr > 2) then
-                write(unit, fmt) "- source directory", self%source_dir
-            end if
-        end if
-        if (allocated(self%main)) then
-            if (self%main /= "main.f90" .or. pr > 2) then
-                write(unit, fmt) "- example source", self%main
-            end if
-        end if
-
-        if (allocated(self%dependency)) then
-            if (size(self%dependency) > 1 .or. pr > 2) then
-                write(unit, fmti) "- dependencies", size(self%dependency)
-            end if
-            do ii = 1, size(self%dependency)
-                call self%dependency(ii)%info(unit, pr - 1)
-            end do
-        end if
-
-    end subroutine info
-
-
-end module fpm_manifest_example
- 
- 
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
 !>
@@ -21080,6 +20890,187 @@ contains
 
 
 end module fpm_manifest_test
+ 
+ 
+!>>>>> ././src/fpm/manifest/example.f90
+!> Implementation of the meta data for an example.
+!>
+!> The example data structure is effectively a decorated version of an executable
+!> and shares most of its properties, except for the defaults and can be
+!> handled under most circumstances just like any other executable.
+!>
+!> A example table can currently have the following fields
+!>
+!>```toml
+!>[[ example ]]
+!>name = "string"
+!>source-dir = "path"
+!>main = "file"
+!>link = ["lib"]
+!>[example.dependencies]
+!>```
+module fpm_manifest_example
+    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies
+    use fpm_manifest_executable, only : executable_config_t
+    use fpm_error, only : error_t, syntax_error, bad_name_error
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
+    implicit none
+    private
+
+    public :: example_config_t, new_example
+
+
+    !> Configuation meta data for an example
+    type, extends(executable_config_t) :: example_config_t
+
+    contains
+
+        !> Print information on this instance
+        procedure :: info
+
+    end type example_config_t
+
+
+contains
+
+
+    !> Construct a new example configuration from a TOML data structure
+    subroutine new_example(self, table, error)
+
+        !> Instance of the example configuration
+        type(example_config_t), intent(out) :: self
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_table), pointer :: child
+
+        call check(table, error)
+        if (allocated(error)) return
+
+        call get_value(table, "name", self%name)
+        if (.not.allocated(self%name)) then
+           call syntax_error(error, "Could not retrieve example name")
+           return
+        end if
+        if (bad_name_error(error,'example',self%name))then
+           return
+        endif
+        call get_value(table, "source-dir", self%source_dir, "example")
+        call get_value(table, "main", self%main, "main.f90")
+
+        call get_value(table, "dependencies", child, requested=.false.)
+        if (associated(child)) then
+            call new_dependencies(self%dependency, child, error=error)
+            if (allocated(error)) return
+        end if
+
+        call get_list(table, "link", self%link, error)
+        if (allocated(error)) return
+
+    end subroutine new_example
+
+
+    !> Check local schema for allowed entries
+    subroutine check(table, error)
+
+        !> Instance of the TOML data structure
+        type(toml_table), intent(inout) :: table
+
+        !> Error handling
+        type(error_t), allocatable, intent(out) :: error
+
+        type(toml_key), allocatable :: list(:)
+        logical :: name_present
+        integer :: ikey
+
+        name_present = .false.
+
+        call table%get_keys(list)
+
+        if (size(list) < 1) then
+            call syntax_error(error, "Example section does not provide sufficient entries")
+            return
+        end if
+
+        do ikey = 1, size(list)
+            select case(list(ikey)%key)
+            case default
+                call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in example entry")
+                exit
+
+            case("name")
+                name_present = .true.
+
+            case("source-dir", "main", "dependencies", "link")
+                continue
+
+            end select
+        end do
+        if (allocated(error)) return
+
+        if (.not.name_present) then
+            call syntax_error(error, "Example name is not provided, please add a name entry")
+        end if
+
+    end subroutine check
+
+
+    !> Write information on instance
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the example configuration
+        class(example_config_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr, ii
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)', &
+            & fmti = '("#", 1x, a, t30, i0)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Example target"
+        if (allocated(self%name)) then
+            write(unit, fmt) "- name", self%name
+        end if
+        if (allocated(self%source_dir)) then
+            if (self%source_dir /= "example" .or. pr > 2) then
+                write(unit, fmt) "- source directory", self%source_dir
+            end if
+        end if
+        if (allocated(self%main)) then
+            if (self%main /= "main.f90" .or. pr > 2) then
+                write(unit, fmt) "- example source", self%main
+            end if
+        end if
+
+        if (allocated(self%dependency)) then
+            if (size(self%dependency) > 1 .or. pr > 2) then
+                write(unit, fmti) "- dependencies", size(self%dependency)
+            end if
+            do ii = 1, size(self%dependency)
+                call self%dependency(ii)%info(unit, pr - 1)
+            end do
+        end if
+
+    end subroutine info
+
+
+end module fpm_manifest_example
  
  
 !>>>>> ././src/fpm/manifest/package.f90
@@ -26439,186 +26430,6 @@ end subroutine filter_modules
 end module fpm_targets
  
  
-!>>>>> ././src/fpm_backend_output.f90
-!># Build Backend Progress Output
-!> This module provides a derived type `build_progress_t` for printing build status
-!> and progress messages to the console while the backend is building the package.
-!>
-!> The `build_progress_t` type supports two modes: `normal` and `plain`
-!> where the former does 'pretty' output and the latter does not.
-!> The `normal` mode is intended for typical interactive usage whereas
-!> 'plain' mode is used with the `--verbose` flag or when `stdout` is not attached
-!> to a terminal (e.g. when piping or redirecting `stdout`). In these cases,
-!> the pretty output must be suppressed to avoid control codes being output.
-
-module fpm_backend_output
-use iso_fortran_env, only: stdout=>output_unit
-use fpm_filesystem, only: basename
-use fpm_targets, only: build_target_ptr
-use fpm_backend_console, only: console_t, LINE_RESET, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
-implicit none
-
-private
-public build_progress_t
-
-!> Build progress object
-type build_progress_t
-    !> Console object for updating console lines
-    type(console_t) :: console
-    !> Number of completed targets
-    integer :: n_complete
-    !> Total number of targets scheduled
-    integer :: n_target
-    !> 'Plain' output (no colors or updating)
-    logical :: plain_mode = .true.
-    !> Store needed when updating previous console lines
-    integer, allocatable :: output_lines(:)
-    !> Queue of scheduled build targets
-    type(build_target_ptr), pointer :: target_queue(:)
-contains
-    !> Output 'compiling' status for build target
-    procedure :: compiling_status => output_status_compiling
-    !> Output 'complete' status for build target
-    procedure :: completed_status => output_status_complete
-    !> Output finished status for whole package
-    procedure :: success => output_progress_success
-end type build_progress_t
-
-!> Constructor for build_progress_t
-interface build_progress_t
-    procedure :: new_build_progress
-end interface build_progress_t
-
-contains
-    
-    !> Initialise a new build progress object
-    function new_build_progress(target_queue,plain_mode) result(progress)
-        !> The queue of scheduled targets
-        type(build_target_ptr), intent(in), target :: target_queue(:)
-        !> Enable 'plain' output for progress object
-        logical, intent(in), optional :: plain_mode
-        !> Progress object to initialise
-        type(build_progress_t) :: progress
-
-        progress%n_target = size(target_queue,1)
-        progress%target_queue => target_queue
-        progress%plain_mode = plain_mode
-        progress%n_complete = 0
-
-        allocate(progress%output_lines(progress%n_target))
-
-    end function new_build_progress
-
-    !> Output 'compiling' status for build target and overall percentage progress
-    subroutine output_status_compiling(progress, queue_index)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(7) :: overall_progress
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
-
-            if (progress%plain_mode) then ! Plain output
-
-                !$omp critical
-                write(*,'(A7,A30)') overall_progress,target_name
-                !$omp end critical
-
-            else ! Pretty output
-
-                write(output_string,'(A,T40,A,A)') target_name, COLOR_YELLOW//'compiling...'//COLOR_RESET
-
-                call progress%console%write_line(trim(output_string),progress%output_lines(queue_index))
-
-                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_compiling
-
-    !> Output 'complete' status for build target and update overall percentage progress
-    subroutine output_status_complete(progress, queue_index, build_stat)
-        !> Progress object
-        class(build_progress_t), intent(inout) :: progress
-        !> Index of build target in the target queue
-        integer, intent(in) :: queue_index
-        !> Build status flag
-        integer, intent(in) :: build_stat
-
-        character(:), allocatable :: target_name
-        character(100) :: output_string
-        character(7) :: overall_progress
-
-        !$omp critical 
-        progress%n_complete = progress%n_complete + 1
-        !$omp end critical
-
-        associate(target=>progress%target_queue(queue_index)%ptr)
-
-            if (allocated(target%source)) then
-                target_name = basename(target%source%file_name)
-            else
-                target_name = basename(target%output_file)
-            end if
-
-            if (build_stat == 0) then
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_GREEN//'done.'//COLOR_RESET
-            else
-                write(output_string,'(A,T40,A,A)') target_name,COLOR_RED//'failed.'//COLOR_RESET
-            end if
-
-            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
-
-            if (progress%plain_mode) then  ! Plain output
-
-                !$omp critical
-                write(*,'(A7,A30,A7)') overall_progress,target_name, 'done.'
-                !$omp end critical
-
-            else ! Pretty output
-
-                call progress%console%update_line(progress%output_lines(queue_index),trim(output_string))
-
-                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
-
-            end if
-
-        end associate
-
-    end subroutine output_status_complete
-
-    !> Output finished status for whole package
-    subroutine output_progress_success(progress)
-        class(build_progress_t), intent(inout) :: progress
-
-        if (progress%plain_mode) then ! Plain output
-
-            write(*,'(A)') '[100%] Project compiled successfully.'
-
-        else ! Pretty output
-
-            write(*,'(A)') LINE_RESET//COLOR_GREEN//'[100%] Project compiled successfully.'//COLOR_RESET
-
-        end if
-
-    end subroutine output_progress_success
-
-end module fpm_backend_output 
- 
 !>>>>> ././src/fpm_sources.f90
 !># Discovery of sources
 !>
@@ -26856,6 +26667,186 @@ end subroutine get_executable_source_dirs
 
 end module fpm_sources
  
+ 
+!>>>>> ././src/fpm_backend_output.f90
+!># Build Backend Progress Output
+!> This module provides a derived type `build_progress_t` for printing build status
+!> and progress messages to the console while the backend is building the package.
+!>
+!> The `build_progress_t` type supports two modes: `normal` and `plain`
+!> where the former does 'pretty' output and the latter does not.
+!> The `normal` mode is intended for typical interactive usage whereas
+!> 'plain' mode is used with the `--verbose` flag or when `stdout` is not attached
+!> to a terminal (e.g. when piping or redirecting `stdout`). In these cases,
+!> the pretty output must be suppressed to avoid control codes being output.
+
+module fpm_backend_output
+use iso_fortran_env, only: stdout=>output_unit
+use fpm_filesystem, only: basename
+use fpm_targets, only: build_target_ptr
+use fpm_backend_console, only: console_t, LINE_RESET, COLOR_RED, COLOR_GREEN, COLOR_YELLOW, COLOR_RESET
+implicit none
+
+private
+public build_progress_t
+
+!> Build progress object
+type build_progress_t
+    !> Console object for updating console lines
+    type(console_t) :: console
+    !> Number of completed targets
+    integer :: n_complete
+    !> Total number of targets scheduled
+    integer :: n_target
+    !> 'Plain' output (no colors or updating)
+    logical :: plain_mode = .true.
+    !> Store needed when updating previous console lines
+    integer, allocatable :: output_lines(:)
+    !> Queue of scheduled build targets
+    type(build_target_ptr), pointer :: target_queue(:)
+contains
+    !> Output 'compiling' status for build target
+    procedure :: compiling_status => output_status_compiling
+    !> Output 'complete' status for build target
+    procedure :: completed_status => output_status_complete
+    !> Output finished status for whole package
+    procedure :: success => output_progress_success
+end type build_progress_t
+
+!> Constructor for build_progress_t
+interface build_progress_t
+    procedure :: new_build_progress
+end interface build_progress_t
+
+contains
+    
+    !> Initialise a new build progress object
+    function new_build_progress(target_queue,plain_mode) result(progress)
+        !> The queue of scheduled targets
+        type(build_target_ptr), intent(in), target :: target_queue(:)
+        !> Enable 'plain' output for progress object
+        logical, intent(in), optional :: plain_mode
+        !> Progress object to initialise
+        type(build_progress_t) :: progress
+
+        progress%n_target = size(target_queue,1)
+        progress%target_queue => target_queue
+        progress%plain_mode = plain_mode
+        progress%n_complete = 0
+
+        allocate(progress%output_lines(progress%n_target))
+
+    end function new_build_progress
+
+    !> Output 'compiling' status for build target and overall percentage progress
+    subroutine output_status_compiling(progress, queue_index)
+        !> Progress object
+        class(build_progress_t), intent(inout) :: progress
+        !> Index of build target in the target queue
+        integer, intent(in) :: queue_index
+
+        character(:), allocatable :: target_name
+        character(100) :: output_string
+        character(7) :: overall_progress
+
+        associate(target=>progress%target_queue(queue_index)%ptr)
+
+            if (allocated(target%source)) then
+                target_name = basename(target%source%file_name)
+            else
+                target_name = basename(target%output_file)
+            end if
+
+            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
+
+            if (progress%plain_mode) then ! Plain output
+
+                !$omp critical
+                write(*,'(A7,A30)') overall_progress,target_name
+                !$omp end critical
+
+            else ! Pretty output
+
+                write(output_string,'(A,T40,A,A)') target_name, COLOR_YELLOW//'compiling...'//COLOR_RESET
+
+                call progress%console%write_line(trim(output_string),progress%output_lines(queue_index))
+
+                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
+
+            end if
+
+        end associate
+
+    end subroutine output_status_compiling
+
+    !> Output 'complete' status for build target and update overall percentage progress
+    subroutine output_status_complete(progress, queue_index, build_stat)
+        !> Progress object
+        class(build_progress_t), intent(inout) :: progress
+        !> Index of build target in the target queue
+        integer, intent(in) :: queue_index
+        !> Build status flag
+        integer, intent(in) :: build_stat
+
+        character(:), allocatable :: target_name
+        character(100) :: output_string
+        character(7) :: overall_progress
+
+        !$omp critical 
+        progress%n_complete = progress%n_complete + 1
+        !$omp end critical
+
+        associate(target=>progress%target_queue(queue_index)%ptr)
+
+            if (allocated(target%source)) then
+                target_name = basename(target%source%file_name)
+            else
+                target_name = basename(target%output_file)
+            end if
+
+            if (build_stat == 0) then
+                write(output_string,'(A,T40,A,A)') target_name,COLOR_GREEN//'done.'//COLOR_RESET
+            else
+                write(output_string,'(A,T40,A,A)') target_name,COLOR_RED//'failed.'//COLOR_RESET
+            end if
+
+            write(overall_progress,'(A,I3,A)') '[',100*progress%n_complete/progress%n_target,'%] '
+
+            if (progress%plain_mode) then  ! Plain output
+
+                !$omp critical
+                write(*,'(A7,A30,A7)') overall_progress,target_name, 'done.'
+                !$omp end critical
+
+            else ! Pretty output
+
+                call progress%console%update_line(progress%output_lines(queue_index),trim(output_string))
+
+                call progress%console%write_line(overall_progress//'Compiling...',advance=.false.)
+
+            end if
+
+        end associate
+
+    end subroutine output_status_complete
+
+    !> Output finished status for whole package
+    subroutine output_progress_success(progress)
+        class(build_progress_t), intent(inout) :: progress
+
+        if (progress%plain_mode) then ! Plain output
+
+            write(*,'(A)') '[100%] Project compiled successfully.'
+
+        else ! Pretty output
+
+            write(*,'(A)') LINE_RESET//COLOR_GREEN//'[100%] Project compiled successfully.'//COLOR_RESET
+
+        end if
+
+    end subroutine output_progress_success
+
+end module fpm_backend_output 
  
 !>>>>> ././src/fpm_backend.F90
 !># Build backend
