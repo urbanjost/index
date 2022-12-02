@@ -139,6 +139,7 @@ Please provide feedback on the
  - [fpm developer documentation](https://fortran-lang.github.io/fpm)
  - [fpm github site](https://github.com/fortran-lang/fpm)
  - [repository](https://github.com/fortran-lang/fpm-registry)
+ - [new repository project](https://github.com/fortran-lang/registry)
  - [package listing](https://fortran-lang.org/packages).
 
  - [PackageCon]( https://www.youtube.com/watch?v=g7ECnr_Q7Ck)
