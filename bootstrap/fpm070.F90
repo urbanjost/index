@@ -1405,16 +1405,16 @@ module tomlf_version
 
 
    !> String representation of the TOML-Fortran version
-   character(len=*), parameter :: tomlf_version_string = "0.3.1"
+   character(len=*), parameter :: tomlf_version_string = "0.2.4"
 
    !> Major version number of the above TOML-Fortran version
    integer, parameter :: tomlf_major = 0
 
    !> Minor version number of the above TOML-Fortran version
-   integer, parameter :: tomlf_minor = 3
+   integer, parameter :: tomlf_minor = 2
 
    !> Patch version number of the above TOML-Fortran version
-   integer, parameter :: tomlf_patch = 1
+   integer, parameter :: tomlf_patch = 4
 
    !> Compact numeric representation of the TOML-Fortran version
    integer, parameter :: tomlf_version_compact = &
@@ -1456,169 +1456,6 @@ end subroutine get_tomlf_version
 
 
 end module tomlf_version
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/de/token.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Provides a definition for a token
-module tomlf_de_token
-   implicit none
-   private
-
-   public :: toml_token, stringify, token_kind, resize
-
-
-   !> Possible token kinds
-   type :: enum_token
-      !> Invalid token found
-      integer :: invalid = -1
-      !> End of file
-      integer :: eof = -2
-      !> Unclosed group from inline table or array
-      integer :: unclosed = -3
-      !> Whitespace (space, tab)
-      integer :: whitespace = 0
-      !> Newline character (\r\n, \n)
-      integer :: newline = 1
-      !> Comments (#)
-      integer :: comment = 2
-      !> Separator in table path (.)
-      integer :: dot = 3
-      !> Separator in inline arrays and inline tables (,)
-      integer :: comma = 4
-      !> Separator in key-value pairs (=)
-      integer :: equal = 5
-      !> Beginning of an inline table ({)
-      integer :: lbrace = 6
-      !> End of an inline table (})
-      integer :: rbrace = 7
-      !> Beginning of an inline array or table header ([)
-      integer :: lbracket = 8
-      !> End of an inline array or table header (])
-      integer :: rbracket = 9
-      !> String literal
-      integer :: string = 10
-      !> String literal
-      integer :: mstring = 11
-      !> String literal
-      integer :: literal = 12
-      !> String literal
-      integer :: mliteral = 13
-      !> String literal
-      integer :: keypath = 14
-      !> Floating point value
-      integer :: float = 15
-      !> Integer value
-      integer :: int = 16
-      !> Boolean value
-      integer :: bool = 17
-      !> Datetime value
-      integer :: datetime = 18
-   end type enum_token
-
-   !> Actual enumerator for token kinds
-   type(enum_token), parameter :: token_kind = enum_token()
-
-   !> Token containing
-   type :: toml_token
-      !> Kind of token
-      integer :: kind = token_kind%newline
-      !> Starting position of the token in character stream
-      integer :: first = 0
-      !> Last position of the token in character stream
-      integer :: last = 0
-      !> Identifier for the chunk index in case of buffered reading
-      integer :: chunk = 0
-   end type toml_token
-
-   !> Reallocate a list of tokens
-   interface resize
-      module procedure :: resize_token
-   end interface
-
-contains
-
-!> Reallocate list of tokens
-pure subroutine resize_token(var, n)
-   !> Instance of the array to be resized
-   type(toml_token), allocatable, intent(inout) :: var(:)
-   !> Dimension of the final array size
-   integer, intent(in), optional :: n
-
-   type(toml_token), allocatable :: tmp(:)
-   integer :: this_size, new_size
-   integer, parameter :: initial_size = 8
-
-   if (allocated(var)) then
-      this_size = size(var, 1)
-      call move_alloc(var, tmp)
-   else
-      this_size = initial_size
-   end if
-
-   if (present(n)) then
-      new_size = n
-   else
-      new_size = this_size + this_size/2 + 1
-   end if
-
-   allocate(var(new_size))
-
-   if (allocated(tmp)) then
-      this_size = min(size(tmp, 1), size(var, 1))
-      var(:this_size) = tmp(:this_size)
-      deallocate(tmp)
-   end if
-
-end subroutine resize_token
-
-!> Represent a token as string
-pure function stringify(token) result(str)
-   !> Token to represent as string
-   type(toml_token), intent(in) :: token
-   !> String representation of token
-   character(len=:), allocatable :: str
-
-   select case(token%kind)
-   case default; str = "unknown"
-   case(token_kind%invalid); str = "invalid sequence"
-   case(token_kind%eof); str = "end of file"
-   case(token_kind%unclosed); str = "unclosed group"
-   case(token_kind%whitespace); str = "whitespace"
-   case(token_kind%comment); str = "comment"
-   case(token_kind%newline); str = "newline"
-   case(token_kind%dot); str = "dot"
-   case(token_kind%comma); str = "comma"
-   case(token_kind%equal); str = "equal"
-   case(token_kind%lbrace); str = "opening brace"
-   case(token_kind%rbrace); str = "closing brace"
-   case(token_kind%lbracket); str = "opening bracket"
-   case(token_kind%rbracket); str = "closing bracket"
-   case(token_kind%string); str = "string"
-   case(token_kind%mstring); str = "multiline string"
-   case(token_kind%literal); str = "literal"
-   case(token_kind%mliteral); str = "multiline-literal"
-   case(token_kind%keypath); str = "keypath"
-   case(token_kind%int); str = "integer"
-   case(token_kind%float); str = "float"
-   case(token_kind%bool); str = "bool"
-   case(token_kind%datetime); str = "datetime"
-   end select
-end function stringify
-
-end module tomlf_de_token
 
 
 !>>>>> build/dependencies/M_CLI2/src/M_CLI2.F90
@@ -8073,17 +7910,19 @@ module tomlf_datetime
    implicit none
    private
 
-   public :: toml_datetime, toml_time, toml_date, to_string, has_date, has_time
-   public :: operator(==)
+   public :: toml_datetime, toml_time, toml_date
 
 
    !> TOML time value (HH:MM:SS.sssssZ...)
    type :: toml_time
-      integer :: hour = -1
-      integer :: minute = -1
-      integer :: second = -1
-      integer :: msec = -1
+      integer :: hour = 0
+      integer :: minute = 0
+      integer :: second = 0
+      integer, allocatable :: millisec
       character(len=:), allocatable :: zone
+   contains
+      generic :: assignment(=) => to_string
+      procedure, pass(rhs) :: to_string => time_to_string
    end type
 
    interface toml_time
@@ -8093,289 +7932,84 @@ module tomlf_datetime
 
    !> TOML date value (YYYY-MM-DD)
    type :: toml_date
-      integer :: year = -1
-      integer :: month = -1
-      integer :: day = -1
+      integer :: year = 0
+      integer :: month = 0
+      integer :: day = 0
+   contains
+      generic :: assignment(=) => to_string
+      procedure, pass(rhs) :: to_string => date_to_string
    end type
 
 
    !> TOML datatime value type
    type :: toml_datetime
-      type(toml_date) :: date
-      type(toml_time) :: time
+      type(toml_date), allocatable :: date
+      type(toml_time), allocatable :: time
+   contains
+      generic :: assignment(=) => to_string
+      procedure, pass(rhs) :: to_string => datetime_to_string
    end type
-
-
-   !> Create a new TOML datetime value
-   interface toml_datetime
-      module procedure :: new_datetime
-      module procedure :: new_datetime_from_string
-   end interface toml_datetime
-
-
-   interface operator(==)
-      module procedure :: compare_datetime
-   end interface operator(==)
-
-
-   interface to_string
-      module procedure :: to_string_datetime
-   end interface to_string
 
 
 contains
 
 
-pure function new_datetime(year, month, day, hour, minute, second, msecond, zone) &
-      & result(datetime)
-   integer, intent(in), optional :: year
-   integer, intent(in), optional :: month
-   integer, intent(in), optional :: day
-   integer, intent(in), optional :: hour
-   integer, intent(in), optional :: minute
-   integer, intent(in), optional :: second
-   integer, intent(in), optional :: msecond
-   character(len=*), intent(in), optional :: zone
-   type(toml_datetime) :: datetime
-
-   if (present(year) .and. present(month) .and. present(day)) then
-      datetime%date%year = year
-      datetime%date%month = month
-      datetime%date%day = day
-   end if
-
-   if (present(hour) .and. present(minute) .and. present(second)) then
-      datetime%time%hour = hour
-      datetime%time%minute = minute
-      datetime%time%second = second
-      if (present(msecond)) then
-         datetime%time%msec = msecond
-      end if
-      if (present(zone)) then
-         datetime%time%zone = zone
-      end if
-   end if
-end function new_datetime
+subroutine date_to_string(lhs, rhs)
+   character(kind=tfc, len=:), allocatable, intent(out) :: lhs
+   class(toml_date), intent(in) :: rhs
+   allocate(character(kind=tfc, len=10) :: lhs)
+   write(lhs, '(i4.4,"-",i2.2,"-",i2.2)') &
+      &  rhs%year, rhs%month, rhs%day
+end subroutine date_to_string
 
 
-pure function new_datetime_from_string(string) result(datetime)
-   character(len=*), intent(in) :: string
-   type(toml_datetime) :: datetime
-
-   type(toml_date) :: date
-   type(toml_time) :: time
-
-   integer :: it, tmp, first
-   character(*, tfc), parameter :: num = "0123456789"
-   integer, allocatable :: msec(:)
-
-   first = 0
-
-   if (all([string(first+5:first+5), string(first+8:first+8)] == "-")) then
-      date%year = 0
-      do it = first + 1, first + 4
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         date%year = date%year * 10 + tmp
-      end do
-
-      date%month = 0
-      do it = first + 6, first + 7
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         date%month = date%month * 10 + tmp
-      end do
-
-      date%day = 0
-      do it = first + 9, first + 10
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         date%day = date%day * 10 + tmp
-      end do
-
-      first = first + 11
-      datetime%date = date
-   end if
-
-   if (all([string(first+3:first+3), string(first+6:first+6)] == ":") &
-      & .and. first < len(string)) then
-      time%hour = 0
-      do it = first + 1, first + 2
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         time%hour = time%hour * 10 + tmp
-      end do
-
-      time%minute = 0
-      do it = first + 4, first + 5
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         time%minute = time%minute * 10 + tmp
-      end do
-
-      time%second = 0
-      do it = first + 7, first + 8
-         tmp = scan(num, string(it:it)) - 1
-         if (tmp < 0) exit
-         time%second = time%second * 10 + tmp
-      end do
-
-      first = first + 8
-      if (string(first+1:first+1) == ".") then
-         msec = [integer::]
-         do it = first + 2, len(string)
-            tmp = scan(num, string(it:it)) - 1
-            if (tmp < 0) exit
-            msec = [msec, tmp]
-         end do
-         first = it - 1
-
-         msec = [msec, 0, 0, 0, 0, 0, 0]
-         time%msec = sum(msec(1:6) * [100000, 10000, 1000, 100, 10, 1])
-      end if
-
-      if (first < len(string)) then
-         time%zone = ""
-         do it = first + 1, len(string)
-            time%zone = time%zone // string(it:it)
-         end do
-         if (time%zone == "z") time%zone = "Z"
-      end if
-      datetime%time = time
-   end if
-
-end function new_datetime_from_string
-
-
-pure function to_string_datetime(datetime) result(str)
-   type(toml_datetime), intent(in) :: datetime
-   character(kind=tfc, len=:), allocatable :: str
-
-   str = ""
-   if (has_date(datetime)) then
-      str = str // to_string_date(datetime%date)
-   end if
-
-   if (has_time(datetime)) then
-      if (has_date(datetime)) then
-         str = str // ' '
-      end if
-      str = str // to_string_time(datetime%time)
-   end if
-end function to_string_datetime
-
-pure function to_string_date(date) result(str)
-   type(toml_date), intent(in) :: date
-   character(:, tfc), allocatable :: str
-
-   allocate(character(10, tfc) :: str)
-   write(str, '(i4.4,"-",i2.2,"-",i2.2)') &
-      &  date%year, date%month, date%day
-end function to_string_date
-
-pure function to_string_time(time) result(str)
-   type(toml_time), intent(in) :: time
-   character(:, tfc), allocatable :: str
-
-   integer :: msec, width
-   character(1), parameter :: places(6) = ["1", "2", "3", "4", "5", "6"]
-
-   if (time%msec < 0) then
-      allocate(character(8, tfc) :: str)
-      write(str, '(i2.2,":",i2.2,":",i2.2)') &
-         &  time%hour, time%minute, time%second
+subroutine time_to_string(lhs, rhs)
+   character(kind=tfc, len=:), allocatable, intent(out) :: lhs
+   class(toml_time), intent(in) :: rhs
+   if (allocated(rhs%millisec)) then
+      allocate(character(kind=tfc, len=12) :: lhs)
+      write(lhs, '(i2.2,":",i2.2,":",i2.2,".",i3.3)') &
+         &  rhs%hour, rhs%minute, rhs%second, rhs%millisec
    else
-      width = 6
-      msec = time%msec
-      do while(mod(msec, 10) == 0 .and. width > 3)
-         width = width - 1
-         msec = msec / 10
-      end do
-      allocate(character(9 + width, tfc) :: str)
-      write(str, '(i2.2,":",i2.2,":",i2.2,".",i'//places(width)//'.'//places(width)//')') &
-         &  time%hour, time%minute, time%second, msec
+      allocate(character(kind=tfc, len=8) :: lhs)
+      write(lhs, '(i2.2,":",i2.2,":",i2.2)') &
+         &  rhs%hour, rhs%minute, rhs%second
    end if
-   if (allocated(time%zone)) str = str // trim(time%zone)
-end function to_string_time
+   if (allocated(rhs%zone)) lhs = lhs // trim(rhs%zone)
+end subroutine time_to_string
 
 
-pure function has_date(datetime)
-   class(toml_datetime), intent(in) :: datetime
-   logical :: has_date
-   has_date = (datetime%date%year >= 0) .and. &
-      & (datetime%date%month >= 0) .and. &
-      & (datetime%date%day >= 0)
-end function has_date
-
-pure function has_time(datetime)
-   class(toml_datetime), intent(in) :: datetime
-   logical :: has_time
-   has_time = (datetime%time%hour >= 0) .and. &
-      & (datetime%time%minute >= 0) .and. &
-      & (datetime%time%second >= 0)
-end function has_time
+subroutine datetime_to_string(lhs, rhs)
+   character(kind=tfc, len=:), allocatable, intent(out) :: lhs
+   class(toml_datetime), intent(in) :: rhs
+   character(kind=tfc, len=:), allocatable :: temporary
+   if (allocated(rhs%date)) then
+      call rhs%date%to_string(lhs)
+      if (allocated(rhs%time)) then
+         call rhs%time%to_string(temporary)
+         lhs = lhs // tfc_'T' // temporary
+      end if
+   else
+      if (allocated(rhs%time)) lhs = rhs%time
+   end if
+end subroutine datetime_to_string
 
 
 !> Constructor for toml_time type, necessary due to PGI bug in NVHPC 20.7 and 20.9
-elemental function new_toml_time(hour, minute, second, msec, zone) &
+elemental function new_toml_time(hour, minute, second, millisec, zone) &
       & result(self)
    integer, intent(in), optional :: hour
    integer, intent(in), optional :: minute
    integer, intent(in), optional :: second
-   integer, intent(in), optional :: msec
+   integer, intent(in), optional :: millisec
    character(len=*), intent(in), optional :: zone
    type(toml_time) :: self
    if (present(hour)) self%hour = hour
    if (present(minute)) self%minute = minute
    if (present(second)) self%second = second
-   if (present(msec)) self%msec = msec
+   if (present(millisec)) self%millisec = millisec
    if (present(zone)) self%zone = zone
 end function new_toml_time
-
-
-pure function compare_datetime(lhs, rhs) result(match)
-   type(toml_datetime), intent(in) :: lhs
-   type(toml_datetime), intent(in) :: rhs
-   logical :: match
-
-   match = (has_date(lhs) .eqv. has_date(rhs)) &
-      & .and. (has_time(lhs) .eqv. has_time(rhs))
-   if (has_date(lhs) .and. has_date(rhs)) then
-      match = match .and. compare_date(lhs%date, rhs%date)
-   end if
-
-   if (has_time(lhs) .and. has_time(rhs)) then
-      match = match .and. compare_time(lhs%time, rhs%time)
-   end if
-end function compare_datetime
-
-
-pure function compare_date(lhs, rhs) result(match)
-   type(toml_date), intent(in) :: lhs
-   type(toml_date), intent(in) :: rhs
-   logical :: match
-
-   match = lhs%year == rhs%year .and. lhs%month == rhs%month .and. lhs%day == rhs%day
-end function compare_date
-
-
-pure function compare_time(lhs, rhs) result(match)
-   type(toml_time), intent(in) :: lhs
-   type(toml_time), intent(in) :: rhs
-   logical :: match
-
-   integer :: lms, rms
-
-   lms = max(lhs%msec, 0)
-   rms = max(rhs%msec, 0)
-
-   match = lhs%hour == rhs%hour .and. lhs%minute == rhs%minute .and. lhs%second == rhs%second &
-      & .and. lms == rms .and. allocated(lhs%zone) .eqv. allocated(rhs%zone)
-
-   if (allocated(lhs%zone) .and. allocated(rhs%zone)) then
-      match = match .and. lhs%zone == rhs%zone
-   end if
-end function compare_time
 
 
 end module tomlf_datetime
@@ -8401,7 +8035,8 @@ module tomlf_error
    implicit none
    private
 
-   public :: toml_stat, toml_error, make_error
+   public :: toml_stat, toml_error, toml_context
+   public :: syntax_error, duplicate_key_error, io_error, vendor_error
 
 
    !> Possible TOML-Fortran error codes
@@ -8411,23 +8046,41 @@ module tomlf_error
       integer :: success = 0
 
       !> Internal error:
-      !>
-      !> General undefined error state, usually caused by algorithmic errors.
+      !
+      !  General undefined error state, usually caused by algorithmic errors.
       integer :: fatal = -1
 
-      !> Duplicate key encountered
-      integer :: duplicate_key = -2
+      !> Duplicate key error:
+      !
+      !  Tried to push back an already present key on a TOML table or
+      !  TOML document contains duplicate keys, already present in table.
+      integer :: duplicate_key = 1
 
-      !> Incorrect type when reading a value
-      integer :: type_mismatch = -3
+      !> Syntax error
+      integer :: invalid_syntax = 2
 
-      !> Conversion error when downcasting a value
-      integer :: conversion_error = -4
+      !> IO error
+      integer :: io_failure = 3
 
    end type enum_stat
 
    !> Actual enumerator for return states
    type(enum_stat), parameter :: toml_stat = enum_stat()
+
+
+   !> Context for error message (usually a line in a TOML document)
+   type :: toml_context
+
+      !> Current internal position
+      integer :: pos = 0
+
+      !> Current internal count
+      integer :: num = 0
+
+      !> Current internal location on the string buffer
+      character(kind=tfc, len=:), pointer :: ptr => null()
+
+   end type toml_context
 
 
    !> Error message produced by TOML-Fortran
@@ -8444,28 +8097,173 @@ module tomlf_error
 
 contains
 
-!> Create new error message
-subroutine make_error(error, message, stat)
-   !> Error report
+
+!> A syntactic error in a TOML document was found
+subroutine syntax_error(error, context, message, stat)
+
+   !> Instance of the TOML error
    type(toml_error), allocatable, intent(out) :: error
-   !> Message for the error
-   character(*, tfc), intent(in) :: message
-   !> Status code
+
+   !> Current context producing the error
+   type(toml_context), intent(in), optional :: context
+
+   !> A detailed message describing the error and (optionally) offering advice
+   character(kind=tfc, len=*), intent(in), optional :: message
+
+   !> Overwrite of the error code
    integer, intent(in), optional :: stat
 
    allocate(error)
-   error%message = message
+
+   if (present(stat)) then
+      error%stat = stat
+   else
+      error%stat = toml_stat%invalid_syntax
+   end if
+
+   if (present(message)) then
+      error%message = message
+   else
+      error%message = "Syntax error"
+   end if
+
+   if (present(context)) then
+      call add_context(error%message, context)
+   end if
+
+end subroutine syntax_error
+
+
+!> Key is present multiple times in a TOML document within the same table
+subroutine duplicate_key_error(error, context, key, stat)
+
+   !> Instance of the TOML error
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> Current context producing the error
+   type(toml_context), intent(in), optional :: context
+
+   !> The offending duplicate key
+   character(kind=tfc, len=*), intent(in), optional :: key
+
+   !> Overwrite of the error code
+   integer, intent(in), optional :: stat
+
+   allocate(error)
+
+   if (present(stat)) then
+      error%stat = stat
+   else
+      error%stat = toml_stat%duplicate_key
+   end if
+
+   if (present(key)) then
+      error%message = "Duplicate key ("//key//") found"
+   else
+      error%message = "Duplicate key found"
+   end if
+
+   if (present(context)) then
+      call add_context(error%message, context)
+   end if
+
+end subroutine duplicate_key_error
+
+
+!> IO runtime error
+subroutine io_error(error, message)
+
+   !> Instance of the TOML error
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> A detailed message describing the error and (optionally) offering advice
+   character(kind=tfc, len=*), intent(in), optional :: message
+
+   allocate(error)
+   error%stat = toml_stat%io_failure
+
+   if (present(message)) then
+      error%message = message
+   else
+      error%message = "IO runtime error"
+   end if
+
+end subroutine io_error
+
+
+!> A shortcoming in the implementation or an internal error occured, rather
+!  than falling back to unpredictable and possibly harmful behaviour, we try
+!  to offer an apology for this inconvenience
+subroutine vendor_error(error, context, message, stat)
+
+   !> Instance of the TOML error
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> Current context producing the error
+   type(toml_context), intent(in), optional :: context
+
+   !> A detailed message describing the error and (optionally) offering advice
+   character(kind=tfc, len=*), intent(in), optional :: message
+
+   !> Overwrite of the error code
+   integer, intent(in), optional :: stat
+
+   allocate(error)
+
    if (present(stat)) then
       error%stat = stat
    else
       error%stat = toml_stat%fatal
    end if
-end subroutine make_error
+
+   if (present(message)) then
+      error%message = message
+   else
+      error%message = "Internal error"
+   end if
+
+   if (present(context)) then
+      call add_context(error%message, context)
+   end if
+
+end subroutine vendor_error
+
+
+!> Put an existing error message into a more useful context
+subroutine add_context(message, context)
+
+   !> A detailed message describing the error, requiring some more context
+   character(len=:), allocatable, intent(inout) :: message
+
+   !> Current context producing the error
+   type(toml_context), intent(in) :: context
+
+   character(len=20) :: num
+   integer :: line_break
+
+   if (context%num > 0) then
+      write(num, '("line",1x,i0,":")') context%num
+      message = num(1:len_trim(num)+1) // message
+   end if
+
+   if (associated(context%ptr)) then
+      line_break = index(context%ptr, TOML_NEWLINE)-1
+      if (line_break < 0) line_break = len(context%ptr)
+      message = message // TOML_NEWLINE // &
+         & '   | '// context%ptr(1:line_break) // TOML_NEWLINE // &
+         & '   |'
+      if (context%pos > 0 .and. context%pos <= line_break) then
+         message = message // repeat('-', context%pos) // '^'
+      end if
+   end if
+
+end subroutine add_context
+
 
 end module tomlf_error
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/utils/io.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/utils/verify.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -8479,83 +8277,217 @@ end module tomlf_error
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Utilities for handling input and output operations
-module tomlf_utils_io
-   use tomlf_constants, only : tfc
+!> Contains utilities to verify TOML raw values correspond to a certain datatype
+module tomlf_utils_verify
+   use tomlf_constants
    implicit none
    private
 
-   public :: read_whole_file, read_whole_line
+   public :: toml_raw_verify_string, toml_raw_verify_float, toml_raw_verify_bool
+   public :: toml_raw_verify_integer, toml_raw_verify_timestamp
+   public :: toml_raw_verify_date, toml_raw_verify_time
 
 
 contains
 
-!> Read a whole file into an array of characters
-subroutine read_whole_file(filename, string, stat)
-   !> File to read
-   character(*, tfc), intent(in) :: filename
-   !> Array of characters representing the file
-   character(:, tfc), allocatable, intent(out) :: string
-   !> Error status
-   integer, intent(out) :: stat
 
-   integer :: io, length
+!> Verify a raw value as TOML string
+pure function toml_raw_verify_string(raw) result(stat)
 
-   open(file=filename, &
-      & status="old", &
-      & access="stream", &
-      & position="append", &
-      & newunit=io, &
-      & iostat=stat)
-   if (stat == 0) then
-      inquire(unit=io, pos=length)
-      allocate(character(length-1, tfc) :: string, stat=stat)
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   stat = raw(1:1) == TOML_SQUOTE .or. raw(1:1) == TOML_DQUOTE
+
+end function toml_raw_verify_string
+
+
+!> Verify a raw value as TOML float
+pure function toml_raw_verify_float(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   logical :: plus_minus
+   integer :: first
+   integer :: dot_pos
+   integer :: exp_pos
+   first = 1
+   stat = .false.
+   if (raw == 'nan') then
+      stat = .true.
+      return
    end if
-   if (stat == 0) then
-      read(io, pos=1, iostat=stat) string(:length-1)
+   ! allow leading + or -
+   plus_minus = raw(1:1) == '+' .or. raw(1:1) == '-'
+   if (plus_minus) first = first+1
+   ! allow infinity and not-a-number
+   if (raw(first:) == 'inf' .or. raw(first:) == 'nan') then
+      stat = .true.
+      return
    end if
-   if (stat == 0) then
-      close(io)
+   ! position of dot and exponent
+   dot_pos = index(raw, '.')
+   exp_pos = scan(raw, 'Ee')
+   if (dot_pos == 0 .and. exp_pos == 0) return
+   if (dot_pos > 0 .and. exp_pos > 0 .and. dot_pos > exp_pos) return
+   ! check for leading or trailing underscores
+   if (raw(first:first) == '_' .or. raw(len(raw):) == '_') return
+   ! check for leading or trailing dots
+   if (first == dot_pos .or. len(raw) == dot_pos) return
+   if (dot_pos > 0) then
+      if (raw(dot_pos+1:dot_pos+1) == '_' .or. raw(dot_pos-1:dot_pos-1) == '_') return
    end if
-end subroutine read_whole_file
+   ! zero must be followed by a dot or exponent
+   if (raw(first:first) == '0' .and. len(raw(first:)) > 1) then
+      if (first+1 /= dot_pos .and. first+1 /= exp_pos) return
+   end if
+   ! no double underscores
+   if (index(raw, '__') > 0) return
+   ! check for digits
+   stat = verify(raw(first:), TOML_DIGITS//'._-+eE') == 0
 
-!> Read a whole line from a formatted unit into a deferred length character variable
-subroutine read_whole_line(io, string, stat)
-   !> Formatted IO unit
-   integer, intent(in) :: io
-   !> Line to read
-   character(:, tfc), allocatable, intent(out) :: string
-   !> Status of operation
-   integer, intent(out) :: stat
+end function toml_raw_verify_float
 
-   integer, parameter :: bufsize = 4096
-   character(bufsize, tfc) :: buffer, msg
-   integer :: chunk
-   logical :: opened
 
-   if (io /= -1) then
-      inquire(unit=io, opened=opened)
+!> Verify a raw value as TOML integer
+pure function toml_raw_verify_integer(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   logical :: plus_minus
+   integer :: first, base
+
+   first = 1
+   base = 10
+   stat = .false.
+   ! allow leading + or -
+   plus_minus = raw(1:1) == '+' .or. raw(1:1) == '-'
+   if (plus_minus) first = first+1
+   ! check for leading underscores
+   if (raw(first:first) == '_') return
+   ! no double underscores
+   if (index(raw, '__') > 0) return
+   ! 0 indicates other base systems
+   if (raw(first:first) == '0' .and. len(raw) > first) then
+      select case(raw(first+1:first+1))
+      case('x'); base = 16
+      case('o'); base = 8
+      case('b'); base = 2
+      case default; return ! disallow 0[0-9_]+
+      end select
+      first = first + 2
+      ! check for leading underscores, again
+      if (raw(first:first) == '_') return
+   end if
+   ! check for trailing underscores
+   if (raw(len(raw):) == '_') return
+   ! verify we only allowed digits
+   select case(base)
+   case default
+      stat = verify(raw(first:), TOML_DIGITS//'_') == 0
+   case(16)
+      stat = verify(raw(first:), TOML_HEXDIGITS//'_') == 0
+   case(8)
+      stat = verify(raw(first:), TOML_OCTDIGITS//'_') == 0
+   case(2)
+      stat = verify(raw(first:), TOML_BINDIGITS//'_') == 0
+   end select
+end function
+
+
+!> Verify a raw value as TOML bool
+pure function toml_raw_verify_bool(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   stat = raw == 'true' .or. raw == 'false'
+
+end function toml_raw_verify_bool
+
+
+!> Verify a raw value as TOML datetime expression
+pure function toml_raw_verify_timestamp(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   integer :: first
+
+   first = 1
+   stat = .false.
+   if (toml_raw_verify_date(raw)) then
+      if (len(raw) == 10) then
+         stat = .true.
+         return
+      end if
+      if (raw(11:11) /= ' ' .and. raw(11:11) /= 'T') return
+      first = 12
+   end if
+
+   stat = toml_raw_verify_time(raw(first:))
+
+end function toml_raw_verify_timestamp
+
+
+!> Verify a raw value as TOML date expression (YYYY-MM-DD)
+pure function toml_raw_verify_date(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   if (len(raw) >= 10) then
+      stat = verify(raw(1:4), TOML_DIGITS) == 0 .and. raw(5:5) == '-' .and. &
+         &   verify(raw(6:7), TOML_DIGITS) == 0 .and. raw(8:8) == '-' .and. &
+         &   verify(raw(9:10), TOML_DIGITS) == 0
    else
-      opened = .false.
+      stat = .false.
    end if
 
-   if (opened) then
-      open(unit=io, pad="yes", iostat=stat)
+end function toml_raw_verify_date
+
+
+!> Verify a raw value as TOML time expression (HH:MM:SS)
+pure function toml_raw_verify_time(raw) result(stat)
+
+   !> Raw value to verify
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Status of the evaluation
+   logical :: stat
+
+   if (len(raw) >= 8) then
+      stat = verify(raw(1:2), TOML_DIGITS) == 0 .and. raw(3:3) == ':' .and. &
+         &   verify(raw(4:5), TOML_DIGITS) == 0 .and. raw(6:6) == ':' .and. &
+         &   verify(raw(7:8), TOML_DIGITS) == 0
    else
-      stat = 1
-      msg = "Unit is not connected"
+      stat = .false.
    end if
 
-   string = ""
-   do while (stat == 0)
-      read(io, '(a)', advance='no', iostat=stat, size=chunk) buffer
-      if (stat > 0) exit
-      string = string // buffer(:chunk)
-   end do
-   if (is_iostat_eor(stat)) stat = 0
-end subroutine read_whole_line
+end function toml_raw_verify_time
 
-end module tomlf_utils_io
+
+end module tomlf_utils_verify
 
 
 !>>>>> ././src/fpm_environment.f90
@@ -9404,7 +9336,7 @@ contains
 end module fpm_versioning
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/utils/convert.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -9418,382 +9350,293 @@ end module fpm_versioning
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-module tomlf_utils
+!> Contains utilities to convert TOML raw values to actual Fortran datatypes
+module tomlf_utils_convert
    use tomlf_constants
-   use tomlf_datetime, only : toml_datetime, toml_date, toml_time, to_string
-   use tomlf_utils_io, only : read_whole_file, read_whole_line
+   use tomlf_datetime, only : toml_datetime, toml_date, toml_time
+   use tomlf_utils_verify
    implicit none
    private
 
-   public :: toml_escape_string
-   public :: to_string
-   public :: read_whole_file, read_whole_line
+   public :: convert_raw
+   public :: toml_raw_to_string, toml_raw_to_float, toml_raw_to_bool
+   public :: toml_raw_to_integer, toml_raw_to_timestamp
 
 
-   interface to_string
-      module procedure :: to_string_i1
-      module procedure :: to_string_i2
-      module procedure :: to_string_i4
-      module procedure :: to_string_i8
-      module procedure :: to_string_r8
-   end interface to_string
+   !> Overloaded conversion interface
+   interface convert_raw
+      module procedure :: toml_raw_to_string
+      module procedure :: toml_raw_to_float
+      module procedure :: toml_raw_to_bool
+      module procedure :: toml_raw_to_integer
+      module procedure :: toml_raw_to_timestamp
+   end interface convert_raw
 
 
 contains
 
 
-!> Escape all special characters in a TOML string
-subroutine toml_escape_string(raw, escaped, multiline)
+!> Attempt to convert TOML raw value to Fortran real
+function toml_raw_to_float(raw, num) result(stat)
 
-   !> Raw representation of TOML string
+   !> Raw value to convert
    character(kind=tfc, len=*), intent(in) :: raw
 
-   !> Escaped view of the TOML string
-   character(kind=tfc, len=:), allocatable, intent(out) :: escaped
+   !> Real value represented by raw value
+   real(tfr), intent(out) :: num
 
-   !> Preserve newline characters
-   logical, intent(in), optional :: multiline
+   !> Status of the evaluation
+   logical :: stat
 
-   integer :: i
-   logical :: preserve_newline
+   character(len=len(raw)) :: inp
+   integer :: i, j, err
 
-   preserve_newline = .false.
-   if (present(multiline)) preserve_newline = multiline
-
-   escaped = '"'
-   do i = 1, len(raw)
-      select case(raw(i:i))
-      case default; escaped = escaped // raw(i:i)
-      case('\'); escaped = escaped // '\\'
-      case('"'); escaped = escaped // '\"'
-      case(TOML_NEWLINE)
-         if (preserve_newline) then
-            escaped = escaped // raw(i:i)
-         else
-            escaped = escaped // '\n'
-         end if
-      case(TOML_FORMFEED); escaped = escaped // '\f'
-      case(TOML_CARRIAGE_RETURN); escaped = escaped // '\r'
-      case(TOML_TABULATOR); escaped = escaped // '\t'
-      case(TOML_BACKSPACE); escaped = escaped // '\b'
-      end select
-   end do
-   escaped = escaped // '"'
-
-end subroutine toml_escape_string
-
-
-!> Represent an integer as character sequence.
-pure function to_string_i1(val) result(string)
-   integer, parameter :: ik = tf_i1
-   !> Integer value to create string from
-   integer(ik), intent(in) :: val
-   !> String representation of integer
-   character(len=:), allocatable :: string
-
-   integer, parameter :: buffer_len = range(val)+2
-   character(len=buffer_len) :: buffer
-   integer :: pos
-   integer(ik) :: n
-   character(len=1), parameter :: numbers(-9:0) = &
-      ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]
-
-   if (val == 0_ik) then
-      string = numbers(0)
-      return
+   stat = toml_raw_verify_float(raw)
+   if (stat) then
+      inp = ''
+      j = 0
+      do i = 1, len(raw)
+         if (raw(i:i) == '_') cycle
+         j = j+1
+         inp(j:j) = raw(i:i)
+      end do
+      read(inp, *, iostat=err) num
+      stat = err == 0
    end if
 
-   n = sign(val, -1_ik)
-   buffer = ""
-   pos = buffer_len + 1
-   do while (n < 0_ik)
-      pos = pos - 1
-      buffer(pos:pos) = numbers(mod(n, 10_ik))
-      n = n/10_ik
-   end do
-
-   if (val < 0_ik) then
-      pos = pos - 1
-      buffer(pos:pos) = '-'
-   end if
-
-   string = buffer(pos:)
-end function to_string_i1
+end function
 
 
-!> Represent an integer as character sequence.
-pure function to_string_i2(val) result(string)
-   integer, parameter :: ik = tf_i2
-   !> Integer value to create string from
-   integer(ik), intent(in) :: val
-   !> String representation of integer
-   character(len=:), allocatable :: string
+!> Attempt to convert TOML raw value to Fortran integer
+function toml_raw_to_integer(raw, num) result(stat)
 
-   integer, parameter :: buffer_len = range(val)+2
-   character(len=buffer_len) :: buffer
-   integer :: pos
-   integer(ik) :: n
-   character(len=1), parameter :: numbers(-9:0) = &
-      ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]
+   !> Raw value to convert
+   character(kind=tfc, len=*), intent(in) :: raw
 
-   if (val == 0_ik) then
-      string = numbers(0)
-      return
-   end if
+   !> Integer value represented by raw value
+   integer(tfi), intent(out) :: num
 
-   n = sign(val, -1_ik)
-   buffer = ""
-   pos = buffer_len + 1
-   do while (n < 0_ik)
-      pos = pos - 1
-      buffer(pos:pos) = numbers(mod(n, 10_ik))
-      n = n/10_ik
-   end do
+   !> Status of the evaluation
+   logical :: stat
 
-   if (val < 0_ik) then
-      pos = pos - 1
-      buffer(pos:pos) = '-'
-   end if
+   character(kind=tfc, len=len(raw)) :: inp
+   character(len=10) :: fmt
+   logical :: minus
+   integer :: i, j, err
+   integer :: first
 
-   string = buffer(pos:)
-end function to_string_i2
-
-
-!> Represent an integer as character sequence.
-pure function to_string_i4(val) result(string)
-   integer, parameter :: ik = tf_i4
-   !> Integer value to create string from
-   integer(ik), intent(in) :: val
-   !> String representation of integer
-   character(len=:), allocatable :: string
-
-   integer, parameter :: buffer_len = range(val)+2
-   character(len=buffer_len) :: buffer
-   integer :: pos
-   integer(ik) :: n
-   character(len=1), parameter :: numbers(-9:0) = &
-      ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]
-
-   if (val == 0_ik) then
-      string = numbers(0)
-      return
-   end if
-
-   n = sign(val, -1_ik)
-   buffer = ""
-   pos = buffer_len + 1
-   do while (n < 0_ik)
-      pos = pos - 1
-      buffer(pos:pos) = numbers(mod(n, 10_ik))
-      n = n/10_ik
-   end do
-
-   if (val < 0_ik) then
-      pos = pos - 1
-      buffer(pos:pos) = '-'
-   end if
-
-   string = buffer(pos:)
-end function to_string_i4
-
-
-!> Represent an integer as character sequence.
-pure function to_string_i8(val) result(string)
-   integer, parameter :: ik = tf_i8
-   !> Integer value to create string from
-   integer(ik), intent(in) :: val
-   !> String representation of integer
-   character(len=:), allocatable :: string
-
-   integer, parameter :: buffer_len = range(val)+2
-   character(len=buffer_len) :: buffer
-   integer :: pos
-   integer(ik) :: n
-   character(len=1), parameter :: numbers(-9:0) = &
-      ["9", "8", "7", "6", "5", "4", "3", "2", "1", "0"]
-
-   if (val == 0_ik) then
-      string = numbers(0)
-      return
-   end if
-
-   n = sign(val, -1_ik)
-   buffer = ""
-   pos = buffer_len + 1
-   do while (n < 0_ik)
-      pos = pos - 1
-      buffer(pos:pos) = numbers(mod(n, 10_ik))
-      n = n/10_ik
-   end do
-
-   if (val < 0_ik) then
-      pos = pos - 1
-      buffer(pos:pos) = '-'
-   end if
-
-   string = buffer(pos:)
-end function to_string_i8
-
-!> Represent an real as character sequence.
-pure function to_string_r8(val) result(string)
-   integer, parameter :: rk = tfr
-   !> Real value to create string from
-   real(rk), intent(in) :: val
-   !> String representation of integer
-   character(len=:), allocatable :: string
-
-   character(128, tfc) :: buffer
-
-   if (val > huge(val)) then
-      string = "+inf"
-   else if (val < -huge(val)) then
-      string = "-inf"
-   else if (val /= val) then
-      string = "nan"
-   else
-      if (abs(val) >= 1.0e+100_rk) then
-         write(buffer, '(es24.16e3)') val
-      else if (abs(val) >= 1.0e+10_rk) then
-         write(buffer, '(es24.16e2)') val
-      else if (abs(val) >= 1.0e+3_rk) then
-         write(buffer, '(es24.16e1)') val
+   stat = toml_raw_verify_integer(raw)
+   if (stat) then
+      minus = raw(1:1) == '-'
+      inp = ''
+      first = scan(raw, 'xob')+1
+      j = 0
+      do i = first, len(raw)
+         if (raw(i:i) == '_') cycle
+         j = j+1
+         inp(j:j) = raw(i:i)
+      end do
+      if (first > 1) then
+         select case(raw(first-1:first-1))
+         case('x'); write(fmt, '("(z",i0,")")') j
+         case('o'); write(fmt, '("(o",i0,")")') j
+         case('b'); write(fmt, '("(b",i0,")")') j
+         end select
+         read(inp, fmt, iostat=err) num
+         if (minus) num = -num
       else
-         write(buffer, '(f24.16)') val
+         read(inp, *, iostat=err) num
       end if
-      string = trim(adjustl(buffer))
+      stat = err == 0
    end if
-end function to_string_r8
 
-end module tomlf_utils
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/de/abc.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Defines the abstract base class which is implemented by the TOML lexer.
-module tomlf_de_abc
-   use tomlf_constants, only : tfc, tfi, tfr
-   use tomlf_datetime, only : toml_datetime
-   use tomlf_de_token, only : toml_token
-   implicit none
-   private
-
-   public :: abstract_lexer
+end function toml_raw_to_integer
 
 
-   !> Abstract base class for TOML lexers.
-   type, abstract :: abstract_lexer
-   contains
-      !> Obtain the next token
-      procedure(next), deferred :: next
-      !> Extract a token
-      generic :: extract => &
-         & extract_string, extract_integer, extract_float, extract_bool, extract_datetime
-      !> Extract a string from a token
-      procedure(extract_string), deferred :: extract_string
-      !> Extract an integer from a token
-      procedure(extract_integer), deferred :: extract_integer
-      !> Extract a float from a token
-      procedure(extract_float), deferred :: extract_float
-      !> Extract a boolean from a token
-      procedure(extract_bool), deferred :: extract_bool
-      !> Extract a timestamp from a token
-      procedure(extract_datetime), deferred :: extract_datetime
-      !> Get information about the source
-      procedure(get_info), deferred :: get_info
-   end type abstract_lexer
+!> Attempt to convert TOML raw value to Fortran logical
+function toml_raw_to_bool(raw, bool) result(stat)
+
+   !> Raw value to convert
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Logical value represented by raw value
+   logical, intent(out) :: bool
+
+   !> Status of the evaluation
+   logical :: stat
+
+   stat = toml_raw_verify_bool(raw)
+   if (stat) then
+      select case(raw)
+      case('true'); bool = .true.
+      case('false'); bool = .false.
+      end select
+   end if
+
+end function toml_raw_to_bool
 
 
-   abstract interface
-      !> Advance the lexer to the next token.
-      subroutine next(lexer, token)
-         import :: abstract_lexer, toml_token
-         !> Instance of the lexer
-         class(abstract_lexer), intent(inout) :: lexer
-         !> Current lexeme
-         type(toml_token), intent(inout) :: token
-      end subroutine next
+!> Attempt to convert TOML raw value to TOML datetime
+function toml_raw_to_timestamp(raw, timestamp) result(stat)
 
-      !> Extract string value of token, works for keypath, string, multiline string, literal,
-      !> and mulitline literal tokens.
-      subroutine extract_string(lexer, token, string)
-         import :: abstract_lexer, toml_token, tfc
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Token to extract string value from
-         type(toml_token), intent(in) :: token
-         !> String value of token
-         character(:, tfc), allocatable, intent(out) :: string
-      end subroutine extract_string
+   !> Raw value to convert
+   character(kind=tfc, len=*), intent(in) :: raw
 
-      !> Extract integer value of token
-      subroutine extract_integer(lexer, token, val)
-         import :: abstract_lexer, toml_token, tfi
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Token to extract integer value from
-         type(toml_token), intent(in) :: token
-         !> Integer value of token
-         integer(tfi), intent(out) :: val
-      end subroutine extract_integer
+   !> TOML datetime value
+   type(toml_datetime), intent(out) :: timestamp
 
-      !> Extract floating point value of token
-      subroutine extract_float(lexer, token, val)
-         import :: abstract_lexer, toml_token, tfr
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Token to extract floating point value from
-         type(toml_token), intent(in) :: token
-         !> Floating point value of token
-         real(tfr), intent(out) :: val
-      end subroutine extract_float
+   !> Status of the evaluation
+   logical :: stat
 
-      !> Extract boolean value of token
-      subroutine extract_bool(lexer, token, val)
-         import :: abstract_lexer, toml_token
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Token to extract boolean value from
-         type(toml_token), intent(in) :: token
-         !> Boolean value of token
-         logical, intent(out) :: val
-      end subroutine extract_bool
+   integer :: err, dot_pos, first
 
-      !> Extract datetime value of token
-      subroutine extract_datetime(lexer, token, val)
-         import :: abstract_lexer, toml_token, toml_datetime
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Token to extract datetime value from
-         type(toml_token), intent(in) :: token
-         !> Datetime value of token
-         type(toml_datetime), intent(out) :: val
-      end subroutine extract_datetime
+   stat = toml_raw_verify_timestamp(raw)
+   first = 1
+   if (toml_raw_verify_date(raw)) then
+      timestamp%date = toml_date()
+      read(raw(1:4), *, iostat=err) timestamp%date%year
+      stat = err == 0
+      read(raw(6:7), *, iostat=err) timestamp%date%month
+      stat = stat .and. err == 0
+      read(raw(9:10), *, iostat=err) timestamp%date%day
+      stat = stat .and. err == 0
+      if (.not.stat .or. len(raw) == 10) return
+      first = 12
+   end if
 
-      !> Extract information about the source
-      subroutine get_info(lexer, meta, output)
-         import :: abstract_lexer, tfc
-         !> Instance of the lexer
-         class(abstract_lexer), intent(in) :: lexer
-         !> Query about the source
-         character(*, tfc), intent(in) :: meta
-         !> Metadata about the source
-         character(:, tfc), allocatable, intent(out) :: output
-      end subroutine get_info
-   end interface
+   if (toml_raw_verify_time(raw(first:))) then
+      timestamp%time = toml_time()
+      read(raw(first:first+1), *, iostat=err) timestamp%time%hour
+      stat = err == 0
+      read(raw(first+3:first+4), *, iostat=err) timestamp%time%minute
+      stat = stat .and. err == 0
+      read(raw(first+6:first+7), *, iostat=err) timestamp%time%second
+      stat = stat .and. err == 0
+      if (len(raw(first:)) > 8) then
+         dot_pos = index(raw, '.')
+         if (dot_pos > 0) then
+            allocate(timestamp%time%millisec, source=0)
+            read(raw(dot_pos+1:dot_pos+3), *, iostat=err) timestamp%time%millisec
+            stat = stat .and. err == 0
+         end if
+         dot_pos = verify(raw(first:), TOML_DIGITS//'.:') + first - 1
+         if (dot_pos > first) timestamp%time%zone = raw(dot_pos:)
+      end if
+   end if
 
-end module tomlf_de_abc
+end function toml_raw_to_timestamp
+
+
+logical function toml_raw_to_string(raw, str) result(stat)
+
+   character(kind=tfc, len=*), intent(in) :: raw
+   character(kind=tfc, len=:), allocatable, intent(out) :: str
+   character(kind=tfc, len=:), allocatable :: tmp
+   logical :: multiline
+   logical :: verbatim
+
+   stat = toml_raw_verify_string(raw)
+   if (stat) then
+      verbatim = raw(1:1) == TOML_SQUOTE
+      multiline = verify(raw(1:3), TOML_DQUOTE) == 0 &
+         &   .or. verify(raw(1:3), TOML_SQUOTE) == 0
+      if (multiline) then
+         tmp = raw(4:len(raw)-3)
+         call toml_normalize_multiline(tmp)
+      else
+         tmp = raw(2:len(raw)-1)
+      end if
+      if (.not.verbatim) call toml_normalize_string(tmp)
+      call move_alloc(tmp, str)
+   end if
+
+end function toml_raw_to_string
+
+
+subroutine toml_normalize_multiline(str)
+
+   character(kind=tfc, len=:), allocatable, intent(inout) :: str
+   character(kind=tfc, len=:), allocatable :: tmp
+   integer :: i, j, bsl
+
+   ! if there are no newlines, we are done here
+   if (scan(str, TOML_NEWLINE) == 0) return
+   ! check for leading newlines
+   i = verify(str, TOML_NEWLINE)
+   ! for the case everything is newline, we will go with an empty string
+   if (i == 0) then
+      str = ''
+      return
+   end if
+   tmp = ''
+   do while (i < len(str))
+      ! find next backslash character
+      bsl = index(str(i:), '\') - 1
+      if (bsl < 0) then
+         tmp = tmp // str(i:)
+         i = len(str)
+      else
+         j = verify(str(i+bsl+1:), TOML_WHITESPACE//TOML_NEWLINE) - 1
+         if (j < 0) then
+            tmp = tmp // str(i:i+bsl)
+            i = len(str)
+         else if (j == 0) then
+            tmp = tmp // str(i:i+bsl)
+            i = i + bsl + 1
+         else
+            tmp = tmp // str(i:i+bsl-1)
+            i = i + bsl + j + 1
+         end if
+      end if
+   end do
+   call move_alloc(tmp, str)
+
+end subroutine toml_normalize_multiline
+
+
+subroutine toml_normalize_string(str)
+   character(kind=tfc, len=:), allocatable, intent(inout) :: str
+   character(kind=tfc, len=:), allocatable :: tmp
+   character :: ch
+   integer :: i, ii
+   logical :: escape
+   integer, parameter :: x00 = int(z'00'), x08 = int(z'08'), x0b = int(z'0B'), &
+      & x1f = int(z'1f'), x7f = int(z'7f')
+
+   escape = .false.
+   tmp = ''
+   do i = 1, len(str)
+      ch = str(i:i)
+      ii = ichar(ch)
+      if (escape) then
+         escape = .false.
+         select case(ch)
+         case('b'); tmp = tmp // TOML_BACKSPACE
+         case('t'); tmp = tmp // TOML_TABULATOR
+         case('n'); tmp = tmp // TOML_NEWLINE
+         case('f'); tmp = tmp // TOML_FORMFEED
+         case('r'); tmp = tmp // TOML_CARRIAGE_RETURN
+         case('"', '\'); tmp = tmp // ch
+         case('u'); tmp = tmp // '\u' ! FIXME
+         case('U'); tmp = tmp // '\U' ! FIXME
+         end select
+      else
+         if (ch == '\') then
+            escape = .true.
+         else
+            ! check for illegal control characters
+            if ((x00 <= ii .and. ii <= x08) .or. &
+               &(x0B <= ii .and. ii <= x1f) .or. ii == x7f) return
+            tmp = tmp // ch
+         end if
+      end if
+   end do
+   call move_alloc(tmp, str)
+
+end subroutine toml_normalize_string
+
+
+end module tomlf_utils_convert
 
 
 !>>>>> ././src/fpm_filesystem.F90
@@ -10765,7 +10608,7 @@ end subroutine os_delete_dir
 end module fpm_filesystem
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/terminal.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -10779,475 +10622,102 @@ end module fpm_filesystem
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Implementation of a terminal to provide ANSI escape sequences
-!>
-!> ANSI escape codes for producing terminal colors. The `ansi_code` derived
-!> type is used to store ANSI escape codes and can be combined with other
-!> codes or applied to strings by concatenation. The default or uninitialized
-!> `ansi_code` is a stub and does not produce escape sequences when applied
-!> to a string.
-!>
-!> Available colors are
-!>
-!> color          | foreground            | background
-!> -------------- | --------------------- | ------------------------
-!> black          | `black` (30)          | `bg_black` (40)
-!> red            | `red` (31)            | `bg_red` (41)
-!> green          | `green` (32)          | `bg_green` (42)
-!> yellow         | `yellow` (33)         | `bg_yellow` (43)
-!> blue           | `blue` (34)           | `bg_blue` (44)
-!> magenta        | `magenta` (35)        | `bg_magenta` (45)
-!> cyan           | `cyan` (36)           | `bg_cyan` (46)
-!> white          | `white` (37)          | `bg_white` (47)
-!> gray           | `gray` (90)           | `bg_gray` (100)
-!> bright red     | `bright_red` (91)     | `bg_bright_red` (101)
-!> bright green   | `bright_green` (92)   | `bg_bright_green` (102)
-!> bright yellow  | `bright_yellow` (93)  | `bg_bright_yellow` (103)
-!> bright blue    | `bright_blue` (94)    | `bg_bright_blue` (104)
-!> bright magenta | `bright_magenta` (95) | `bg_bright_magenta` (105)
-!> bright cyan    | `bright_cyan` (96)    | `bg_bright_cyan` (106)
-!> bright white   | `bright_white` (97)   | `bg_bright_white` (107)
-!>
-!> Available styles are
-!>
-!> style       |
-!> ------------| ---------------
-!> reset       | `reset` (0)
-!> bold        | `bold` (1)
-!> dim         | `dim` (2)
-!> italic      | `italic` (3)
-!> underline   | `underline` (4)
-!> blink       | `blink` (5)
-!> blink rapid | `blink_rapid` (6)
-!> reverse     | `reverse` (7)
-!> hidden      | `hidden` (8)
-!> crossed     | `crossed` (9)
-module tomlf_terminal
-   use tomlf_utils, only : to_string
+module tomlf_utils
+   use tomlf_constants
+   use tomlf_datetime, only : toml_datetime, toml_date, toml_time
+   use tomlf_utils_convert
+   use tomlf_utils_verify
    implicit none
    private
 
-   public :: toml_terminal
-   public :: ansi_code, escape, operator(+), operator(//)
-
-
-   !> Char length for integers
-   integer, parameter :: i1 = selected_int_kind(2)
-
-   !> Container for terminal escape code
-   type :: ansi_code
-      private
-      !> Style descriptor
-      integer(i1) :: style = -1_i1
-      !> Background color descriptor
-      integer(i1) :: bg = -1_i1
-      !> Foreground color descriptor
-      integer(i1) :: fg = -1_i1
-   end type
-
-   interface operator(+)
-      module procedure :: add
-   end interface operator(+)
-
-   interface operator(//)
-      module procedure :: concat_left
-      module procedure :: concat_right
-   end interface operator(//)
-
-   interface escape
-      module procedure :: escape
-   end interface escape
-
-   type(ansi_code), public, parameter :: &
-      reset = ansi_code(style=0_i1), &
-      bold = ansi_code(style=1_i1), &
-      dim = ansi_code(style=2_i1), &
-      italic = ansi_code(style=3_i1), &
-      underline = ansi_code(style=4_i1), &
-      blink = ansi_code(style=5_i1), &
-      blink_rapid = ansi_code(style=6_i1), &
-      reverse = ansi_code(style=7_i1), &
-      hidden = ansi_code(style=8_i1), &
-      crossed = ansi_code(style=9_i1)
-
-   type(ansi_code), public, parameter :: &
-      black = ansi_code(fg=30_i1), &
-      red = ansi_code(fg=31_i1), &
-      green = ansi_code(fg=32_i1), &
-      yellow = ansi_code(fg=33_i1), &
-      blue = ansi_code(fg=34_i1), &
-      magenta = ansi_code(fg=35_i1), &
-      cyan = ansi_code(fg=36_i1), &
-      white = ansi_code(fg=37_i1), &
-      gray = ansi_code(fg=90_i1), &
-      bright_red = ansi_code(fg=91_i1), &
-      bright_green = ansi_code(fg=92_i1), &
-      bright_yellow = ansi_code(fg=93_i1), &
-      bright_blue = ansi_code(fg=94_i1), &
-      bright_magenta = ansi_code(fg=95_i1), &
-      bright_cyan = ansi_code(fg=96_i1), &
-      bright_white = ansi_code(fg=97_i1)
-
-   type(ansi_code), public, parameter :: &
-      bg_black = ansi_code(bg=40_i1), &
-      bg_red = ansi_code(bg=41_i1), &
-      bg_green = ansi_code(bg=42_i1), &
-      bg_yellow = ansi_code(bg=43_i1), &
-      bg_blue = ansi_code(bg=44_i1), &
-      bg_magenta = ansi_code(bg=45_i1), &
-      bg_cyan = ansi_code(bg=46_i1), &
-      bg_white = ansi_code(bg=47_i1), &
-      bg_gray = ansi_code(bg=100_i1), &
-      bg_bright_red = ansi_code(bg=101_i1), &
-      bg_bright_green = ansi_code(bg=102_i1), &
-      bg_bright_yellow = ansi_code(bg=103_i1), &
-      bg_bright_blue = ansi_code(bg=104_i1), &
-      bg_bright_magenta = ansi_code(bg=105_i1), &
-      bg_bright_cyan = ansi_code(bg=106_i1), &
-      bg_bright_white = ansi_code(bg=107_i1)
-
-
-   !> Terminal wrapper to handle color escape sequences, must be initialized with
-   !> color support to provide colorful output. Default and uninitialized instances
-   !> will remain usable but provide only stubs and do not produce colorful output.
-   !> This behavior is useful for creating applications which can toggle color support.
-   type :: toml_terminal
-      type(ansi_code) :: &
-         reset = ansi_code(), &
-         bold = ansi_code(), &
-         dim = ansi_code(), &
-         italic = ansi_code(), &
-         underline = ansi_code(), &
-         blink = ansi_code(), &
-         blink_rapid = ansi_code(), &
-         reverse = ansi_code(), &
-         hidden = ansi_code(), &
-         crossed = ansi_code()
-
-      type(ansi_code) :: &
-         black = ansi_code(), &
-         red = ansi_code(), &
-         green = ansi_code(), &
-         yellow = ansi_code(), &
-         blue = ansi_code(), &
-         magenta = ansi_code(), &
-         cyan = ansi_code(), &
-         white = ansi_code(), &
-         gray = ansi_code(), &
-         bright_red = ansi_code(), &
-         bright_green = ansi_code(), &
-         bright_yellow = ansi_code(), &
-         bright_blue = ansi_code(), &
-         bright_magenta = ansi_code(), &
-         bright_cyan = ansi_code(), &
-         bright_white = ansi_code()
-
-      type(ansi_code) :: &
-         bg_black = ansi_code(), &
-         bg_red = ansi_code(), &
-         bg_green = ansi_code(), &
-         bg_yellow = ansi_code(), &
-         bg_blue = ansi_code(), &
-         bg_magenta = ansi_code(), &
-         bg_cyan = ansi_code(), &
-         bg_white = ansi_code(), &
-         bg_gray = ansi_code(), &
-         bg_bright_red = ansi_code(), &
-         bg_bright_green = ansi_code(), &
-         bg_bright_yellow = ansi_code(), &
-         bg_bright_blue = ansi_code(), &
-         bg_bright_magenta = ansi_code(), &
-         bg_bright_cyan = ansi_code(), &
-         bg_bright_white = ansi_code()
-   end type toml_terminal
-
-   !> Constructor to create new terminal
-   interface toml_terminal
-      module procedure :: new_terminal
-   end interface toml_terminal
-
-contains
-
-!> Create new terminal
-pure function new_terminal(use_color) result(new)
-   !> Enable color support in terminal
-   logical, intent(in) :: use_color
-   !> New terminal instance
-   type(toml_terminal) :: new
-
-   if (use_color) then
-      new%reset = reset
-      new%bold = bold
-      new%dim = dim
-      new%italic = italic
-      new%underline = underline
-      new%blink = blink
-      new%blink_rapid = blink_rapid
-      new%reverse = reverse
-      new%hidden = hidden
-      new%crossed = crossed
-
-      new%black = black
-      new%red = red
-      new%green = green
-      new%yellow = yellow
-      new%blue = blue
-      new%magenta = magenta
-      new%cyan = cyan
-      new%white = white
-      new%gray  = gray
-      new%bright_red  = bright_red
-      new%bright_green  = bright_green
-      new%bright_yellow  = bright_yellow
-      new%bright_blue  = bright_blue
-      new%bright_magenta  = bright_magenta
-      new%bright_cyan  = bright_cyan
-      new%bright_white  = bright_white
-
-      new%bg_black = bg_black
-      new%bg_red = bg_red
-      new%bg_green = bg_green
-      new%bg_yellow = bg_yellow
-      new%bg_blue = bg_blue
-      new%bg_magenta = bg_magenta
-      new%bg_cyan = bg_cyan
-      new%bg_white = bg_white
-      new%bg_gray = bg_gray
-      new%bg_bright_red = bg_bright_red
-      new%bg_bright_green = bg_bright_green
-      new%bg_bright_yellow = bg_bright_yellow
-      new%bg_bright_blue = bg_bright_blue
-      new%bg_bright_magenta = bg_bright_magenta
-      new%bg_bright_cyan = bg_bright_cyan
-      new%bg_bright_white = bg_bright_white
-   end if
-end function new_terminal
-
-!> Add two escape sequences, attributes in the right value override the left value ones.
-pure function add(lval, rval) result(code)
-   !> First escape code
-   type(ansi_code), intent(in) :: lval
-   !> Second escape code
-   type(ansi_code), intent(in) :: rval
-   !> Combined escape code
-   type(ansi_code) :: code
-
-   code%style = merge(rval%style, lval%style, rval%style >= 0)
-   code%fg = merge(rval%fg, lval%fg, rval%fg >= 0)
-   code%bg = merge(rval%bg, lval%bg, rval%bg >= 0)
-end function add
-
-
-!> Concatenate an escape code with a string and turn it into an actual escape sequence
-pure function concat_left(lval, code) result(str)
-   !> String to add the escape code to
-   character(len=*), intent(in) :: lval
-   !> Escape sequence
-   type(ansi_code), intent(in) :: code
-   !> Concatenated string
-   character(len=:), allocatable :: str
-
-   str = lval // escape(code)
-end function concat_left
-
-!> Concatenate an escape code with a string and turn it into an actual escape sequence
-pure function concat_right(code, rval) result(str)
-   !> String to add the escape code to
-   character(len=*), intent(in) :: rval
-   !> Escape sequence
-   type(ansi_code), intent(in) :: code
-   !> Concatenated string
-   character(len=:), allocatable :: str
-
-   str = escape(code) // rval
-end function concat_right
-
-
-!> Transform a color code into an actual ANSI escape sequence
-pure function escape(code) result(str)
-   !> Color code to be used
-   type(ansi_code), intent(in) :: code
-   !> ANSI escape sequence representing the color code
-   character(len=:), allocatable :: str
-
-   if (anycolor(code)) then
-      str = achar(27) // "[0"  ! Always reset the style
-      if (code%style > 0) str = str // ";" // to_string(code%style)
-      if (code%fg >= 0) str = str // ";" // to_string(code%fg)
-      if (code%bg >= 0) str = str // ";" // to_string(code%bg)
-      str = str // "m"
-   else
-      str = ""
-   end if
-end function escape
-
-!> Check whether the code describes any color or is just a stub
-pure function anycolor(code)
-   !> Escape sequence
-   type(ansi_code), intent(in) :: code
-   !> Any color / style is active
-   logical :: anycolor
-
-   anycolor = code%fg >= 0 .or. code%bg >= 0 .or. code%style >= 0
-end function anycolor
-
-end module tomlf_terminal
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Class definitions for basic data types used for handling TOML
-module tomlf_type_value
-   use tomlf_constants, only : tfc, TOML_BAREKEY
-   use tomlf_utils, only : toml_escape_string
-   implicit none
-   private
-
-   public :: toml_value, toml_visitor, toml_key
-
-
-   !> Abstract base value for TOML data types
-   type, abstract :: toml_value
-
-      !> Raw representation of the key to the TOML value
-      character(kind=tfc, len=:), allocatable :: key
-
-      !> Original source of the value
-      integer :: origin = 0
-
-   contains
-
-      !> Accept a visitor to transverse the data structure
-      procedure :: accept
-
-      !> Get escaped key to TOML value
-      procedure :: get_key
-
-      !> Compare raw key of TOML value to input key
-      procedure :: match_key
-
-      !> Release allocation hold by TOML value
-      procedure(destroy), deferred :: destroy
-
-   end type toml_value
-
-
-   !> Abstract visitor for TOML values
-   type, abstract :: toml_visitor
-   contains
-
-      !> Visitor visiting a TOML value
-      procedure(visit), deferred :: visit
-
-   end type toml_visitor
-
-
-   !> Thin wrapper around the deferred-size character intrinisc
-   type :: toml_key
-
-      !> Raw representation of the key to the TOML value
-      character(kind=tfc, len=:), allocatable :: key
-
-      !> Original source of the value
-      integer :: origin = 0
-
-   end type toml_key
-
-
-   abstract interface
-      !> Accept a visitor to transverse the data structure
-      recursive subroutine visit(self, val)
-         import toml_value, toml_visitor
-
-         !> Instance of the visitor
-         class(toml_visitor), intent(inout) :: self
-
-         !> Value to visit
-         class(toml_value), intent(inout) :: val
-      end subroutine visit
-
-      !> Deconstructor to cleanup allocations (optional)
-      subroutine destroy(self)
-         import toml_value
-
-         !> Instance of the TOML value
-         class(toml_value), intent(inout) :: self
-
-      end subroutine destroy
-
-   end interface
+   public :: convert_raw
+   public :: toml_raw_to_string, toml_raw_to_float, toml_raw_to_bool
+   public :: toml_raw_to_integer, toml_raw_to_timestamp
+   public :: toml_raw_verify_string, toml_raw_verify_float, toml_raw_verify_bool
+   public :: toml_raw_verify_integer, toml_raw_verify_timestamp
+   public :: toml_raw_verify_date, toml_raw_verify_time
+   public :: toml_escape_string, toml_get_value_type
 
 
 contains
 
 
-!> Accept a visitor to transverse the data structure
-recursive subroutine accept(self, visitor)
+!> Determine TOML value type
+function toml_get_value_type(raw) result(vtype)
 
-   !> Instance of the TOML value
-   class(toml_value), intent(inout) :: self
+   !> Raw representation of TOML string
+   character(kind=tfc, len=*), intent(in) :: raw
 
-   !> Visitor for this value
-   class(toml_visitor), intent(inout) :: visitor
+   !> Value type
+   integer :: vtype
 
-   call visitor%visit(self)
-
-end subroutine accept
-
-
-!> Get escaped key to TOML value
-subroutine get_key(self, key)
-
-   !> TOML value instance.
-   class(toml_value), intent(in) :: self
-
-   !> Contains valid TOML key on exit
-   character(kind=tfc, len=:), allocatable :: key
-
-   if (allocated(self%key)) then
-      if (verify(self%key, TOML_BAREKEY) == 0 .and. len(self%key) > 0) then
-         key = self%key
-      else
-         call toml_escape_string(self%key, key)
-      end if
+   if (toml_raw_verify_string(raw)) then
+      vtype = toml_type%string
+      return
    end if
-
-end subroutine get_key
-
-
-!> Compare raw key of TOML value to input key
-pure function match_key(self, key) result(match)
-
-   !> TOML value instance.
-   class(toml_value), intent(in) :: self
-
-   !> TOML raw key to compare to
-   character(kind=tfc, len=*), intent(in) :: key
-
-   logical :: match
-
-   if (allocated(self%key)) then
-      match = key == self%key
-   else
-      match = .false.
+   if (toml_raw_verify_bool(raw)) then
+      vtype = toml_type%boolean
+      return
    end if
+   if (toml_raw_verify_integer(raw)) then
+      vtype = toml_type%int
+      return
+   end if
+   if (toml_raw_verify_float(raw)) then
+      vtype = toml_type%float
+      return
+   end if
+   if (toml_raw_verify_timestamp(raw)) then
+      vtype = toml_type%datetime
+      return
+   end if
+   vtype = toml_type%invalid
 
-end function match_key
+end function
 
 
-end module tomlf_type_value
+!> Escape all special characters in a TOML string
+subroutine toml_escape_string(raw, escaped, multiline)
+
+   !> Raw representation of TOML string
+   character(kind=tfc, len=*), intent(in) :: raw
+
+   !> Escaped view of the TOML string
+   character(kind=tfc, len=:), allocatable, intent(out) :: escaped
+
+   !> Preserve newline characters
+   logical, intent(in), optional :: multiline
+
+   integer :: i
+   logical :: preserve_newline
+
+   preserve_newline = .false.
+   if (present(multiline)) preserve_newline = multiline
+
+   escaped = '"'
+   do i = 1, len(raw)
+      select case(raw(i:i))
+      case default; escaped = escaped // raw(i:i)
+      case('\'); escaped = escaped // '\\'
+      case('"'); escaped = escaped // '\"'
+      case(TOML_NEWLINE)
+         if (preserve_newline) then
+            escaped = escaped // raw(i:i)
+         else
+            escaped = escaped // '\n'
+         end if
+      case(TOML_FORMFEED); escaped = escaped // '\f'
+      case(TOML_CARRIAGE_RETURN); escaped = escaped // '\r'
+      case(TOML_TABULATOR); escaped = escaped // '\t'
+      case(TOML_BACKSPACE); escaped = escaped // '\b'
+      end select
+   end do
+   escaped = escaped // '"'
+
+end subroutine toml_escape_string
+
+
+end module tomlf_utils
 
 
 !>>>>> ././src/fpm_command_line.f90
@@ -11487,7 +10957,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.7.0, alpha',                               &
+         &  'Version:     0.7.0, alpha,bootstrap',                     &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -13159,7 +12629,7 @@ contains
 end module fpm_git
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/diagnostic.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -13173,456 +12643,140 @@ end module fpm_git
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Diagnostic message support for TOML Fortran
-module tomlf_diagnostic
-   use tomlf_terminal, only : toml_terminal, ansi_code, operator(//), operator(+)
+!> Class definitions for basic data types used for handling TOML
+module tomlf_type_value
+   use tomlf_constants, only : tfc, TOML_BAREKEY
+   use tomlf_utils, only : toml_escape_string
    implicit none
    private
 
-   public :: render
-   public :: toml_diagnostic, toml_label
+   public :: toml_value, toml_visitor, toml_key
 
 
-   interface render
-      module procedure render_diagnostic
-      module procedure render_text
-      module procedure render_text_with_label
-      module procedure render_text_with_labels
-   end interface render
+   !> Abstract base value for TOML data types
+   type, abstract :: toml_value
+
+      !> Raw representation of the key to the TOML value
+      character(kind=tfc, len=:), allocatable :: key
+
+   contains
+
+      !> Accept a visitor to transverse the data structure
+      procedure :: accept
+
+      !> Get escaped key to TOML value
+      procedure :: get_key
+
+      !> Compare raw key of TOML value to input key
+      procedure :: match_key
+
+      !> Release allocation hold by TOML value
+      procedure(destroy), deferred :: destroy
+
+   end type toml_value
 
 
-   !> Enumerator for diagnostic levels
-   type :: level_enum
-      integer :: error = 0
-      integer :: warning = 1
-      integer :: help = 2
-      integer :: note = 3
-      integer :: info = 4
-   end type level_enum
+   !> Abstract visitor for TOML values
+   type, abstract :: toml_visitor
+   contains
 
-   !> Actual enumerator values
-   type(level_enum), parameter, public :: toml_level = level_enum()
+      !> Visitor visiting a TOML value
+      procedure(visit), deferred :: visit
+
+   end type toml_visitor
 
 
-   type toml_label
-      !> Level of message
-      integer :: level
-      !> Primary message
-      logical :: primary
-      !> First and last character of message
-      integer :: first, last
-      !> Message text
-      character(len=:), allocatable :: text
-      !> Identifier of context
-      character(len=:), allocatable :: source
-   end type toml_label
+   !> Thin wrapper around the deferred-size character intrinisc
+   type :: toml_key
 
-   interface toml_label
-      module procedure new_label
-   end interface toml_label
+      !> Raw representation of the key to the TOML value
+      character(kind=tfc, len=:), allocatable :: key
+
+   end type toml_key
 
 
-   !> Definition of diagnostic message
-   type :: toml_diagnostic
-      !> Level of message
-      integer :: level
-      !> Primary message
-      character(len=:), allocatable :: message
-      !> Context of the diagnostic source
-      character(len=:), allocatable :: source
-      !> Messages associated with this diagnostic
-      type(toml_label), allocatable :: label(:)
-   end type toml_diagnostic
+   abstract interface
+      !> Accept a visitor to transverse the data structure
+      recursive subroutine visit(self, val)
+         import toml_value, toml_visitor
 
-   interface toml_diagnostic
-      module procedure new_diagnostic
-   end interface toml_diagnostic
+         !> Instance of the visitor
+         class(toml_visitor), intent(inout) :: self
 
+         !> Value to visit
+         class(toml_value), intent(inout) :: val
+      end subroutine visit
 
-   type :: line_token
-      integer :: first, last
-   end type line_token
+      !> Deconstructor to cleanup allocations (optional)
+      subroutine destroy(self)
+         import toml_value
 
-   character(len=*), parameter :: nl = new_line('a')
+         !> Instance of the TOML value
+         class(toml_value), intent(inout) :: self
+
+      end subroutine destroy
+
+   end interface
 
 
 contains
 
 
-pure function new_label(level, first, last, text, primary) result(new)
-   integer, intent(in) :: level
-   integer, intent(in) :: first, last
-   character(len=*), intent(in), optional :: text
-   logical, intent(in), optional :: primary
-   type(toml_label) :: new
+!> Accept a visitor to transverse the data structure
+recursive subroutine accept(self, visitor)
 
-   if (present(text)) new%text = text
-   new%level = level
-   new%first = first
-   new%last = last
-   if (present(primary)) then
-      new%primary = primary
+   !> Instance of the TOML value
+   class(toml_value), intent(inout) :: self
+
+   !> Visitor for this value
+   class(toml_visitor), intent(inout) :: visitor
+
+   call visitor%visit(self)
+
+end subroutine accept
+
+
+!> Get escaped key to TOML value
+subroutine get_key(self, key)
+
+   !> TOML value instance.
+   class(toml_value), intent(in) :: self
+
+   !> Contains valid TOML key on exit
+   character(kind=tfc, len=:), allocatable :: key
+
+   if (allocated(self%key)) then
+      if (verify(self%key, TOML_BAREKEY) == 0 .and. len(self%key) > 0) then
+         key = self%key
+      else
+         call toml_escape_string(self%key, key)
+      end if
+   end if
+
+end subroutine get_key
+
+
+!> Compare raw key of TOML value to input key
+pure function match_key(self, key) result(match)
+
+   !> TOML value instance.
+   class(toml_value), intent(in) :: self
+
+   !> TOML raw key to compare to
+   character(kind=tfc, len=*), intent(in) :: key
+
+   logical :: match
+
+   if (allocated(self%key)) then
+      match = key == self%key
    else
-      new%primary = .false.
-   end if
-end function new_label
-
-
-!> Create new diagnostic message
-pure function new_diagnostic(level, message, source, label) result(new)
-   !> Level of message
-   integer, intent(in) :: level
-   !> Primary message
-   character(len=*), intent(in), optional :: message
-   !> Context of the diagnostic source
-   character(len=*), intent(in), optional :: source
-   !> Messages associated with this diagnostic
-   type(toml_label), intent(in), optional :: label(:)
-   type(toml_diagnostic) :: new
-
-   new%level = level
-   if (present(message)) new%message = message
-   if (present(source)) new%source = source
-   if (present(label)) new%label = label
-end function new_diagnostic
-
-
-pure function line_tokens(input) result(token)
-   character(len=*), intent(in) :: input
-   type(line_token), allocatable :: token(:)
-
-   integer :: first, last
-
-   first = 1
-   last = 1
-   allocate(token(0))
-   do while (first <= len(input))
-      if (input(last:last) /= nl) then
-         last = last + 1
-         cycle
-      end if
-
-      token = [token, line_token(first, last-1)]
-      first = last + 1
-      last = first
-   end do
-end function line_tokens
-
-recursive pure function render_diagnostic(diag, input, color) result(string)
-   character(len=*), intent(in) :: input
-   type(toml_diagnostic), intent(in) :: diag
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   integer :: is
-
-   string = &
-      render_message(diag%level, diag%message, color)
-
-   if (allocated(diag%label)) then
-      string = string // nl // &
-         render_text_with_labels(input, diag%label, color, source=diag%source)
-   end if
-end function render_diagnostic
-
-pure function render_message(level, message, color) result(string)
-   integer, intent(in) :: level
-   character(len=*), intent(in), optional :: message
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   if (present(message)) then
-      string = &
-         level_name(level, color) // color%bold // ": " // message // color%reset
-   else
-      string = &
-         level_name(level, color)
-   end if
-end function render_message
-
-pure function level_name(level, color) result(string)
-   integer, intent(in) :: level
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   select case(level)
-   case(toml_level%error)
-      string = color%bold + color%red // "error" // color%reset
-   case(toml_level%warning)
-      string = color%bold + color%yellow // "warning" // color%reset
-   case(toml_level%help)
-      string = color%bold + color%cyan // "help" // color%reset
-   case(toml_level%note)
-      string = color%bold + color%blue // "note" // color%reset
-   case(toml_level%info)
-      string = color%bold + color%magenta // "info" // color%reset
-   case default
-      string = color%bold + color%blue // "unknown" // color%reset
-   end select
-end function level_name
-
-pure function render_source(source, offset, color) result(string)
-   character(len=*), intent(in) :: source
-   integer, intent(in) :: offset
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   string = &
-      & repeat(" ", offset) // (color%bold + color%blue) // "-->" // color%reset // " " // source
-end function render_source
-
-function render_text(input, color, source) result(string)
-   character(len=*), intent(in) :: input
-   type(toml_terminal), intent(in) :: color
-   character(len=*), intent(in), optional :: source
-   character(len=:), allocatable :: string
-
-   integer :: it, offset
-   type(line_token), allocatable :: token(:)
-
-   token = line_tokens(input)
-   offset = integer_width(size(token))
-
-   if (present(source)) then
-      string = render_source(source, offset, color) // nl // &
-         & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-   else
-      string = &
-         & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
+      match = .false.
    end if
 
-   do it = 1, size(token)
-      string = string // nl //&
-         & render_line(input(token(it)%first:token(it)%last), to_string(it, offset), color)
-   end do
-   string = string // nl // &
-      repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-
-end function render_text
-
-function render_text_with_label(input, label, color, source) result(string)
-   character(len=*), intent(in) :: input
-   type(toml_label), intent(in) :: label
-   type(toml_terminal), intent(in) :: color
-   character(len=*), intent(in), optional :: source
-   character(len=:), allocatable :: string
-
-   integer :: it, offset, first, last, line, shift
-   type(line_token), allocatable :: token(:)
-
-   token = line_tokens(input)
-   line = count(token%first < label%first)
-   associate(first => token%first)
-      shift = first(line) - 1
-   end associate
-   first = max(1, line - 1)
-   last = min(size(token), line + 1)
-   offset = integer_width(last)
-
-   if (present(source)) then
-      string = render_source(source, offset, color) // ":" // &
-         & to_string(line) // ":" // &
-         & to_string(label%first)
-      if (label%first /= label%last) then
-         string = string // "-" // to_string(label%last)
-      end if
-   end if
-   string = string // nl // &
-      & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-
-   do it = first, last
-      string = string // nl //&
-         & render_line(input(token(it)%first:token(it)%last), &
-         &             to_string(it, offset), color)
-      if (it == line) then
-         string = string // nl //&
-            & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset // &
-            & render_label(label, shift, color)
-      end if
-   end do
-   string = string // nl // &
-      repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-
-end function render_text_with_label
-
-pure function render_text_with_labels(input, label, color, source) result(string)
-   character(len=*), intent(in) :: input
-   type(toml_label), intent(in) :: label(:)
-   type(toml_terminal), intent(in) :: color
-   character(len=*), intent(in), optional :: source
-   character(len=:), allocatable :: string
-
-   integer :: it, il, offset, first, last, line(size(label)), shift(size(label))
-   type(line_token), allocatable :: token(:)
-   logical, allocatable :: display(:)
-
-   token = line_tokens(input)
-   line(:) = [(count(token%first <= label(it)%first), it = 1, size(label))]
-   associate(first => token%first)
-      shift(:) = first(line) - 1
-   end associate
-   first = max(1, minval(line))
-   last = min(size(token), maxval(line))
-   offset = integer_width(last)
-
-   it = 1  ! Without a primary we use the first label
-   do il = 1, size(label)
-      if (label(il)%primary) then
-         it = il
-         exit
-      end if
-   end do
-
-   if (present(source)) then
-      string = render_source(source, offset, color) // ":" // &
-         & to_string(line(it)) // ":" // &
-         & to_string(label(it)%first-shift(it))
-      if (label(it)%first /= label(it)%last) then
-         string = string // "-" // to_string(label(it)%last-shift(it))
-      end if
-   end if
-   string = string // nl // &
-      & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-
-   allocate(display(first:last), source=.false.)
-   do il = 1, size(label)
-      ! display(max(first, line(il) - 1):min(last, line(il) + 1)) = .true.
-      display(line(il)) = .true.
-   end do
-
-   do it = first, last
-      if (.not.display(it)) then
-         if (display(it-1) .and. count(display(it:)) > 0) then
-            string = string // nl //&
-               & repeat(" ", offset + 1) // (color%bold + color%blue) // ":" // color%reset
-         end if
-         cycle
-      end if
-
-      string = string // nl //&
-         & render_line(input(token(it)%first:token(it)%last), &
-         &             to_string(it, offset), color)
-      if (any(it == line)) then
-         do il = 1, size(label)
-            if (line(il) /= it) cycle
-            string = string // nl //&
-               & repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset // &
-               & render_label(label(il), shift(il), color)
-         end do
-      end if
-   end do
-   string = string // nl // &
-      repeat(" ", offset + 1) // (color%bold + color%blue) // "|" // color%reset
-
-end function render_text_with_labels
-
-pure function render_label(label, shift, color) result(string)
-   type(toml_label), intent(in) :: label
-   integer, intent(in) :: shift
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   integer :: width
-   character :: marker
-   type(ansi_code) :: this_color
-
-   marker = merge("^", "-", label%primary)
-   width = label%last - label%first + 1
-   this_color = level_color(label%level, color)
-
-   string = &
-      & repeat(" ", label%first - shift) // this_color // repeat(marker, width) // color%reset
-   if (allocated(label%text)) then
-      string = string // &
-         & " " // this_color // label%text // color%reset
-   end if
-
-end function render_label
-
-pure function level_color(level, color) result(this_color)
-   integer, intent(in) :: level
-   type(toml_terminal), intent(in) :: color
-   type(ansi_code) :: this_color
-
-   select case(level)
-   case(toml_level%error)
-      this_color = color%bold + color%red
-   case(toml_level%warning)
-      this_color = color%bold + color%yellow
-   case(toml_level%help)
-      this_color = color%bold + color%cyan
-   case(toml_level%info)
-      this_color = color%bold + color%magenta
-   case default
-      this_color = color%bold + color%blue
-   end select
-end function level_color
-
-pure function render_line(input, line, color) result(string)
-   character(len=*), intent(in) :: input
-   character(len=*), intent(in) :: line
-   type(toml_terminal), intent(in) :: color
-   character(len=:), allocatable :: string
-
-   string = &
-      & line // " " // (color%bold + color%blue) // "|" // color%reset // " " // input
-end function render_line
-
-pure function integer_width(input) result(width)
-   integer, intent(in) :: input
-   integer :: width
-
-   integer :: val
-
-   val = input
-   width = 0
-   do while (val /= 0)
-      val = val / 10
-      width = width + 1
-   end do
-
-end function integer_width
-
-!> Represent an integer as character sequence.
-pure function to_string(val, width) result(string)
-   integer, intent(in) :: val
-   integer, intent(in), optional :: width
-   character(len=:), allocatable :: string
-   integer, parameter :: buffer_len = range(val)+2
-   character(len=buffer_len) :: buffer
-   integer :: pos
-   integer :: n
-   character(len=1), parameter :: numbers(0:9) = &
-      ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-   if (val == 0) then
-      string = numbers(0)
-      return
-   end if
-
-   n = abs(val)
-   buffer = ""
-
-   pos = buffer_len + 1
-   do while (n > 0)
-      pos = pos - 1
-      buffer(pos:pos) = numbers(mod(n, 10))
-      n = n/10
-   end do
-   if (val < 0) then
-      pos = pos - 1
-      buffer(pos:pos) = '-'
-   end if
-
-   if (present(width)) then
-      string = repeat(" ", max(width-(buffer_len+1-pos), 0)) // buffer(pos:)
-   else
-      string = buffer(pos:)
-   end if
-end function to_string
+end function match_key
 
 
-end module tomlf_diagnostic
+end module tomlf_type_value
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
@@ -13641,8 +12795,7 @@ end module tomlf_diagnostic
 
 !> TOML key-value pair
 module tomlf_type_keyval
-   use tomlf_constants, only : tfc, tfr, tfi, toml_type
-   use tomlf_datetime, only : toml_datetime
+   use tomlf_constants, only : tfc
    use tomlf_type_value, only : toml_value, toml_visitor
    implicit none
    private
@@ -13650,66 +12803,13 @@ module tomlf_type_keyval
    public :: toml_keyval, new_keyval, new
 
 
-   !> Generic TOML value
-   type, abstract :: generic_value
-   end type generic_value
-
-   !> TOML real value
-   type, extends(generic_value) :: float_value
-      real(tfr) :: raw
-   end type float_value
-
-   !> TOML integer value
-   type, extends(generic_value) :: integer_value
-      integer(tfi) :: raw
-   end type integer_value
-
-   !> TOML boolean value
-   type, extends(generic_value) :: boolean_value
-      logical :: raw
-   end type boolean_value
-
-   !> TOML datetime value
-   type, extends(generic_value) :: datetime_value
-      type(toml_datetime) :: raw
-   end type datetime_value
-
-   !> TOML string value
-   type, extends(generic_value) :: string_value
-      character(:, tfc), allocatable :: raw
-   end type string_value
-
-
-
    !> TOML key-value pair
    type, extends(toml_value) :: toml_keyval
 
-      !> Actual TOML value
-      class(generic_value), allocatable :: val
-
-      !> Origin of value
-      integer :: origin_value = 0
+      !> Raw content of the TOML value
+      character(kind=tfc, len=:), allocatable :: raw
 
    contains
-
-      !> Get the value stored in the key-value pair
-      generic :: get => get_float, get_integer, get_boolean, get_datetime, get_string
-      procedure :: get_float
-      procedure :: get_integer
-      procedure :: get_boolean
-      procedure :: get_datetime
-      procedure :: get_string
-
-      !> Set the value for the key-value pair
-      generic :: set => set_float, set_integer, set_boolean, set_datetime, set_string
-      procedure :: set_float
-      procedure :: set_integer
-      procedure :: set_boolean
-      procedure :: set_datetime
-      procedure :: set_string
-
-      !> Get the type of the value stored in the key-value pair
-      procedure :: get_type
 
       !> Release allocation hold by TOML key-value pair
       procedure :: destroy
@@ -13747,243 +12847,12 @@ subroutine destroy(self)
       deallocate(self%key)
    end if
 
-   if (allocated(self%val)) then
-      deallocate(self%val)
+   if (allocated(self%raw)) then
+      deallocate(self%raw)
    end if
 
 end subroutine destroy
 
-
-!> Obtain real value from TOML key-value pair
-subroutine get_float(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value to be assigned
-   real(tfr), pointer, intent(out) :: val
-
-   val => cast_float(self%val)
-end subroutine get_float
-
-
-!> Obtain integer value from TOML key-value pair
-subroutine get_integer(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value to be assigned
-   integer(tfi), pointer, intent(out) :: val
-
-   val => cast_integer(self%val)
-end subroutine get_integer
-
-
-!> Obtain boolean value from TOML key-value pair
-subroutine get_boolean(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value to be assigned
-   logical, pointer, intent(out) :: val
-
-   val => cast_boolean(self%val)
-end subroutine get_boolean
-
-
-!> Obtain datetime value from TOML key-value pair
-subroutine get_datetime(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value to be assigned
-   type(toml_datetime), pointer, intent(out) :: val
-
-   val => cast_datetime(self%val)
-end subroutine get_datetime
-
-
-!> Obtain datetime value from TOML key-value pair
-subroutine get_string(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value to be assigned
-   character(:, tfc), pointer, intent(out) :: val
-
-   val => cast_string(self%val)
-end subroutine get_string
-
-
-!> Obtain real value from TOML key-value pair
-subroutine set_float(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Value to be assigned
-   real(tfr), intent(in) :: val
-
-   type(float_value), allocatable :: tmp
-
-   allocate(tmp)
-   tmp%raw = val
-   call move_alloc(tmp, self%val)
-end subroutine set_float
-
-
-!> Obtain integer value from TOML key-value pair
-subroutine set_integer(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Value to be assigned
-   integer(tfi), intent(in) :: val
-
-   type(integer_value), allocatable :: tmp
-
-   allocate(tmp)
-   tmp%raw = val
-   call move_alloc(tmp, self%val)
-end subroutine set_integer
-
-
-!> Obtain boolean value from TOML key-value pair
-subroutine set_boolean(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Value to be assigned
-   logical, intent(in) :: val
-
-   type(boolean_value), allocatable :: tmp
-
-   allocate(tmp)
-   tmp%raw = val
-   call move_alloc(tmp, self%val)
-end subroutine set_boolean
-
-
-!> Obtain datetime value from TOML key-value pair
-subroutine set_datetime(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Value to be assigned
-   type(toml_datetime), intent(in) :: val
-
-   type(datetime_value), allocatable :: tmp
-
-   allocate(tmp)
-   tmp%raw = val
-   call move_alloc(tmp, self%val)
-end subroutine set_datetime
-
-
-!> Obtain datetime value from TOML key-value pair
-subroutine set_string(self, val)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Value to be assigned
-   character(*, tfc), intent(in) :: val
-
-   type(string_value), allocatable :: tmp
-
-   allocate(tmp)
-   tmp%raw = val
-   call move_alloc(tmp, self%val)
-end subroutine set_string
-
-
-!> Get the type of the value stored in the key-value pair
-pure function get_type(self) result(value_type)
-
-   !> Instance of the TOML key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Value type
-   integer :: value_type
-
-   select type(val => self%val)
-   class default
-      value_type = toml_type%invalid
-   type is(float_value)
-      value_type = toml_type%float
-   type is(integer_value)
-      value_type = toml_type%int
-   type is(boolean_value)
-      value_type = toml_type%boolean
-   type is(datetime_value)
-      value_type = toml_type%datetime
-   type is(string_value)
-      value_type = toml_type%string
-   end select
-end function get_type
-
-
-function cast_float(val) result(ptr)
-   class(generic_value), intent(in), target :: val
-   real(tfr), pointer :: ptr
-
-   nullify(ptr)
-   select type(val)
-   type is(float_value)
-      ptr => val%raw
-   end select
-end function cast_float
-
-function cast_integer(val) result(ptr)
-   class(generic_value), intent(in), target :: val
-   integer(tfi), pointer :: ptr
-
-   nullify(ptr)
-   select type(val)
-   type is(integer_value)
-      ptr => val%raw
-   end select
-end function cast_integer
-
-function cast_boolean(val) result(ptr)
-   class(generic_value), intent(in), target :: val
-   logical, pointer :: ptr
-
-   nullify(ptr)
-   select type(val)
-   type is(boolean_value)
-      ptr => val%raw
-   end select
-end function cast_boolean
-
-function cast_datetime(val) result(ptr)
-   class(generic_value), intent(in), target :: val
-   type(toml_datetime), pointer :: ptr
-
-   nullify(ptr)
-   select type(val)
-   type is(datetime_value)
-      ptr => val%raw
-   end select
-end function cast_datetime
-
-function cast_string(val) result(ptr)
-   class(generic_value), intent(in), target :: val
-   character(:, tfc), pointer :: ptr
-
-   nullify(ptr)
-   select type(val)
-   type is(string_value)
-      ptr => val%raw
-   end select
-end function cast_string
 
 end module tomlf_type_keyval
 
@@ -14571,7 +13440,6 @@ subroutine get_keys(self, list)
       if (allocated(self%lst(i)%val)) then
          if (allocated(self%lst(i)%val%key)) then
             list(i)%key = self%lst(i)%val%key
-            list(i)%origin = self%lst(i)%val%origin
          end if
       end if
    end do
@@ -14672,163 +13540,6 @@ end subroutine destroy
 end module tomlf_structure_vector
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/de/context.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Provides a container to store tokens for later use
-module tomlf_de_context
-   use tomlf_constants, only : tfc
-   use tomlf_de_token, only : toml_token, resize
-   use tomlf_diagnostic, only : toml_diagnostic, toml_label, render, toml_level
-   use tomlf_terminal, only : toml_terminal
-   implicit none
-   private
-
-   public :: toml_context
-
-   !> Container storing tokens
-   type :: toml_context
-      !> Filename of the input
-      character(:, tfc), allocatable :: filename
-      !> Actual source
-      character(:, tfc), allocatable :: source
-      !> Stack of stored tokens
-      type(toml_token), allocatable :: token(:)
-      !> Last stored token
-      integer :: top = 0
-   contains
-      !> Push a new token to the stack
-      procedure :: push_back
-      !> Create a report
-      generic :: report => report1, report2
-      !> Create a report with a single label
-      procedure :: report1
-      !> Create a report with a two labels
-      procedure :: report2
-   end type toml_context
-
-contains
-
-!> Push a new token to the stack
-subroutine push_back(self, token)
-   !> Instance of the token storage
-   class(toml_context), intent(inout) :: self
-   !> New token to be added
-   type(toml_token), intent(in) :: token
-
-   if (.not.allocated(self%token)) call resize(self%token)
-   if (self%top >= size(self%token)) call resize(self%token)
-
-   self%top = self%top + 1
-   self%token(self%top) = token
-end subroutine push_back
-
-!> Create a report with a single label
-pure function report1(self, message, origin, label, level, color) result(string)
-   !> Instance of the token storage
-   class(toml_context), intent(in) :: self
-   !> Message for the report
-   character(*, tfc), intent(in) :: message
-   !> Position to report at
-   integer, intent(in) :: origin
-   !> String for the label
-   character(*, tfc), intent(in), optional :: label
-   !> Highlight level
-   integer, intent(in), optional :: level
-   !> Color terminal
-   type(toml_terminal), intent(in), optional :: color
-   !> Final rendered report
-   character(:, tfc), allocatable :: string
-
-   type(toml_diagnostic) :: diagnostic
-   type(toml_label), allocatable :: labels(:)
-   integer :: level_
-
-   level_ = toml_level%error
-   if (present(level)) level_ = level
-
-   if (origin > 0 .and. origin <= self%top) then
-      allocate(labels(1))
-      labels(1) = toml_label(level_, &
-         &  self%token(origin)%first, self%token(origin)%last, label, .true.)
-   end if
-
-   diagnostic = toml_diagnostic( &
-      & level_, &
-      & message, &
-      & self%filename, &
-      & labels)
-
-   if (.not.present(color)) then
-      string = render(diagnostic, self%source, toml_terminal(.false.))
-   else
-      string = render(diagnostic, self%source, color)
-   end if
-end function report1
-
-!> Create a report with two labels
-pure function report2(self, message, origin1, origin2, label1, label2, level1, level2, color) &
-      & result(string)
-   !> Instance of the token storage
-   class(toml_context), intent(in) :: self
-   !> Message for the report
-   character(*, tfc), intent(in) :: message
-   !> Position to report at
-   integer, intent(in) :: origin1, origin2
-   !> String for the label
-   character(*, tfc), intent(in), optional :: label1, label2
-   !> Highlight level
-   integer, intent(in), optional :: level1, level2
-   !> Color terminal
-   type(toml_terminal), intent(in), optional :: color
-   !> Final rendered report
-   character(:, tfc), allocatable :: string
-
-   type(toml_diagnostic) :: diagnostic
-   type(toml_label), allocatable :: labels(:)
-   integer :: level1_, level2_
-
-   level1_ = toml_level%error
-   if (present(level1)) level1_ = level1
-   level2_ = toml_level%info
-   if (present(level2)) level2_ = level2
-
-   if (origin1 > 0 .and. origin1 <= self%top &
-      & .and. origin2 > 0 .and. origin2 <= self%top) then
-      allocate(labels(2))
-      labels(1) = toml_label(level1_, &
-         &  self%token(origin1)%first, self%token(origin1)%last, label1, .true.)
-      labels(2) = toml_label(level2_, &
-         &  self%token(origin2)%first, self%token(origin2)%last, label2, .false.)
-   end if
-
-   diagnostic = toml_diagnostic( &
-      & level1_, &
-      & message, &
-      & self%filename, &
-      & labels)
-
-   if (.not.present(color)) then
-      string = render(diagnostic, self%source, toml_terminal(.false.))
-   else
-      string = render(diagnostic, self%source, color)
-   end if
-end function report2
-
-end module tomlf_de_context
-
-
 !>>>>> build/dependencies/toml-f/src/tomlf/structure.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14920,1577 +13631,6 @@ end function get_len
 
 
 end module tomlf_structure
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/de/lexer.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Provides tokenization for TOML documents.
-!>
-!> The lexer provides a way to turn a stream of characters into tokens which
-!> are further processed by the parser and turned into actual TOML data structures.
-!> In the current structure no knowledge about the character stream is required
-!> in the parser to generate the data structures.
-!>
-!> The validity of all tokens can be guaranteed by the lexer, however syntax errors
-!> and semantic errors are not detected until the parser is run. Identification of
-!> invalid tokens and recovery of the tokenization is done on a best effort basis.
-!>
-!> To avoid overflows in the parser due to deeply nested but unclosed groups, the
-!> lexer will always tokenize a complete group to verify it is closed properly.
-!> Unclosed groups will lead to the first token of the group getting invalidated,
-!> to allow reporting in the parsing phase.
-module tomlf_de_lexer
-   use tomlf_constants, only : tfc, tfi, tfr, TOML_BACKSPACE, TOML_TABULATOR, TOML_NEWLINE, &
-      & TOML_CARRIAGE_RETURN, TOML_FORMFEED
-   use tomlf_datetime, only : toml_datetime, toml_date, toml_time
-   use tomlf_de_abc, only : abstract_lexer
-   use tomlf_de_context, only : toml_context
-   use tomlf_de_token, only : toml_token, stringify, token_kind, resize
-   use tomlf_error, only : toml_error, toml_stat, make_error
-   use tomlf_utils, only : read_whole_file, read_whole_line
-   implicit none
-   private
-
-   public :: toml_lexer, new_lexer_from_file, new_lexer_from_unit, new_lexer_from_string
-   public :: toml_token, stringify, token_kind
-
-
-   !> Possible characters encountered in a lexeme
-   type :: enum_char
-      character(1, tfc) :: space = tfc_" "
-      character(1, tfc) :: hash = tfc_"#"
-      character(1, tfc) :: squote = tfc_"'"
-      character(3, tfc) :: squote3 = repeat(tfc_"'", 3)
-      character(1, tfc) :: dquote = tfc_""""
-      character(3, tfc) :: dquote3 = repeat(tfc_"""", 3)
-      character(1, tfc) :: backslash = tfc_"\"
-      character(1, tfc) :: dot = tfc_"."
-      character(1, tfc) :: comma = tfc_","
-      character(1, tfc) :: equal = tfc_"="
-      character(1, tfc) :: lbrace = tfc_"{"
-      character(1, tfc) :: rbrace = tfc_"}"
-      character(1, tfc) :: lbracket = tfc_"["
-      character(1, tfc) :: rbracket = tfc_"]"
-      character(1, tfc) :: newline = achar(10, kind=tfc)
-      character(1, tfc) :: formfeed = achar(12, kind=tfc)
-      character(1, tfc) :: carriage_return = achar(13, kind=tfc)
-      character(1, tfc) :: bspace = achar(8, kind=tfc)
-      character(1, tfc) :: tab = achar(9, kind=tfc)
-      character(1, tfc) :: plus = tfc_"+"
-      character(1, tfc) :: minus = tfc_"-"
-      character(12, tfc) :: literal = tfc_"0123456789-_"
-   end type enum_char
-
-   !> Actual enumerator for possible characters
-   type(enum_char), parameter :: char_kind = enum_char()
-
-   !> Set of characters marking a terminated lexeme, mainly used for values and to
-   !> obtain boundaries of invalid tokens.
-   character(*, tfc), parameter :: terminated = &
-      & char_kind%space//char_kind%tab//char_kind%newline//char_kind%carriage_return//&
-      & char_kind%hash//char_kind%rbrace//char_kind%rbracket//char_kind%comma//&
-      & char_kind%equal
-
-   !> Scopes to identify the state of the lexer.
-   type :: enum_scope
-      !> Table scopes allow keypaths, in this scenario only bare keys, strings and
-      !> literals are allowed, furthermore dots become special characters to separate
-      !> the keypaths.
-      integer :: table = 1
-      !> Terminates a table scope and opens a value scope. Here usual values, like integer,
-      !> floats or strings are allowed.
-      integer :: equal = 2
-      !> Opens an array scope, similar to the value scope for allowed characters but with
-      !> simplified closing rules to allow handling of values and inline tables in arrays.
-      integer :: array = 3
-   end type enum_scope
-
-   !> Actual enumerator for auxiliary scopes
-   type(enum_scope), parameter :: lexer_scope = enum_scope()
-
-   !> Item identifying the scope and the corresponding token index
-   type :: stack_item
-      !> Current scope of the item, can only be removed with matching scope
-      integer :: scope
-      !> Token index in the buffer of the lexer, used for invalidation of unclosed groups
-      integer :: token
-   end type stack_item
-
-   !> Reallocate the stack of scopes
-   interface resize
-      module procedure :: resize_scope
-   end interface
-
-
-   !> Tokenizer for TOML documents.
-   type, extends(abstract_lexer) :: toml_lexer
-      !> Name of the source file, used for error reporting
-      character(len=:), allocatable :: filename
-      !> Current internal position in the source chunk
-      integer :: pos = 0
-      !> Current source chunk, for convenience stored as character array rather than string
-      character(:, tfc), allocatable :: chunk
-      !> Last scope of the lexer
-      integer :: top = 0
-      !> Stack of scopes, used to identify the current state of the lexer
-      type(stack_item), allocatable :: stack(:)
-      !> Index in the buffer queue
-      integer :: buffer = 0
-      !> Douple-ended queue for buffering tokens
-      type(toml_context) :: context
-   contains
-      !> Obtain the next token
-      procedure :: next
-      !> Extract a string from a token
-      procedure :: extract_string
-      !> Extract an integer from a token
-      procedure :: extract_integer
-      !> Extract a float from a token
-      procedure :: extract_float
-      !> Extract a boolean from a token
-      procedure :: extract_bool
-      !> Extract a timestamp from a token
-      procedure :: extract_datetime
-      !> Get information about source
-      procedure :: get_info
-   end type toml_lexer
-
-contains
-
-!> Create a new instance of a lexer by reading from a file
-subroutine new_lexer_from_file(lexer, filename, error)
-   !> Instance of the lexer
-   type(toml_lexer), intent(out) :: lexer
-   !> Name of the file to read from
-   character(len=*), intent(in) :: filename
-   !> Error code
-   type(toml_error), allocatable, intent(out) :: error
-
-   integer :: stat
-
-   lexer%pos = 0
-   lexer%filename = filename
-   call resize(lexer%stack)
-   call read_whole_file(filename, lexer%chunk, stat)
-
-   if (stat /= 0) then
-      call make_error(error, "Could not open file '"//filename//"'")
-   end if
-end subroutine new_lexer_from_file
-
-!> Create a new instance of a lexer by reading from a unit.
-!>
-!> Currently, only sequential access units can be processed by this constructor.
-subroutine new_lexer_from_unit(lexer, io, error)
-   !> Instance of the lexer
-   type(toml_lexer), intent(out) :: lexer
-   !> Unit to read from
-   integer, intent(in) :: io
-   !> Error code
-   type(toml_error), allocatable, intent(out) :: error
-
-   character(:, tfc), allocatable :: source, line
-   integer, parameter :: bufsize = 512
-   character(bufsize, tfc) :: filename, mode
-   integer :: stat
-
-   inquire(unit=io, access=mode, name=filename)
-   select case(trim(mode))
-   case default
-      stat = 1
-
-   case("sequential", "SEQUENTIAL")
-      allocate(character(0) :: source)
-      do
-         call read_whole_line(io, line, stat)
-         if (stat > 0) exit
-         source = source // line // TOML_NEWLINE
-         if (stat < 0) then
-            if (is_iostat_end(stat)) stat = 0
-            exit
-         end if
-      end do
-      call new_lexer_from_string(lexer, source)
-   end select
-   if (len_trim(filename) > 0) lexer%filename = trim(filename)
-
-   if (stat /= 0) then
-      call make_error(error, "Failed to read from unit")
-   end if
-end subroutine new_lexer_from_unit
-
-!> Create a new instance of a lexer by reading from a string.
-subroutine new_lexer_from_string(lexer, string)
-   !> Instance of the lexer
-   type(toml_lexer), intent(out) :: lexer
-   !> String to read from
-   character(*, tfc), intent(in) :: string
-
-   integer :: length
-   character(1, tfc) :: ch
-
-   length = len(string)
-   lexer%pos = 0
-   lexer%buffer = 0
-   allocate(character(length) :: lexer%chunk)
-   lexer%chunk(:length) = string
-   call resize(lexer%stack)
-end subroutine new_lexer_from_string
-
-
-!> Advance the lexer to the next token.
-subroutine next(lexer, token)
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   if (lexer%buffer >= lexer%context%top) then
-      call fill_buffer(lexer)
-   end if
-
-   lexer%buffer = lexer%buffer + 1
-   token = lexer%context%token(lexer%buffer)
-end subroutine next
-
-!> Fill the buffer with tokens, this routine will attempt to create as many tokens as
-!> necessary to determine whether all opened groups are closed properly.
-!>
-!> The state of the buffer can be changed while this routine is running, therefore
-!> accessing the buffer concurrently is not allowed.
-subroutine fill_buffer(lexer)
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-
-   type(toml_token) :: token
-   integer :: stack_top, it
-
-   lexer%buffer = 0
-   lexer%context%top = 0
-   stack_top = lexer%top
-
-   ! Tokenization will cover always a complete scope
-   do while(lexer%top >= stack_top .and. token%kind /= token_kind%eof)
-      call next_token(lexer, token)
-      call lexer%context%push_back(token)
-   end do
-
-   ! Flag all incomplete inline table and array scopes for the parser
-   if (lexer%top > stack_top) then
-      do it = lexer%top, stack_top + 1, -1
-         select case(lexer%stack(it)%scope)
-         case(lexer_scope%table, lexer_scope%array)
-            lexer%context%token(lexer%stack(it)%token)%kind = token_kind%unclosed
-         end select
-      end do
-   end if
-end subroutine fill_buffer
-
-!> Actually generate the next token, unbuffered version
-subroutine next_token(lexer, token)
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   integer :: prev, pos
-
-   ! Consume current token
-   lexer%pos = lexer%pos + token%last - token%first + 1
-   prev = lexer%pos
-   pos = lexer%pos
-
-   ! If lexer is exhausted, return EOF as early as possible
-   if (pos > len(lexer%chunk)) then
-      call pop(lexer, lexer_scope%equal)
-      token = toml_token(token_kind%eof, prev, pos)
-      return
-   end if
-
-   select case(peek(lexer, pos))
-   case(char_kind%hash)
-      do while(all(peek(lexer, pos+1) /= [char_kind%carriage_return, char_kind%newline]) &
-            & .and. pos <= len(lexer%chunk))
-         pos = pos + 1
-      end do
-      token = toml_token(token_kind%comment, prev, pos)
-
-   case(char_kind%space, char_kind%tab)
-      do while(any(match(lexer, pos+1, [char_kind%space, char_kind%tab])) &
-            & .and. pos <= len(lexer%chunk))
-         pos = pos + 1
-      end do
-      token = toml_token(token_kind%whitespace, prev, pos)
-
-   case(char_kind%newline)
-      call pop(lexer, lexer_scope%equal)
-      token = toml_token(token_kind%newline, prev, pos)
-
-   case(char_kind%carriage_return)
-      if (match(lexer, pos+1, char_kind%newline)) then
-         pos = pos + 1
-         call pop(lexer, lexer_scope%equal)
-         token = toml_token(token_kind%newline, prev, pos)
-      else
-         token = toml_token(token_kind%invalid, prev, pos)
-      end if
-
-   case(char_kind%dot)
-      if (view_scope(lexer) == lexer_scope%table) then
-         token = toml_token(token_kind%dot, prev, pos)
-      else
-         token = toml_token(token_kind%invalid, prev, pos)
-      end if
-
-   case(char_kind%comma)
-      call pop(lexer, lexer_scope%equal)
-      token = toml_token(token_kind%comma, prev, pos)
-
-   case(char_kind%equal)
-      token = toml_token(token_kind%equal, prev, pos)
-      call push_back(lexer, lexer_scope%equal, lexer%context%top + 1)
-
-   case(char_kind%lbrace)
-      token = toml_token(token_kind%lbrace, prev, pos)
-      call push_back(lexer, lexer_scope%table, lexer%context%top + 1)
-
-   case(char_kind%rbrace)
-      call pop(lexer, lexer_scope%equal)
-      call pop(lexer, lexer_scope%table)
-      token = toml_token(token_kind%rbrace, prev, pos)
-
-   case(char_kind%lbracket)
-      token = toml_token(token_kind%lbracket, prev, pos)
-      if (any(view_scope(lexer) == [lexer_scope%equal, lexer_scope%array])) then
-         call push_back(lexer, lexer_scope%array, lexer%context%top + 1)
-      end if
-
-   case(char_kind%rbracket)
-      call pop(lexer, lexer_scope%array)
-      token = toml_token(token_kind%rbracket, prev, pos)
-
-   case(char_kind%squote)
-      call next_sstring(lexer, token)
-
-   case(char_kind%dquote)
-      call next_dstring(lexer, token)
-
-   case default
-      if (view_scope(lexer) == lexer_scope%table) then
-         call next_keypath(lexer, token)
-      else
-         call next_literal(lexer, token)
-      end if
-
-   end select
-end subroutine next_token
-
-!> Process next literal string token, can produce normal literals and multiline literals
-subroutine next_sstring(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   character(1, tfc) :: ch
-   integer :: prev, pos, it
-   logical :: valid
-
-   prev = lexer%pos
-   pos = lexer%pos
-
-   if (all(match(lexer, [pos+1, pos+2], char_kind%squote))) then
-      pos = pos + 3
-
-      pos = strstr(lexer%chunk(pos:), char_kind%squote3) + pos - 1
-      if (pos < prev + 3) then
-         token = toml_token(token_kind%invalid, prev, len(lexer%chunk))
-         return
-      end if
-
-      do it = 1, 2
-         if (match(lexer, pos+3, char_kind%squote)) pos = pos + 1
-      end do
-
-      valid = .true.
-      do it = prev + 3, pos - 1
-         ch = peek(lexer, it)
-         valid = valid .and. valid_string(ch)
-      end do
-
-      token = toml_token(merge(token_kind%mliteral, token_kind%invalid, valid), prev, pos+2)
-      return
-   end if
-
-   valid = .true.
-
-   do while(pos < len(lexer%chunk))
-      pos = pos + 1
-      ch = peek(lexer, pos)
-      valid = valid .and. valid_string(ch)
-      if (ch == char_kind%squote) exit
-      if (ch == char_kind%newline) then
-         pos = pos - 1
-         valid = .false.
-         exit
-      end if
-   end do
-
-   valid = valid .and. peek(lexer, pos) == char_kind%squote .and. pos /= prev
-   token = toml_token(merge(token_kind%literal, token_kind%invalid, valid), prev, pos)
-end subroutine next_sstring
-
-!> Process next string token, can produce normal string and multiline string tokens
-subroutine next_dstring(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   character(1, tfc) :: ch
-   character(*, tfc), parameter :: hexnum = "0123456789ABCDEF", valid_escape = "btnfr\"""
-   integer :: prev, pos, expect, it, hex
-   logical :: escape, valid, space
-
-   prev = lexer%pos
-   pos = lexer%pos
-
-   if (all(match(lexer, [pos+1, pos+2], char_kind%dquote))) then
-      pos = pos + 3
-
-      do
-         pos = strstr(lexer%chunk(pos:), char_kind%dquote3) + pos - 1
-         if (pos < prev + 3) then
-            token = toml_token(token_kind%invalid, prev, len(lexer%chunk))
-            return
-         end if
-
-         if (match(lexer, pos-1, char_kind%backslash)) then
-            pos = pos + 1
-            cycle
-         end if
-
-         do it = 1, 2
-            if (match(lexer, pos+3, char_kind%dquote)) pos = pos + 1
-         end do
-         exit
-      end do
-
-      valid = .true.
-      escape = .false.
-      space = .false.
-      expect = 0
-
-      do it = prev + 3, pos - 1
-         ch = peek(lexer, it)
-         if (escape) then
-            space = verify(ch, char_kind%space//char_kind%tab//&
-               & char_kind%carriage_return//char_kind%newline) == 0
-         end if
-         if (space) then
-            escape = .false.
-            if (ch == char_kind%newline) then
-               if (expect > 0) expect = expect - 1
-               space = .false.
-               cycle
-            end if
-            if (verify(ch, char_kind%space//char_kind%tab) == 0 .and. expect == 0) cycle
-            if (ch == char_kind%carriage_return) then
-               expect = 1
-               cycle
-            end if
-            valid = .false.
-            space = .false.
-            expect = 0
-            cycle
-         end if
-         valid = valid .and. valid_string(ch)
-         if (escape) then
-            escape = .false.
-            space = .false.
-            if (verify(ch, valid_escape) == 0) cycle
-            if (ch == "u") then
-               expect = 4
-               hex = pos + 1
-               cycle
-            end if
-            if (ch == "U") then
-               expect = 8
-               hex = pos + 1
-               cycle
-            end if
-            valid = .false.
-            cycle
-         end if
-         if (expect > 0) then
-            expect = expect - 1
-            valid = valid .and. verify(ch, hexnum) == 0
-            if (expect == 0) valid = valid .and. verify_ucs(lexer%chunk(hex:pos))
-            cycle
-         end if
-         escape = ch == char_kind%backslash
-      end do
-
-      ! Check for any unfinished escape sequences
-      valid = valid .and. expect == 0 .and. .not.(escape.or.space)
-
-      token = toml_token(merge(token_kind%mstring, token_kind%invalid, valid), prev, pos+2)
-      return
-   end if
-
-   valid = .true.
-   escape = .false.
-   expect = 0
-
-   do while(pos < len(lexer%chunk))
-      pos = pos + 1
-      ch = peek(lexer, pos)
-      valid = valid .and. valid_string(ch)
-      if (escape) then
-         escape = .false.
-         if (verify(ch, valid_escape) == 0) cycle
-         if (ch == "u") then
-            expect = 4
-            hex = pos + 1
-            cycle
-         end if
-         if (ch == "U") then
-            expect = 8
-            hex = pos + 1
-            cycle
-         end if
-         valid = .false.
-         cycle
-      end if
-      if (expect > 0) then
-         expect = expect - 1
-         valid = valid .and. verify(ch, hexnum) == 0
-         if (expect == 0) valid = valid .and. verify_ucs(lexer%chunk(hex:pos))
-         cycle
-      end if
-      escape = ch == char_kind%backslash
-      if (ch == char_kind%dquote) exit
-      if (ch == char_kind%newline) then
-         pos = pos - 1
-         valid = .false.
-         exit
-      end if
-   end do
-
-   valid = valid .and. peek(lexer, pos) == char_kind%dquote .and. pos /= prev
-   token = toml_token(merge(token_kind%string, token_kind%invalid, valid), prev, pos)
-end subroutine next_dstring
-
-!> Validate characters in string, non-printable characters are invalid in this context
-pure function valid_string(ch) result(valid)
-   character(1, tfc), intent(in) :: ch
-   logical :: valid
-
-   character(1, tfc), parameter :: x00 = achar(int(z"00")), x08 = achar(int(z"08")), &
-      & x0b = achar(int(z"0b")), x1f = achar(int(z"1f")), x7f = achar(int(z"7f"))
-
-   valid = &
-      & .not.(x00 <= ch .and. ch <= x08) .and. &
-      & .not.(x0b <= ch .and. ch <= x1f) .and. &
-      & ch /= x7f
-end function
-
-!> Process next bare key token, produces keypath tokens.
-subroutine next_keypath(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   logical :: valid
-   integer :: prev, pos
-   character(1, tfc) :: ch
-
-   prev = lexer%pos
-   pos = lexer%pos
-   ch = peek(lexer, pos)
-
-   valid = (tfc_"A" <= ch .and. ch <= tfc_"Z") &
-      & .or. (tfc_"a" <= ch .and. ch <= tfc_"z") &
-      & .or. (verify(ch, char_kind%literal) == 0)
-   do while(verify(peek(lexer, pos+1), terminated//char_kind%dot) > 0)
-      pos = pos + 1
-      ch = peek(lexer, pos)
-
-      if (tfc_"A" <= ch .and. ch <= tfc_"Z") cycle
-      if (tfc_"a" <= ch .and. ch <= tfc_"z") cycle
-      if (verify(ch, char_kind%literal) == 0) cycle
-
-      valid = .false.
-      cycle
-   end do
-
-   token = toml_token(merge(token_kind%keypath, token_kind%invalid, valid), prev, pos)
-end subroutine next_keypath
-
-!> Identify literal values, produces integer, float, boolean, and datetime tokens.
-subroutine next_literal(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   integer :: prev, pos
-   integer, parameter :: offset(*) = [0, 1, 2, 3, 4, 5]
-   character(1, tfc), parameter :: &
-      & true(4) = ["t", "r", "u", "e"], false(5) = ["f", "a", "l", "s", "e"]
-
-   prev = lexer%pos
-   pos = lexer%pos
-
-   select case(peek(lexer, pos))
-   case("t")
-      if (match_all(lexer, pos+offset(:4), true) .and. &
-         & verify(peek(lexer, pos+4), terminated) == 0) then
-         token = toml_token(token_kind%bool, prev, pos+3)
-         return
-      end if
-
-   case("f")
-      if (match_all(lexer, pos+offset(:5), false) .and. &
-         & verify(peek(lexer, pos+5), terminated) == 0) then
-         token = toml_token(token_kind%bool, prev, pos+4)
-         return
-      end if
-
-   case default
-      call next_datetime(lexer, token)
-      if (token%kind == token_kind%datetime) return
-
-      call next_integer(lexer, token)
-      if (token%kind == token_kind%int) return
-
-      call next_float(lexer, token)
-      if (token%kind == token_kind%float) return
-
-   end select
-
-   ! If the current token is invalid, advance to the next terminator
-   do while(verify(peek(lexer, pos+1), terminated) > 0)
-      pos = pos + 1
-   end do
-   token = toml_token(token_kind%invalid, prev, pos)
-end subroutine next_literal
-
-!> Process integer tokens and binary, octal, and hexadecimal literals.
-subroutine next_integer(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   character(*, tfc), parameter :: toml_base(4) = [&
-      & "0123456789abcdefABCDEF", &
-      & "0123456789000000000000", &
-      & "0123456700000000000000", &
-      & "0100000000000000000000"]
-   integer, parameter :: b10 = 2, b16 = 1, b8 = 3, b2 = 4
-
-   character(1, tfc) :: ch
-   integer :: prev, pos, base
-   logical :: underscore, okay
-
-   prev = lexer%pos
-   pos = lexer%pos
-   okay = .true.
-   underscore = .true.
-   base = b10
-
-   if (any(match(lexer, pos, ["+", "-"]))) then
-      pos = pos + 1
-   end if
-
-   if (match(lexer, pos, "0")) then
-      select case(peek(lexer, pos+1))
-      case("x")
-         okay = pos == prev
-         base = b16
-         pos = pos + 2
-      case("o")
-         okay = pos == prev
-         base = b8
-         pos = pos + 2
-      case("b")
-         okay = pos == prev
-         base = b2
-         pos = pos + 2
-      case(char_kind%space, char_kind%tab, char_kind%newline, char_kind%carriage_return, &
-         & char_kind%hash, char_kind%rbrace, char_kind%rbracket, char_kind%comma)
-         token = toml_token(token_kind%int, prev, pos)
-         return
-      case default
-         do while(verify(peek(lexer, pos), terminated) > 0)
-            pos = pos + 1
-         end do
-         token = toml_token(token_kind%invalid, prev, pos-1)
-         return
-      end select
-   end if
-
-
-   do while(pos <= len(lexer%chunk))
-      ch = peek(lexer, pos)
-      if (ch == "_") then
-         if (underscore) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         underscore = .true.
-         pos = pos + 1
-         cycle
-      end if
-
-      if (verify(ch, toml_base(base)) == 0) then
-         pos = pos + 1
-         underscore = .false.
-         cycle
-      end if
-
-      okay = okay .and. verify(ch, terminated) == 0
-      exit
-   end do
-
-   okay = .not.underscore .and. okay
-   token = toml_token(merge(token_kind%int, token_kind%invalid, okay), prev, pos-1)
-end subroutine next_integer
-
-!> Process float tokens.
-subroutine next_float(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   integer :: prev, pos
-   logical :: plus_minus, underscore, point, expo, okay, zero, first
-   character(1, tfc) :: ch
-   integer, parameter :: offset(*) = [0, 1, 2]
-   character(1, tfc), parameter :: nan(3) = ["n", "a", "n"], inf(3) = ["i", "n", "f"]
-
-   prev = lexer%pos
-   pos = lexer%pos
-   point = .false.
-   expo = .false.
-   zero = .false.
-   first = .true.
-   underscore = .true.
-   plus_minus = any(match(lexer, pos, ["+", "-"]))
-   if (plus_minus) pos = pos + 1
-
-   if (match_all(lexer, pos+offset, nan) .and. &
-      & verify(peek(lexer, pos+3), terminated) == 0) then
-      token = toml_token(token_kind%float, prev, pos+2)
-      return
-   end if
-
-   if (match_all(lexer, pos+offset, inf) .and. &
-      & verify(peek(lexer, pos+3), terminated) == 0) then
-      token = toml_token(token_kind%float, prev, pos+2)
-      return
-   end if
-
-   do while(pos <= len(lexer%chunk))
-      ch = peek(lexer, pos)
-      if (ch == "_") then
-         if (underscore) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         underscore = .true.
-         pos = pos + 1
-         cycle
-      end if
-
-      if (ch == ".") then
-         if (point .or. expo .or. underscore) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         zero = .false.
-         underscore = .true.
-         point = .true.
-         pos = pos + 1
-         cycle
-      end if
-
-      if (ch == "e" .or. ch == "E") then
-         if (expo .or. underscore) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         zero = .false.
-         underscore = .true.
-         expo = .true.
-         pos = pos + 1
-         cycle
-      end if
-
-      if (ch == "+" .or. ch == "-") then
-         if (.not.any(match(lexer, pos-1, ["e", "E"]))) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         underscore = .true.
-         pos = pos + 1
-         cycle
-      end if
-
-      if (verify(ch, "0123456789") == 0) then
-         if (zero) then
-            token = toml_token(token_kind%invalid, prev, pos)
-            return
-         end if
-         zero = first .and. ch == "0"
-         first = .false.
-         pos = pos + 1
-         underscore = .false.
-         cycle
-      end if
-
-      exit
-   end do
-
-   okay = .not.underscore .and. (expo .or. point)
-   token = toml_token(merge(token_kind%float, token_kind%invalid, okay), prev, pos-1)
-end subroutine next_float
-
-!> Find the next datetime expression
-subroutine next_datetime(lexer, token)
-   !> Instance of the lexer
-   type(toml_lexer), intent(inout) :: lexer
-   !> Current lexeme
-   type(toml_token), intent(inout) :: token
-
-   logical :: has_date, has_time, has_millisec, has_local, okay
-   integer :: prev, pos, it
-   integer, parameter :: offset(*) = [(it, it = 0, 10)], &
-      & offset_date = 10, offset_time = 8, offset_local = 6
-   character(*, tfc), parameter :: num = "0123456789"
-
-   prev = lexer%pos
-   pos = lexer%pos
-
-   has_date = valid_date(peek(lexer, pos+offset(:offset_date)))
-   if (has_date) then
-      if (verify(peek(lexer, pos+offset_date), "Tt ") == 0 &
-         & .and. pos + offset_date < len(lexer%chunk) &
-         & .and. verify(peek(lexer, pos+offset_date+1), num) == 0) then
-         pos = pos + offset_date + 1
-      end if
-   end if
-
-   has_time = valid_time(peek(lexer, pos+offset(:offset_time)))
-   if (has_time) then
-      pos = pos + offset_time - 1
-      if (match(lexer, pos+1, char_kind%dot)) then
-         it = 1
-         do while(verify(peek(lexer, pos+it+1), num) == 0)
-            it = it + 1
-         end do
-         has_millisec = it > 1
-         if (.not.has_millisec) then
-            token = toml_token(token_kind%invalid, prev, prev)
-            return
-         end if
-
-         pos = pos + it
-      end if
-
-      has_local = valid_local(peek(lexer, pos+offset(:offset_local)+1))
-      if (has_local) then
-         if (.not.has_date) then
-            token = toml_token(token_kind%invalid, prev, prev)
-            return
-         end if
-         pos = pos + offset_local
-      else if (verify(peek(lexer, pos+1), "zZ") == 0) then
-         pos = pos + 1
-      end if
-   end if
-
-   if (.not.(has_time.or.has_date)) then
-      token = toml_token(token_kind%invalid, prev, prev)
-      return
-   end if
-
-   if (.not.has_time.and.has_date) pos = pos + offset_date - 1
-   okay = verify(peek(lexer, pos+1), terminated) == 0 .and. pos <= len(lexer%chunk)
-   token = toml_token(merge(token_kind%datetime, token_kind%invalid, okay), prev, pos)
-end subroutine next_datetime
-
-!> Validate a string as date
-pure function valid_date(string) result(valid)
-   !> Input string, 10 characters
-   character(1, tfc), intent(in) :: string(:)
-   !> Valid date
-   logical :: valid
-
-   integer :: it, val
-   character(*, tfc), parameter :: num = "0123456789"
-   integer :: year, month, day, mday
-   logical :: leap
-
-   valid = .false.
-   if (any(string([5, 8]) /= "-")) return
-
-   year = 0
-   do it = 1, 4
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      year = year * 10 + val
-   end do
-
-   month = 0
-   do it = 6, 7
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      month = month * 10 + val
-   end do
-
-   day = 0
-   do it = 9, 10
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      day = day * 10 + val
-   end do
-
-   mday = 0
-   select case(month)
-   case(1, 3, 5, 7, 8, 10, 12)
-      mday = 31
-   case(2)
-      leap = mod(year, 4) == 0 .and. (mod(year, 100) /= 0 .or. mod(year, 400) == 0)
-      mday = merge(29, 28, leap)
-   case(4, 6, 9, 11)
-      mday = 30
-   end select
-   valid = day >= 1 .and. day <= mday
-end function valid_date
-
-
-!> Validate a string as time
-function valid_time(string) result(valid)
-   !> Input string, 8 characters
-   character(1, tfc), intent(in) :: string(:)
-   !> Valid time
-   logical :: valid
-
-   integer :: it, val
-   character(*, tfc), parameter :: num = "0123456789"
-   integer :: hour, minute, second
-
-   valid = .false.
-   if (any(string([3, 6]) /= ":")) return
-
-   hour = 0
-   do it = 1, 2
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      hour = hour * 10 + val
-   end do
-
-   minute = 0
-   do it = 4, 5
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      minute = minute * 10 + val
-   end do
-
-   second = 0
-   do it = 7, 8
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      second = second * 10 + val
-   end do
-
-   valid = second >= 0 .and. second < 60 &
-      & .and. minute >= 0 .and. minute < 60 &
-      & .and. hour >= 0 .and. hour < 24
-end function valid_time
-
-
-!> Validate a string as timezone
-function valid_local(string) result(valid)
-   !> Input string, 6 characters
-   character(1, tfc), intent(in) :: string(:)
-   !> Valid timezone
-   logical :: valid
-
-   integer :: it, val
-   character(*, tfc), parameter :: num = "0123456789"
-   integer :: hour, minute
-
-   valid = .false.
-   if (string(4) /= ":" .or. all(string(1) /= ["+", "-"])) return
-
-   hour = 0
-   do it = 2, 3
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      hour = hour * 10 + val
-   end do
-
-   minute = 0
-   do it = 5, 6
-      val = scan(num, string(it)) - 1
-      if (val < 0) return
-      minute = minute * 10 + val
-   end do
-
-   valid = minute >= 0 .and. minute < 60 &
-      & .and. hour >= 0 .and. hour < 24
-end function valid_local
-
-
-!> Show current character
-elemental function peek(lexer, pos) result(ch)
-   !> Instance of the lexer
-   type(toml_lexer), intent(in) :: lexer
-   !> Position to fetch character from
-   integer, intent(in) :: pos
-   !> Character found
-   character(1, tfc) :: ch
-
-   if (pos <= len(lexer%chunk)) then
-      ch = lexer%chunk(pos:pos)
-   else
-      ch = char_kind%space
-   end if
-end function peek
-
-!> Compare a character
-elemental function match(lexer, pos, kind)
-   !> Instance of the lexer
-   type(toml_lexer), intent(in) :: lexer
-   !> Position to fetch character from
-   integer, intent(in) :: pos
-   !> Character to compare against
-   character(1, tfc), intent(in) :: kind
-   !> Characters match
-   logical :: match
-
-   match = peek(lexer, pos) == kind
-end function match
-
-!> Compare a set of characters
-pure function match_all(lexer, pos, kind) result(match)
-   !> Instance of the lexer
-   type(toml_lexer), intent(in) :: lexer
-   !> Position to fetch character from
-   integer, intent(in) :: pos(:)
-   !> Character to compare against
-   character(1, tfc), intent(in) :: kind(:)
-   !> Characters match
-   logical :: match
-
-   match = all(peek(lexer, pos) == kind)
-end function match_all
-
-pure function strstr(string, pattern) result(res)
-   character(*, tfc), intent(in) :: string
-   character(*, tfc), intent(in) :: pattern
-   integer :: lps_array(len(pattern))
-   integer :: res, s_i, p_i, length_string, length_pattern
-   res = 0
-   length_string = len(string)
-   length_pattern = len(pattern)
-
-   if (length_pattern > 0 .and. length_pattern <= length_string) then
-      lps_array = compute_lps(pattern)
-
-      s_i = 1
-      p_i = 1
-      do while(s_i <= length_string)
-         if (string(s_i:s_i) == pattern(p_i:p_i)) then
-            if (p_i == length_pattern) then
-               res = s_i - length_pattern + 1
-               exit
-            end if
-            s_i = s_i + 1
-            p_i = p_i + 1
-         else if (p_i > 1) then
-            p_i = lps_array(p_i - 1) + 1
-         else
-            s_i = s_i + 1
-         end if
-      end do
-   end if
-
-contains
-
-   pure function compute_lps(string) result(lps_array)
-      character(*, tfc), intent(in) :: string
-      integer :: lps_array(len(string))
-      integer :: i, j, length_string
-
-      length_string = len(string)
-
-      if (length_string > 0) then
-         lps_array(1) = 0
-
-         i = 2
-         j = 1
-         do while (i <= length_string)
-            if (string(j:j) == string(i:i)) then
-               lps_array(i) = j
-               i = i + 1
-               j = j + 1
-            else if (j > 1) then
-               j = lps_array(j - 1) + 1
-            else
-               lps_array(i) = 0
-               i = i + 1
-            end if
-         end do
-      end if
-
-   end function compute_lps
-
-end function strstr
-
-!> Extract raw value of token
-subroutine extract_raw(lexer, token, string)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract raw value from
-   type(toml_token), intent(in) :: token
-   !> Raw value of token
-   character(len=:), allocatable, intent(out) :: string
-
-   integer :: length
-
-   length = token%last - token%first + 1
-   allocate(character(length) :: string)
-   string = lexer%chunk(token%first:token%last)
-end subroutine extract_raw
-
-!> Extract string value of token, works for keypath, string, multiline string, literal,
-!> and mulitline literal tokens.
-subroutine extract_string(lexer, token, string)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract string value from
-   type(toml_token), intent(in) :: token
-   !> String value of token
-   character(len=:), allocatable, intent(out) :: string
-
-   integer :: it, length
-   logical :: escape, leading_newline
-   character(1, tfc) :: ch
-
-   length = token%last - token%first + 1
-
-   select case(token%kind)
-   case(token_kind%string)
-      string = ""
-      escape = .false.
-      it = token%first + 1
-      do while(it <= token%last - 1)
-         ch = peek(lexer, it)
-         if (escape) then
-            escape = .false.
-            select case(ch)
-            case("""", "\");  string = string // ch
-            case("b"); string = string // TOML_BACKSPACE
-            case("t"); string = string // TOML_TABULATOR
-            case("n"); string = string // TOML_NEWLINE
-            case("r"); string = string // TOML_CARRIAGE_RETURN
-            case("f"); string = string // TOML_FORMFEED
-            case("u"); string = string // convert_ucs(lexer%chunk(it+1:it+4)); it = it + 5
-            case("U"); string = string // convert_ucs(lexer%chunk(it+1:it+8)); it = it + 9
-            end select
-         else
-            escape = ch == char_kind%backslash
-            if (.not.escape) string = string // ch
-         end if
-         it = it + 1
-      end do
-   case(token_kind%mstring)
-      leading_newline = peek(lexer, token%first+3) == char_kind%newline
-      string = ""
-      escape = .false.
-      it = token%first + merge(4, 3, leading_newline)
-      do while(it <= token%last - 3)
-         ch = peek(lexer, it)
-         if (escape) then
-            escape = .false.
-            select case(ch)
-            case("""", "\");  string = string // ch
-            case("b"); string = string // TOML_BACKSPACE
-            case("t"); string = string // TOML_TABULATOR
-            case("n"); string = string // TOML_NEWLINE
-            case("r"); string = string // TOML_CARRIAGE_RETURN
-            case("f"); string = string // TOML_FORMFEED
-            case("u"); string = string // convert_ucs(lexer%chunk(it+1:it+4)); it = it + 5
-            case("U"); string = string // convert_ucs(lexer%chunk(it+1:it+8)); it = it + 9
-            case(char_kind%space, char_kind%tab, char_kind%carriage_return)
-               escape = .true.
-            case(char_kind%newline)
-               continue
-            end select
-         else
-            escape = ch == char_kind%backslash
-            if (.not.escape) string = string // ch
-         end if
-         it = it + 1
-      end do
-   case(token_kind%literal)
-      allocate(character(length - 2)::string)
-      string = lexer%chunk(token%first+1:token%last-1)
-   case(token_kind%mliteral)
-      leading_newline = peek(lexer, token%first+3) == char_kind%newline
-      allocate(character(length - merge(7, 6, leading_newline))::string)
-      string = lexer%chunk(token%first+merge(4, 3, leading_newline):token%last-3)
-   case(token_kind%keypath)
-      allocate(character(length)::string)
-      string = lexer%chunk(token%first:token%last)
-   end select
-
-end subroutine extract_string
-
-!> Extract integer value of token
-subroutine extract_integer(lexer, token, val)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract integer value from
-   type(toml_token), intent(in) :: token
-   !> Integer value of token
-   integer(tfi), intent(out) :: val
-
-   integer :: first, base, it, tmp
-   logical :: minus
-   character(1, tfc) :: ch
-   character(*, tfc), parameter :: num = "0123456789abcdef"
-
-   if (token%kind /= token_kind%int) return
-
-   val = 0
-   base = 10
-   first = token%first
-
-   if (any(peek(lexer, first) == ["+", "-"])) first = first + 1
-
-   if (peek(lexer, first) == "0") then
-      select case(peek(lexer, first + 1))
-      case("x")
-         first = first + 2
-         base = 16
-      case("o")
-         first = first + 2
-         base = 8
-      case("b")
-         first = first + 2
-         base = 2
-      case default
-         return
-      end select
-   end if
-
-   minus = match(lexer, token%first, char_kind%minus)
-
-   do it = first, token%last
-      ch = peek(lexer, it)
-      if ("A" <= ch .and. ch <= "Z") ch = achar(iachar(ch) - iachar("A") + iachar("a"))
-      tmp = scan(num(:abs(base)), ch) - 1
-      if (tmp < 0) cycle
-      val = val * base + merge(-tmp, tmp, minus)
-   end do
-end subroutine extract_integer
-
-!> Extract floating point value of token
-subroutine extract_float(lexer, token, val)
-   use, intrinsic :: ieee_arithmetic, only : ieee_value, &
-      & ieee_positive_inf, ieee_negative_inf, ieee_quiet_nan
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract floating point value from
-   type(toml_token), intent(in) :: token
-   !> Floating point value of token
-   real(tfr), intent(out) :: val
-
-   integer :: first, it, ic
-   character(len=token%last - token%first + 1) :: buffer
-   character(1, tfc) :: ch
-
-   if (token%kind /= token_kind%float) return
-
-   first = token%first
-
-   if (any(peek(lexer, first) == ["+", "-"])) first = first + 1
-
-   if (match(lexer, first, "n")) then
-      val = ieee_value(val, ieee_quiet_nan)
-      return
-   end if
-
-   if (match(lexer, first, "i")) then
-      if (match(lexer, token%first, char_kind%minus)) then
-         val = ieee_value(val, ieee_negative_inf)
-      else
-         val = ieee_value(val, ieee_positive_inf)
-      end if
-      return
-   end if
-
-!   ival = 0
-!   idot = 0
-!
-!   do it = first, token%last
-!      ch = peek(lexer, it)
-!      if (any(ch == [".", "e", "E"])) exit
-!      tmp = scan(num(:base), ch) - 1
-!      if (tmp < 0) cycle
-!      ival = ival * base + tmp
-!   end do
-!   first = it
-!
-!   if (ch == ".") then
-!      idot = 0
-!      do it = first, token%last
-!         ch = peek(lexer, it)
-!         if (any(ch == ["e", "E"])) exit
-!         tmp = scan(num(:base), ch) - 1
-!         if (tmp < 0) cycle
-!         idot = idot + 1
-!         ival = ival * base + tmp
-!      end do
-!      first = it
-!   end if
-!
-!   expo = 0
-!   if (any(ch == ["e", "E"])) then
-!      first = first + 1
-!      do it = first, token%last
-!         ch = peek(lexer, it)
-!         tmp = scan(num(:base), ch) - 1
-!         if (tmp < 0) cycle
-!         expo = expo * base + tmp
-!      end do
-!      if (match(lexer, first, char_kind%minus)) expo = -expo
-!   end if
-!   expo = expo - idot
-!   val = ival * 10.0_tfr ** expo  ! FIXME
-!
-!   if (match(lexer, token%first, char_kind%minus)) val = -val
-
-   ic = 0
-   do it = token%first, token%last
-      ch = peek(lexer, it)
-      if (ch == "_") cycle
-      ic = ic + 1
-      buffer(ic:ic) = ch
-   end do
-
-   read(buffer(:ic), *, iostat=it) val
-end subroutine extract_float
-
-!> Extract boolean value of token
-subroutine extract_bool(lexer, token, val)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract boolean value from
-   type(toml_token), intent(in) :: token
-   !> Boolean value of token
-   logical, intent(out) :: val
-
-   if (token%kind /= token_kind%bool) return
-
-   val = peek(lexer, token%first) == "t"
-end subroutine extract_bool
-
-!> Extract datetime value of token
-subroutine extract_datetime(lexer, token, val)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Token to extract datetime value from
-   type(toml_token), intent(in) :: token
-   !> Datetime value of token
-   type(toml_datetime), intent(out) :: val
-
-   if (token%kind /= token_kind%datetime) return
-
-   val = toml_datetime(lexer%chunk(token%first:token%last))
-end subroutine extract_datetime
-
-
-!> Push a new scope onto the lexer stack and record the token
-pure subroutine push_back(lexer, scope, token)
-   type(toml_lexer), intent(inout) :: lexer
-   integer, intent(in) :: scope
-   integer, intent(in) :: token
-
-   lexer%top = lexer%top + 1
-   if (lexer%top > size(lexer%stack)) call resize(lexer%stack)
-   lexer%stack(lexer%top) = stack_item(scope, token)
-end subroutine push_back
-
-!> Pop a scope from the lexer stack in case the topmost scope matches the requested scope
-subroutine pop(lexer, scope)
-   type(toml_lexer), intent(inout) :: lexer
-   integer, intent(in) :: scope
-
-   if (lexer%top > 0) then
-      if (lexer%stack(lexer%top)%scope == scope) lexer%top = lexer%top - 1
-   end if
-end subroutine pop
-
-!> Peek at the topmost scope on the lexer stack
-pure function view_scope(lexer) result(scope)
-   type(toml_lexer), intent(in) :: lexer
-   integer :: scope
-
-   if (lexer%top > 0) then
-      scope = lexer%stack(lexer%top)%scope
-   else
-      scope = lexer_scope%table
-   end if
-end function view_scope
-
-
-!> Reallocate list of scopes
-pure subroutine resize_scope(var, n)
-   !> Instance of the array to be resized
-   type(stack_item), allocatable, intent(inout) :: var(:)
-   !> Dimension of the final array size
-   integer, intent(in), optional :: n
-
-   type(stack_item), allocatable :: tmp(:)
-   integer :: this_size, new_size
-   integer, parameter :: initial_size = 8
-
-   if (allocated(var)) then
-      this_size = size(var, 1)
-      call move_alloc(var, tmp)
-   else
-      this_size = initial_size
-   end if
-
-   if (present(n)) then
-      new_size = n
-   else
-      new_size = this_size + this_size/2 + 1
-   end if
-
-   allocate(var(new_size))
-
-   if (allocated(tmp)) then
-      this_size = min(size(tmp, 1), size(var, 1))
-      var(:this_size) = tmp(:this_size)
-      deallocate(tmp)
-   end if
-
-end subroutine resize_scope
-
-
-!> Extract information about the source
-subroutine get_info(lexer, meta, output)
-   !> Instance of the lexer
-   class(toml_lexer), intent(in) :: lexer
-   !> Query about the source
-   character(*, tfc), intent(in) :: meta
-   !> Metadata about the source
-   character(:, tfc), allocatable, intent(out) :: output
-
-   select case(meta)
-   case("source")
-      output = lexer%chunk // TOML_NEWLINE
-   case("filename")
-      if (allocated(lexer%filename)) output = lexer%filename
-   end select
-end subroutine get_info
-
-
-function hex_to_int(hex) result(val)
-   character(*, tfc), intent(in) :: hex
-   integer(tfi) :: val
-   integer :: i
-   character(1, tfc) :: ch
-   character(*, tfc), parameter :: hex_digits = "0123456789abcdef"
-
-   val = 0_tfi
-   do i = 1, len(hex)
-      ch = hex(i:i)
-      if ("A" <= ch .and. ch <= "Z") ch = achar(iachar(ch) - iachar("A") + iachar("a"))
-      val = val * 16 + max(index(hex_digits, ch) - 1, 0)
-   end do
-end function hex_to_int
-
-
-function verify_ucs(escape) result(valid)
-   character(*, tfc), intent(in) :: escape
-   logical :: valid
-   integer(tfi) :: code
-
-   code = hex_to_int(escape)
-
-   valid = code > 0 .and. code < int(z"7FFFFFFF", tfi) &
-      & .and. (code < int(z"d800", tfi) .or. code > int(z"dfff", tfi)) &
-      & .and. (code < int(z"fffe", tfi) .or. code > int(z"ffff", tfi))
-end function verify_ucs
-
-
-function convert_ucs(escape) result(str)
-   character(*, tfc), intent(in) :: escape
-   character(:, tfc), allocatable :: str
-   integer(tfi) :: code
-
-   code = hex_to_int(escape)
-
-   select case(code)
-   case(int(z"00000000", tfi):int(z"0000007f", tfi))
-      str = achar(code, kind=tfc)
-   case(int(z"00000080", tfi):int(z"000007ff", tfi))
-      str = &
-         achar(ior(int(z"c0", tfi), ishft(code, -6)), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(code, int(z"3f", tfi))), kind=tfc)
-   case(int(z"00000800", tfi):int(z"0000ffff", tfi))
-      str = &
-         achar(ior(int(z"e0", tfi), ishft(code, -12)), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -6), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(code, int(z"3f", tfi))), kind=tfc)
-   case(int(z"00010000", tfi):int(z"001fffff", tfi))
-      str = &
-         achar(ior(int(z"f0", tfi), ishft(code, -18)), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -12), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -6), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(code, int(z"3f", tfi))), kind=tfc)
-   case(int(z"00200000", tfi):int(z"03ffffff", tfi))
-      str = &
-         achar(ior(int(z"f8", tfi), ishft(code, -24)), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -18), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -12), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -6), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(code, int(z"3f", tfi))), kind=tfc)
-   case(int(z"04000000", tfi):int(z"7fffffff", tfi))
-      str = &
-         achar(ior(int(z"fc", tfi), ishft(code, -30)), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -24), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -18), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -12), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(ishft(code, -6), int(z"3f", tfi))), kind=tfc) // &
-         achar(ior(int(z"80", tfi), iand(code, int(z"3f", tfi))), kind=tfc)
-   end select
-end function convert_ucs
-
-
-end module tomlf_de_lexer
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/array.f90
@@ -16859,21 +13999,18 @@ subroutine push_back(self, val, stat)
    !> Status of operation
    integer, intent(out) :: stat
 
-   class(toml_value), pointer :: ptr
-
    if (.not.allocated(val)) then
-      stat = merge(self%origin, toml_stat%fatal, self%origin > 0)
+      stat = toml_stat%fatal
       return
    end if
 
    if (.not.allocated(val%key)) then
-      stat = merge(val%origin, toml_stat%fatal, val%origin > 0)
+      stat = toml_stat%fatal
       return
    end if
 
-   call self%get(val%key, ptr)
-   if (associated(ptr)) then
-      stat = merge(ptr%origin, toml_stat%duplicate_key, ptr%origin > 0)
+   if (self%has_key(val%key)) then
+      stat = toml_stat%duplicate_key
       return
    end if
 
@@ -16963,13 +14100,11 @@ module tomlf_type
    public :: new, new_table, new_array, new_keyval, len
    public :: add_table, add_array, add_keyval
    public :: is_array_of_tables
-   public :: cast_to_table, cast_to_array, cast_to_keyval
 
 
    !> Interface to build new tables
    interface add_table
       module procedure :: add_table_to_table
-      module procedure :: add_table_to_table_key
       module procedure :: add_table_to_array
    end interface add_table
 
@@ -16977,7 +14112,6 @@ module tomlf_type
    !> Interface to build new arrays
    interface add_array
       module procedure :: add_array_to_table
-      module procedure :: add_array_to_table_key
       module procedure :: add_array_to_array
    end interface add_array
 
@@ -16985,7 +14119,6 @@ module tomlf_type
    !> Interface to build new key-value pairs
    interface add_keyval
       module procedure :: add_keyval_to_table
-      module procedure :: add_keyval_to_table_key
       module procedure :: add_keyval_to_array
    end interface add_keyval
 
@@ -17043,26 +14176,6 @@ subroutine add_table_to_table(table, key, ptr, stat)
 end subroutine add_table_to_table
 
 
-!> Create a new TOML table inside an existing table
-subroutine add_table_to_table_key(table, key, ptr, stat)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key for the new table
-   type(toml_key), intent(in) :: key
-
-   !> Pointer to the newly created table
-   type(toml_table), pointer, intent(out) :: ptr
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   call add_table(table, key%key, ptr, stat)
-   if (associated(ptr)) ptr%origin = key%origin
-end subroutine add_table_to_table_key
-
-
 !> Create a new TOML array inside an existing table
 subroutine add_array_to_table(table, key, ptr, stat)
 
@@ -17113,26 +14226,6 @@ subroutine add_array_to_table(table, key, ptr, stat)
 end subroutine add_array_to_table
 
 
-!> Create a new TOML array inside an existing table
-subroutine add_array_to_table_key(table, key, ptr, stat)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key for the new array
-   type(toml_key), intent(in) :: key
-
-   !> Pointer to the newly created array
-   type(toml_array), pointer, intent(out) :: ptr
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   call add_array(table, key%key, ptr, stat)
-   if (associated(ptr)) ptr%origin = key%origin
-end subroutine add_array_to_table_key
-
-
 !> Create a new key-value pair inside an existing table
 subroutine add_keyval_to_table(table, key, ptr, stat)
 
@@ -17181,26 +14274,6 @@ subroutine add_keyval_to_table(table, key, ptr, stat)
    if (present(stat)) stat = istat
 
 end subroutine add_keyval_to_table
-
-
-!> Create a new key-value pair inside an existing table
-subroutine add_keyval_to_table_key(table, key, ptr, stat)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key for the new key-value pair
-   type(toml_key), intent(in) :: key
-
-   !> Pointer to the newly created key-value pair
-   type(toml_keyval), pointer, intent(out) :: ptr
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   call add_keyval(table, key%key, ptr, stat)
-   if (associated(ptr)) ptr%origin = key%origin
-end subroutine add_keyval_to_table_key
 
 
 !> Create a new TOML table inside an existing array
@@ -17417,49 +14490,6 @@ function is_array_of_tables(array) result(only_tables)
 end function is_array_of_tables
 
 
-!> Cast an abstract TOML value to a TOML array
-function cast_to_array(ptr) result(array)
-   !> TOML value to be casted
-   class(toml_value), intent(in), target :: ptr
-   !> TOML array view, nullified if the value is not an array
-   type(toml_array), pointer :: array
-
-   nullify(array)
-   select type(ptr)
-   type is(toml_array)
-      array => ptr
-   end select
-end function cast_to_array
-
-!> Cast an abstract TOML value to a TOML table
-function cast_to_table(ptr) result(table)
-   !> TOML value to be casted
-   class(toml_value), intent(in), target :: ptr
-   !> TOML table view, nullified if the value is not a table
-   type(toml_table), pointer :: table
-
-   nullify(table)
-   select type(ptr)
-   type is(toml_table)
-      table => ptr
-   end select
-end function cast_to_table
-
-!> Cast an abstract TOML value to a TOML key-value pair
-function cast_to_keyval(ptr) result(kval)
-   !> TOML value to be casted
-   class(toml_value), intent(in), target :: ptr
-   !> TOML key-value view, nullified if the value is not a table
-   type(toml_keyval), pointer :: kval
-
-   nullify(kval)
-   select type(ptr)
-   type is(toml_keyval)
-      kval => ptr
-   end select
-end function cast_to_keyval
-
-
 end module tomlf_type
 
 
@@ -17479,11 +14509,9 @@ end module tomlf_type
 
 !> TOML serializer implementation
 module tomlf_ser
-   use tomlf_constants, only : tfc, tfi, tfr, tfout, toml_type
-   use tomlf_datetime, only : toml_datetime, to_string
+   use tomlf_constants, only : tfc, tfout
    use tomlf_type, only : toml_value, toml_visitor, toml_key, toml_table, &
       & toml_array, toml_keyval, is_array_of_tables, len
-   use tomlf_utils, only : to_string, toml_escape_string
    implicit none
    private
 
@@ -17595,42 +14623,15 @@ subroutine visit_keyval(visitor, keyval)
    !> TOML value to visit
    type(toml_keyval), intent(inout) :: keyval
 
-   character(kind=tfc, len=:), allocatable :: key, str
-   type(toml_datetime), pointer :: dval
-   character(:, tfc), pointer :: sval
-   integer(tfi), pointer :: ival
-   real(tfr), pointer :: rval
-   logical, pointer :: lval
+   character(kind=tfc, len=:), allocatable :: key
 
    call keyval%get_key(key)
 
-   select case(keyval%get_type())
-   case(toml_type%string)
-      call keyval%get(sval)
-      call toml_escape_string(sval, str)
-   case(toml_type%int)
-      call keyval%get(ival)
-      str = to_string(ival)
-   case(toml_type%float)
-      call keyval%get(rval)
-      str = to_string(rval)
-   case(toml_type%boolean)
-      call keyval%get(lval)
-      if (lval) then
-         str = "true"
-      else
-         str = "false"
-      end if
-   case(toml_type%datetime)
-      call keyval%get(dval)
-      str = to_string(dval)
-   end select
-
    if (visitor%inline_array) then
-      write(visitor%unit, '(1x,a,1x,"=",1x,a)', advance='no') &
-         &  key, str
+      write(visitor%unit, '(1x,a,1x,"=",1x,a,",")', advance='no') &
+         &  key, keyval%raw
    else
-      write(visitor%unit, '(a,1x,"=",1x,a)') key, str
+      write(visitor%unit, '(a,1x,"=",1x,a)') key, keyval%raw
    end if
 
 end subroutine visit_keyval
@@ -17646,12 +14647,7 @@ recursive subroutine visit_array(visitor, array)
    type(toml_array), intent(inout) :: array
 
    class(toml_value), pointer :: ptr
-   character(kind=tfc, len=:), allocatable :: key, str
-   type(toml_datetime), pointer :: dval
-   character(:, tfc), pointer :: sval
-   integer(tfi), pointer :: ival
-   real(tfr), pointer :: rval
-   logical, pointer :: lval
+   character(kind=tfc, len=:), allocatable :: key
    integer :: i, n
 
    if (visitor%inline_array) write(visitor%unit, '(1x,"[")', advance='no')
@@ -17660,30 +14656,7 @@ recursive subroutine visit_array(visitor, array)
       call array%get(i, ptr)
       select type(ptr)
       class is(toml_keyval)
-
-         select case(ptr%get_type())
-         case(toml_type%string)
-            call ptr%get(sval)
-            call toml_escape_string(sval, str)
-         case(toml_type%int)
-            call ptr%get(ival)
-            str = to_string(ival)
-         case(toml_type%float)
-            call ptr%get(rval)
-            str = to_string(rval)
-         case(toml_type%boolean)
-            call ptr%get(lval)
-            if (lval) then
-               str = "true"
-            else
-               str = "false"
-            end if
-         case(toml_type%datetime)
-            call ptr%get(dval)
-            str = to_string(dval)
-         end select
-
-         write(visitor%unit, '(1x,a)', advance='no') str
+         write(visitor%unit, '(1x,a)', advance='no') ptr%raw
          if (i /= n) write(visitor%unit, '(",")', advance='no')
       class is(toml_array)
          call ptr%accept(visitor)
@@ -17754,9 +14727,6 @@ recursive subroutine visit_table(visitor, table)
       select type(ptr)
       class is(toml_keyval)
          call ptr%accept(visitor)
-         if (visitor%inline_array) then
-            if (i /= n) write(visitor%unit, '(",")', advance='no')
-         end if
       class is(toml_array)
          if (visitor%inline_array) then
             call ptr%get_key(key)
@@ -17790,9 +14760,6 @@ recursive subroutine visit_table(visitor, table)
          select type(ptr)
          class is(toml_keyval)
             call ptr%accept(visitor)
-            if (visitor%inline_array) then
-               if (i /= n) write(visitor%unit, '(",")', advance='no')
-            end if
          class is(toml_array)
             if (visitor%inline_array) then
                call ptr%get_key(key)
@@ -17871,7 +14838,7 @@ end subroutine resize
 end module tomlf_ser
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/de/parser.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/de/tokenizer.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -17885,276 +14852,394 @@ end module tomlf_ser
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Implementation of a parser for transforming a token stream to TOML datastructures.
-module tomlf_de_parser
-   use tomlf_constants, only : tfc, tfr, tfi, TOML_NEWLINE
-   use tomlf_datetime, only : toml_datetime
-   use tomlf_de_context, only : toml_context
-   use tomlf_de_abc, only : toml_lexer => abstract_lexer
-   use tomlf_de_token, only : toml_token, token_kind, stringify
-   use tomlf_diagnostic, only : render, toml_diagnostic, toml_label, toml_level
-   use tomlf_terminal, only : toml_terminal
-   use tomlf_error, only : toml_error, toml_stat
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, toml_key, &
-      & add_table, add_array, add_keyval, cast_to_table, cast_to_array, len
+!> Definition of the TOML tokens and the possible states of the tokenizer
+!>
+!> The tokenizer implementation has to produce tokens from any input source
+!> and is usually only required for string tokens to provide an actual character
+!> representation.
+!>
+!> The tokenization is partly dependent on the context, as the dot is not in
+!> all states actually a token, also due to the rather complex syntax of
+!> table headers, whitespace is precious and has to be reported as token.
+!>
+!> Not required but usually helpful is the creation of a context, usually
+!> represented by the current line (or a chunk of lines for multiline strings),
+!> which can be passed to the error handler to create more detailed output.
+!> A tokenizer working with the complete TOML document as character sequence
+!> can easily create the context, while it might be incomplete or missing in
+!> case of a stream processing.
+module tomlf_de_tokenizer
+   use tomlf_constants, only : toml_escape, tfc, TOML_BAREKEY, toml_type
+   use tomlf_error, only : toml_stat, toml_error, toml_context, &
+      & syntax_error, duplicate_key_error, vendor_error
+   use tomlf_utils
+   use tomlf_type, only : toml_value, toml_key, toml_table, toml_array, &
+      & toml_keyval, new_table, add_array, add_table, add_keyval, len
    implicit none
    private
 
-   public :: toml_parser, toml_parser_config, parse
+   public :: toml_tokenizer, toml_token, toml_tokentype
 
 
-   !> Configuration of the TOML parser
-   type :: toml_parser_config
-      !> Use colorful output for diagnostics
-      type(toml_terminal) :: color = toml_terminal()
-      !> Record all tokens
-      integer :: context_detail = 0
-   end type toml_parser_config
+   type :: enum_tokentype
 
-   interface toml_parser_config
-      module procedure :: new_parser_config
-   end interface toml_parser_config
+      integer :: invalid = 0
 
-   !> TOML parser
-   type :: toml_parser
+      integer :: dot = 1
+
+      integer :: comma = 2
+
+      integer :: equal = 3
+
+      integer :: lbrace = 4
+
+      integer :: rbrace = 5
+
+      integer :: whitespace = 6
+
+      integer :: newline = 7
+
+      integer :: lbracket = 8
+
+      integer :: rbracket = 9
+
+      integer :: string = 10
+
+      integer :: comment = -1
+
+   end type enum_tokentype
+
+   type(enum_tokentype), parameter :: toml_tokentype = enum_tokentype()
+
+
+   !> Basic TOML token, produced by a TOML tokenizer
+   type :: toml_token
+
+      !> Actual tokentype
+      integer :: tok = toml_tokentype%invalid
+
+      !> Character representation of the token
+      character(len=:), pointer :: ptr => null()
+
+      !> Length of the token at ptr
+      integer :: len = 0
+
+   end type toml_token
+
+
+   !> Abstract TOML tokenizer
+   type, abstract :: toml_tokenizer
+
+      !> Signals if the tokenizer has finished (EOF has been reached)
+      logical :: finished = .false.
+
       !> Current token
-      type(toml_token) :: token
-      !> Table containing the document root
+      type(toml_token) :: tok
+
+      !> Root table
       type(toml_table), allocatable :: root
-      !> Pointer to the currently processed table
-      type(toml_table), pointer :: current
-      !> Diagnostic produced while parsing
-      type(toml_diagnostic), allocatable :: diagnostic
-      !> Context for producing diagnostics
-      type(toml_context) :: context
-      !> Configuration of the parser
-      type(toml_parser_config) :: config
-   end type toml_parser
+
+      !> Pointer to the current table while transversing a table path
+      type(toml_table), pointer :: current => null()
+
+      !> Current line (for error handling)
+      type(toml_context) :: line
+
+      !> Error buffer, if allocated an error has occurred
+      type(toml_error), allocatable :: error
+
+   contains
+
+      !> Entry point for parsing the TOML document, creates the root table
+      procedure :: parse => parse_root
+
+      !> Parse a TOML table or array of tables header
+      procedure, private :: parse_select
+
+      !> Parse an inline TOML array
+      procedure, private :: parse_array
+
+      !> Parse an inline TOML table
+      procedure, private :: parse_table
+
+      !> Parse a key-value pair
+      procedure, private :: parse_keyval
+
+      !> Advance tokenizer
+      procedure, private :: next
+
+      !> Return next token
+      procedure(next_token), deferred :: next_token
+
+   end type toml_tokenizer
+
+
+   abstract interface
+      !> Return next token
+      subroutine next_token(de, dot_is_token)
+         import :: toml_tokenizer
+
+         !> Instance of the tokenizer
+         class(toml_tokenizer), intent(inout) :: de
+
+         !> Dot should be handled as token
+         logical, intent(in) :: dot_is_token
+      end subroutine next_token
+   end interface
+
 
 contains
 
-!> Create a new instance of the TOML parser
-subroutine new_parser(parser, config)
-   !> Instance of the parser
-   type(toml_parser), intent(out), target :: parser
-   !> Configuration of the parser
-   type(toml_parser_config), intent(in), optional :: config
 
-   parser%token = toml_token(token_kind%newline, 0, 0)
-   parser%root = toml_table()
-   parser%current => parser%root
-   parser%config = toml_parser_config()
-   if (present(config)) parser%config = config
-end subroutine new_parser
+!> Entry point for parsing the TOML document, creates the root table
+subroutine parse_root(de)
 
-!> Create new configuration for the TOML parser
-pure function new_parser_config(color, context_detail) result(config)
-   !> Configuration of the parser
-   type(toml_parser_config) :: config
-   !> Color support for diagnostics
-   logical, intent(in), optional :: color
-   !> Record all tokens
-   integer, intent(in), optional :: context_detail
+   !> Instance of the TOML deserializer
+   class(toml_tokenizer), intent(inout), target :: de
 
-   if (present(color)) config%color = toml_terminal(color)
-   if (present(context_detail)) config%context_detail = context_detail
-end function new_parser_config
+   allocate(de%root)
+   call new_table(de%root)
+   de%current => de%root
 
-!> Parse TOML document and return root table
-subroutine parse(lexer, table, config, context, error)
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> TOML data structure
-   type(toml_table), allocatable, intent(out) :: table
-   !> Configuration for the parser
-   type(toml_parser_config), intent(in), optional :: config
-   !> Context tracking the origin of the data structure to allow rich reports
-   type(toml_context), intent(out), optional :: context
-   !> Error handler
-   type(toml_error), allocatable, intent(out), optional :: error
-
-   type(toml_parser) :: parser
-
-   call new_parser(parser, config)
-   call parse_root(parser, lexer)
-
-   if (present(error) .and. allocated(parser%diagnostic)) then
-      call make_error(error, parser%diagnostic, lexer, parser%config%color)
-   end if
-   if (allocated(parser%diagnostic)) return
-
-   call move_alloc(parser%root, table)
-
-   if (present(context)) then
-      context = parser%context
-      call lexer%get_info("filename", context%filename)
-      call lexer%get_info("source", context%source)
-   end if
-end subroutine parse
-
-!> Parse the root table
-subroutine parse_root(parser, lexer)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-
-   do while(.not.allocated(parser%diagnostic) .and. parser%token%kind /= token_kind%eof)
-      select case(parser%token%kind)
-      case(token_kind%newline, token_kind%whitespace, token_kind%comment)
-         call next_token(parser, lexer)
-
-      case(token_kind%keypath, token_kind%string, token_kind%literal)
-         call parse_keyval(parser, lexer, parser%current)
-
-      case(token_kind%lbracket)
-         call parse_table_header(parser, lexer)
-
+   do while(.not.de%finished)
+      select case(de%tok%tok)
       case default
-         call syntax_error(parser%diagnostic, lexer, parser%token, &
-            & "Invalid syntax", &
-            & "unexpected "//stringify(parser%token))
+         call syntax_error(de%error, de%line, "syntax error")
+         exit
+
+      case(toml_tokentype%newline)
+         call de%next(.true.)
+
+      case(toml_tokentype%string)
+         call de%parse_keyval(de%current)
+         if (allocated(de%error)) exit
+         if (de%tok%tok /= toml_tokentype%newline) then
+            call syntax_error(de%error, de%line, "extra characters after value present")
+            exit
+         end if
+
+      case(toml_tokentype%lbracket)
+         call parse_select(de)
+         if (allocated(de%error)) exit
+
       end select
    end do
+
 end subroutine parse_root
 
 
-!> Parse a table or array of tables header
-subroutine parse_table_header(parser, lexer)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
+!> Parse a key-value pair
+recursive subroutine parse_keyval(de, table)
+
+   !> Instance of the TOML deserializer
+   class(toml_tokenizer), intent(inout), target :: de
+
+   !> Current TOML table
+   type(toml_table), intent(inout) :: table
+
+   type(toml_token) :: key
+   type(toml_keyval), pointer :: vptr
+   type(toml_array), pointer :: aptr
+   type(toml_table), pointer :: tptr
+   character(kind=tfc, len=:), allocatable :: new_key, this_key
+
+   key = de%tok
+   !@:ASSERT(de%tok%tok == STRING)
+   call de%next(.true.)
+
+   if (de%tok%tok == toml_tokentype%dot) then
+      ! create new key from token
+      call key_from_token(this_key, key)
+      call get_table(table, this_key, tptr)
+      deallocate(this_key)
+      if (tptr%inline) then
+         call syntax_error(de%error, de%line, "Cannot add keys to inline tables")
+         return
+      end if
+      call de%next(.true.)
+      if (de%tok%tok == toml_tokentype%string) then
+         call de%parse_keyval(tptr)
+      else
+         call syntax_error(de%error, de%line, "invalid key")
+      end if
+      return
+   end if
+
+   if (de%tok%tok /= toml_tokentype%equal) then
+      call syntax_error(de%error, de%line, "missing =")
+      return
+   end if
+
+   call de%next(.false.)
+   if (allocated(de%error)) return
+
+   ! create new key from token
+   call key_from_token(new_key, key)
+   if (.not.allocated(new_key)) then
+      call syntax_error(de%error, de%line, "invalid key")
+      return
+   end if
+
+   select case(de%tok%tok)
+   case default
+      call syntax_error(de%error, de%line, "unexpected token")
+      return
+
+   case(toml_tokentype%string) ! key = "value"
+      call add_keyval(table, new_key, vptr)
+      if (.not.associated(vptr)) then
+         call duplicate_key_error(de%error, de%line, new_key)
+         return
+      end if
+      vptr%raw = de%tok%ptr(:de%tok%len)
+      if (toml_get_value_type(vptr%raw) == toml_type%invalid) then
+         call syntax_error(de%error, de%line, "unknown value type")
+         return
+      end if
+      call de%next(.true.)
+      if (allocated(de%error)) return
+
+   case(toml_tokentype%lbracket) ! key = [ array ]
+      call add_array(table, new_key, aptr)
+      if (.not.associated(aptr)) then
+         call duplicate_key_error(de%error, de%line, new_key)
+         return
+      end if
+      aptr%inline = .true.
+      call de%parse_array(aptr)
+      if (allocated(de%error)) return
+
+   case(toml_tokentype%lbrace) ! key = { table }
+      call add_table(table, new_key, tptr)
+      if (.not.associated(tptr)) then
+         call duplicate_key_error(de%error, de%line, new_key)
+         return
+      end if
+      call de%parse_table(tptr)
+      tptr%inline = .true.
+      if (allocated(de%error)) return
+
+   end select
+
+end subroutine parse_keyval
+
+
+!> Parse a TOML table or array of tables header
+subroutine parse_select(de)
+
+   !> Instance of the TOML deserializer
+   class(toml_tokenizer), intent(inout), target :: de
 
    type(toml_array), pointer :: array
    type(toml_table), pointer :: table
    class(toml_value), pointer :: ptr
-   type(toml_key) :: key
-   logical :: array_of_tables
+   character(kind=tfc, len=:), allocatable :: key
+   logical :: llb
 
    integer, parameter :: initial_size = 8
+
    integer :: top
    type(toml_key), allocatable :: stack(:)
-   type(toml_token), allocatable :: leading_whitespace, trailing_whitespace
 
+   nullify(table)
 
-   call consume(parser, lexer, token_kind%lbracket)
-   if (allocated(parser%diagnostic)) return
+   !@:assert(de%tok%tok == toml_tokentype%lbracket)
+   call de%next(.true., whitespace_is_precious=.true.)
 
-   if (parser%token%kind == token_kind%whitespace) then
-      leading_whitespace = parser%token
-      call next_token(parser, lexer)
+   llb = de%tok%tok == toml_tokentype%lbracket
+
+   if (llb .or. de%tok%tok == toml_tokentype%whitespace) then
+      call de%next(.true.)
    end if
 
-   array_of_tables = parser%token%kind == token_kind%lbracket
+   call fill_stack(de, top, stack)
+   if (allocated(de%error)) return
 
-   if (array_of_tables .or. parser%token%kind == token_kind%whitespace) then
-      call next_token(parser, lexer)
-   end if
-
-   call fill_stack(lexer, parser, top, stack)
-   if (allocated(parser%diagnostic)) return
-
-   key = stack(top)
+   ! remove topmost element from path
+   call move_alloc(stack(top)%key, key)
    top = top - 1
 
-   call walk_stack(parser, top, stack)
+   call walk_stack(de, top, stack)
+   if (allocated(de%error)) return
 
-   if (array_of_tables) then
-      call parser%current%get(key%key, ptr)
+   if (llb) then
+      ! [[key.key.top]]
+      call de%current%get(key, ptr)
       if (associated(ptr)) then
-         array => cast_to_array(ptr)
-         if (.not.associated(array)) then
-            call duplicate_key_error(parser%diagnostic, lexer, &
-               & parser%context%token(key%origin), &
-               & parser%context%token(ptr%origin), &
-               & "Key '"//key%key//"' already exists")
+         select type(ptr)
+         type is(toml_array)
+            array => ptr
+         class default
+            call duplicate_key_error(de%error, de%line, key)
             return
-         end if
-         if (array%inline) then
-            call semantic_error(parser%diagnostic, lexer, &
-               & parser%context%token(key%origin), &
-               & parser%context%token(array%origin), &
-               & "Array of tables cannot extend inline array", &
-               & "extended here", &
-               & "defined as inline")
-            return
-         end if
+         end select
       else
-         call add_array(parser%current, key, array)
+         call add_array(de%current, key, array)
          array%inline = .false.
+      end if
+      if (array%inline) then
+         call syntax_error(de%error, de%line, "Cannot use inline array in array of tables")
+         return
       end if
       call add_table(array, table)
    else
-      call parser%current%get(key%key, ptr)
+      ! [key.key.top]
+      call de%current%get(key, ptr)
       if (associated(ptr)) then
-         table => cast_to_table(ptr)
-         if (associated(table)) then
-            if (.not.table%implicit) nullify(table)
-         end if
-
-         if (.not.associated(table)) then
-            call duplicate_key_error(parser%diagnostic, lexer, &
-               & parser%context%token(key%origin), &
-               & parser%context%token(ptr%origin), &
-               & "Key '"//key%key//"' already exists")
+         select type(ptr)
+         type is(toml_table)
+            if (ptr%implicit) then
+               table => ptr
+            else
+               call duplicate_key_error(de%error, de%line, key)
+               return
+            end if
+         class default
+            call duplicate_key_error(de%error, de%line, key)
             return
-         end if
+         end select
       else
-         call add_table(parser%current, key, table)
+         call add_table(de%current, key, table)
       end if
    end if
 
-   parser%current => table
+   if (.not.associated(table)) then
+      call syntax_error(de%error, de%line, "Cannot add table in this context")
+      return
+   end if
+   de%current => table
 
-   call consume(parser, lexer, token_kind%rbracket)
-   if (allocated(parser%diagnostic)) return
-
-   if (array_of_tables) then
-      if (parser%token%kind == token_kind%whitespace) then
-         trailing_whitespace = parser%token
-         call next_token(parser, lexer)
+   if (de%tok%tok /= toml_tokentype%rbracket) then
+      call syntax_error(de%error, de%line, "expects ]")
+      return
+   end if
+   call de%next(.true., whitespace_is_precious=llb)
+   if (llb) then
+      if (de%tok%tok /= toml_tokentype%rbracket) then
+         call syntax_error(de%error, de%line, "expects ]]")
+         return
       end if
-      call consume(parser, lexer, token_kind%rbracket)
-      if (allocated(parser%diagnostic)) return
+      call de%next(.true.)
    end if
 
-   if (array_of_tables .and. allocated(leading_whitespace)) then
-      call syntax_error(parser%diagnostic, lexer, leading_whitespace, &
-         & "Malformatted array of table header encountered", &
-         & "whitespace not allowed in header")
+   if (de%tok%tok /= toml_tokentype%newline) then
+      call syntax_error(de%error, de%line, "extra chars after ] or ]]")
       return
    end if
 
-   if (array_of_tables .and. allocated(trailing_whitespace)) then
-      call syntax_error(parser%diagnostic, lexer, trailing_whitespace, &
-         & "Malformatted array of table header encountered", &
-         & "whitespace not allowed in header")
-      return
-   end if
-
-   do while(parser%token%kind == token_kind%whitespace)
-      call next_token(parser, lexer)
-   end do
-
-   if (parser%token%kind == token_kind%comment) then
-      call next_token(parser, lexer)
-   end if
-
-   if (all(parser%token%kind /= [token_kind%newline, token_kind%eof])) then
-      call syntax_error(parser%diagnostic, lexer, parser%token, &
-         & "Unexpected "//stringify(parser%token)//" after table header", &
-         & "expected newline")
-   end if
 
 contains
 
+
    !> Fill the stack with tokens
-   subroutine fill_stack(lexer, parser, top, stack)
-      class(toml_lexer), intent(inout) :: lexer
-      type(toml_parser), intent(inout) :: parser
+   subroutine fill_stack(de, top, stack)
+
+      !> Instance of the TOML deserializer
+      class(toml_tokenizer), intent(inout), target :: de
+
       !> Depth of the table key stack
       integer, intent(out) :: top
+
       !> Stack of all keys in the table header
       type(toml_key), allocatable, intent(out) :: stack(:)
 
@@ -18166,97 +15251,99 @@ contains
             call resize(stack)
          end if
 
-         if (all(parser%token%kind /= [token_kind%string, token_kind%literal, &
-            & token_kind%keypath])) then
-            call syntax_error(parser%diagnostic, lexer, parser%token, &
-               & "Missing key for table header", &
-               & "unexpected "//stringify(parser%token))
+         if (de%tok%tok /= toml_tokentype%string) then
+            call syntax_error(de%error, de%line, "invalid or missing key")
             return
          end if
 
          top = top + 1
-         call extract_key(parser, lexer, stack(top))
+         call key_from_token(stack(top)%key, de%tok)
+         if (.not.allocated(stack(top)%key)) then
+            call syntax_error(de%error, de%line, "invalid key")
+            return
+         end if
 
-         call next_token(parser, lexer)
-         if (parser%token%kind == token_kind%whitespace) &
-            & call next_token(parser, lexer)
+         call de%next(.true.)
 
-         if (parser%token%kind == token_kind%rbracket) exit
+         if (de%tok%tok == toml_tokentype%rbracket) exit
 
-         call consume(parser, lexer, token_kind%dot)
-         if (allocated(parser%diagnostic)) return
-         if (parser%token%kind == token_kind%whitespace) &
-            & call next_token(parser, lexer)
+         if (de%tok%tok /= toml_tokentype%dot) then
+            call syntax_error(de%error, de%line, "invalid key")
+            return
+         end if
+
+         call de%next(.true.)
       end do
 
       if (top <= 0) then
-         call syntax_error(parser%diagnostic, lexer, parser%token, &
-            & "Empty table header", &
-            & "expected table header")
+         call syntax_error(de%error, de%line, "empty table selector")
       end if
 
    end subroutine fill_stack
 
-   !> Walk the key stack to fetch the correct table, create implicit tables as necessary
-   subroutine walk_stack(parser, top, stack)
-      type(toml_parser), intent(inout), target :: parser
+
+   !> Walk the key stack to fetch the correct table, create implicit tables as
+   !  necessary
+   subroutine walk_stack(de, top, stack)
+
+      !> Instance of the TOML deserializer
+      class(toml_tokenizer), intent(inout), target :: de
+
       !> Depth of the table key stack
       integer, intent(in) :: top
+
       !> Stack of all keys in the table header
       type(toml_key), intent(in), target :: stack(:)
 
       type(toml_table), pointer :: table, tmp_tbl
-      type(toml_array), pointer :: array
-      type(toml_key), pointer :: key
-      class(toml_value), pointer :: ptr
-      integer :: it
+      character(kind=tfc, len=:), pointer :: key
+      class(toml_value), pointer :: ptr, tmp
+      integer :: i
 
-      table => parser%root
+      table => de%root
 
-      do it = 1, top
-         key => stack(it)
+      do i = 1, top
+         key => stack(i)%key
 
-         if (.not.table%has_key(key%key)) then
+         if (.not.table%has_key(key)) then
             call add_table(table, key, tmp_tbl)
             if (associated(tmp_tbl)) then
                tmp_tbl%implicit = .true.
             end if
          end if
-         call table%get(key%key, ptr)
+         call table%get(key, ptr)
 
-         table => cast_to_table(ptr)
-         if (.not.associated(table)) then
-            array => cast_to_array(ptr)
-            if (associated(array)) then
-               call array%get(len(array), ptr)
-               table => cast_to_table(ptr)
-            end if
-            if (.not.associated(table)) then
-               call duplicate_key_error(parser%diagnostic, lexer, &
-                  & parser%context%token(key%origin), &
-                  & parser%context%token(ptr%origin), &
-                  & "Key '"//key%key//"' already exists")
+         select type(ptr)
+         type is(toml_table)
+            table => ptr
+
+         type is(toml_array)
+            call ptr%get(len(ptr), tmp)
+            select type(tmp)
+            type is(toml_table)
+               table => tmp
+            class default
+               call vendor_error(de%error, de%line)
                return
-            end if
-         end if
+            end select
 
-         if (table%inline) then
-            call semantic_error(parser%diagnostic, lexer, &
-               & parser%context%token(key%origin), &
-               & parser%context%token(table%origin), &
-               & "Inline table '"//key%key//"' cannot be used as a key", &
-               & "inline table cannot be extended", &
-               & "defined as inline first")
-         end if
+         class default
+            call duplicate_key_error(de%error, de%line, key)
+            return
+         end select
       end do
 
-      parser%current => table
+      de%current => table
+
    end subroutine walk_stack
+
 
    !> Change size of the stack
    subroutine resize(stack, n)
+
       !> Stack of keys to be resized
       type(toml_key), allocatable, intent(inout) :: stack(:)
+
       !> New size of the stack
       integer, intent(in), optional :: n
 
@@ -18287,444 +15374,216 @@ contains
       end if
    end subroutine resize
 
-end subroutine parse_table_header
 
-!> Parse key value pairs in a table body
-recursive subroutine parse_keyval(parser, lexer, table)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current table
+end subroutine parse_select
+
+
+!> Parse an inline TOML array
+recursive subroutine parse_array(de, array)
+
+   !> Instance of the TOML deserializer
+   class(toml_tokenizer), intent(inout), target :: de
+
+   !> TOML array to be filled
+   type(toml_array), intent(inout) :: array
+
+   type(toml_table), pointer :: tbl
+   type(toml_keyval), pointer :: val
+   type(toml_array), pointer :: arr
+
+   !@:assert(de%tok%tok == toml_tokentype%lbracket)
+
+   call de%next(.false.)
+   do while(.not.allocated(de%error))
+      do while(de%tok%tok == toml_tokentype%newline)
+         call de%next(.false.)
+      end do
+      if (de%tok%tok == toml_tokentype%rbracket) then
+         exit
+      end if
+
+      select case(de%tok%tok)
+      case default
+         call syntax_error(de%error, de%line, "unexpected token")
+         return
+
+      case(toml_tokentype%string) ! [ value, value ... ]
+         call add_keyval(array, val)
+         val%raw = de%tok%ptr(:de%tok%len)
+
+         call de%next(.false.)
+
+      case(toml_tokentype%lbracket) ! [ [array], [array] ...]
+         call add_array(array, arr)
+         arr%inline = .true.
+         call de%parse_array(arr)
+         if (allocated(de%error)) return
+
+      case(toml_tokentype%lbrace) ! [ {table}, {table} ... ]
+         call add_table(array, tbl)
+         tbl%inline = .true.
+         call de%parse_table(tbl)
+         if (allocated(de%error)) return
+
+      end select
+
+      do while(de%tok%tok == toml_tokentype%newline)
+         call de%next(.false.)
+      end do
+
+      if (de%tok%tok == toml_tokentype%comma) then
+         call de%next(.false.)
+         cycle
+      end if
+      exit
+   end do
+
+   if (de%tok%tok /= toml_tokentype%rbracket) then
+      call syntax_error(de%error, de%line, "expects ]")
+      return
+   end if
+
+   call de%next(.true.)
+
+end subroutine parse_array
+
+
+!> Parse an inline TOML table
+recursive subroutine parse_table(de, table)
+
+   !> Instance of the TOML deserializer
+   class(toml_tokenizer), intent(inout), target :: de
+
+   !> TOML table to be filled
    type(toml_table), intent(inout) :: table
 
-   class(toml_value), pointer :: ptr
-   type(toml_keyval), pointer :: vptr
-   type(toml_array), pointer :: aptr
-   type(toml_table), pointer :: tptr
-   type(toml_key) :: key
-
-   call extract_key(parser, lexer, key)
-   call next_token(parser, lexer)
-   if (parser%token%kind == token_kind%whitespace) &
-      call next_token(parser, lexer)
-
-   if (parser%token%kind == token_kind%dot) then
-      call get_table(table, key, tptr)
-      if (tptr%inline) then
-         call semantic_error(parser%diagnostic, lexer, &
-            & parser%context%token(key%origin), &
-            & parser%context%token(tptr%origin), &
-            & "Cannot add keys to inline tables", &
-            & "inline table cannot be extended", &
-            & "defined as inline first")
+   !@:ASSERT(de%tok%tok == LBRACE)
+   call de%next(.true.)
+   do
+      if (de%tok%tok == toml_tokentype%newline) then
+         call syntax_error(de%error, de%line, "newline not allowed in inline table")
          return
       end if
 
-      call next_token(parser, lexer)
-      if (parser%token%kind == token_kind%whitespace) &
-         call next_token(parser, lexer)
+      if (de%tok%tok == toml_tokentype%rbrace) exit
 
-      if (any(parser%token%kind == [token_kind%keypath, token_kind%string, &
-         & token_kind%literal])) then
-         call parse_keyval(parser, lexer, tptr)
-      else
-         call syntax_error(parser%diagnostic, lexer, parser%token, &
-            & "Invalid syntax", &
-            & "expected key")
+      if (de%tok%tok /= toml_tokentype%string) then
+         call syntax_error(de%error, de%line, "expects string value")
+         return
       end if
-      return
-   end if
 
-   call consume(parser, lexer, token_kind%equal)
-   if (allocated(parser%diagnostic)) return
+      call de%parse_keyval(table)
+      if (allocated(de%error)) exit
 
-   if (parser%token%kind == token_kind%whitespace) &
-      call next_token(parser, lexer)
-
-   call table%get(key%key, ptr)
-   if (associated(ptr)) then
-      call duplicate_key_error(parser%diagnostic, lexer, &
-         & parser%context%token(key%origin), &
-         & parser%context%token(ptr%origin), &
-         & "Key '"//key%key//"' already exists")
-      return
-   end if
-
-   select case(parser%token%kind)
-   case default
-      call add_keyval(table, key, vptr)
-      call parse_value(parser, lexer, vptr)
-
-   case(token_kind%lbracket)
-      call add_array(table, key, aptr)
-      call parse_inline_array(parser, lexer, aptr)
-
-   case(token_kind%lbrace)
-      call add_table(table, key, tptr)
-      call parse_inline_table(parser, lexer, tptr)
-
-   end select
-   if (allocated(parser%diagnostic)) return
-
-   if (parser%token%kind == token_kind%whitespace) &
-      call next_token(parser, lexer)
-
-   if (parser%token%kind == token_kind%comment) &
-      call next_token(parser, lexer)
-end subroutine parse_keyval
-
-recursive subroutine parse_inline_array(parser, lexer, array)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current array
-   type(toml_array), intent(inout) :: array
-
-   type(toml_keyval), pointer :: vptr
-   type(toml_array), pointer :: aptr
-   type(toml_table), pointer :: tptr
-   integer, parameter :: skip_tokens(*) = &
-      [token_kind%whitespace, token_kind%comment, token_kind%newline]
-
-   array%inline = .true.
-   call consume(parser, lexer, token_kind%lbracket)
-
-   inline_array: do while(.not.allocated(parser%diagnostic))
-      do while(any(parser%token%kind == skip_tokens))
-         call next_token(parser, lexer)
-      end do
-
-      select case(parser%token%kind)
-      case(token_kind%rbracket)
-         exit inline_array
-
-      case default
-         call add_keyval(array, vptr)
-         call parse_value(parser, lexer, vptr)
-
-      case(token_kind%lbracket)
-         call add_array(array, aptr)
-         call parse_inline_array(parser, lexer, aptr)
-
-      case(token_kind%lbrace)
-         call add_table(array, tptr)
-         call parse_inline_table(parser, lexer, tptr)
-
-      end select
-      if (allocated(parser%diagnostic)) exit inline_array
-
-      do while(any(parser%token%kind == skip_tokens))
-         call next_token(parser, lexer)
-      end do
-
-      if (parser%token%kind == token_kind%comma) then
-         call next_token(parser, lexer)
-         cycle inline_array
+      if (de%tok%tok == toml_tokentype%string) then
+         call syntax_error(de%error, de%line, "newline not allowed in inline table")
+         return
       end if
-      exit inline_array
-   end do inline_array
-   if (allocated(parser%diagnostic)) return
 
-   call consume(parser, lexer, token_kind%rbracket)
-end subroutine parse_inline_array
-
-recursive subroutine parse_inline_table(parser, lexer, table)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current table
-   type(toml_table), intent(inout) :: table
-
-   table%inline = .true.
-   call consume(parser, lexer, token_kind%lbrace)
-
-   if (parser%token%kind == token_kind%whitespace) &
-      call next_token(parser, lexer)
-
-   if (parser%token%kind == token_kind%rbrace) then
-      call next_token(parser, lexer)
-      return
-   end if
-
-   inline_table: do while(.not.allocated(parser%diagnostic))
-      if (parser%token%kind == token_kind%whitespace) &
-         call next_token(parser, lexer)
-
-      select case(parser%token%kind)
-      case default
-         call syntax_error(parser%diagnostic, lexer, parser%token, &
-            & "Invalid character in inline table", &
-            & "unexpected "//stringify(parser%token))
-
-      case(token_kind%keypath, token_kind%string, token_kind%literal)
-         call parse_keyval(parser, lexer, table)
-
-      end select
-      if (allocated(parser%diagnostic)) exit inline_table
-
-      if (parser%token%kind == token_kind%whitespace) &
-         call next_token(parser, lexer)
-
-      if (parser%token%kind == token_kind%comma) then
-         call next_token(parser, lexer)
-         cycle inline_table
+      if (de%tok%tok == toml_tokentype%comma) then
+         call de%next(.true.)
+         cycle
       end if
-      if (parser%token%kind == token_kind%rbrace) exit inline_table
-   end do inline_table
-   if (allocated(parser%diagnostic)) return
+      exit
+   end do
 
-   call consume(parser, lexer, token_kind%rbrace)
-end subroutine parse_inline_table
-
-subroutine parse_value(parser, lexer, kval)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Current key value pair
-   type(toml_keyval), intent(inout) :: kval
-
-   select case(parser%token%kind)
-   case default
-      call syntax_error(parser%diagnostic, lexer, parser%token, &
-         & "Invalid expression for value", &
-         & "unexpected "//stringify(parser%token))
-
-   case(token_kind%unclosed)
-      ! Handle runaway expressions separately
-      call syntax_error(parser%diagnostic, lexer, parser%token, &
-         & "Inline expression contains unclosed or runaway group", &
-         & "unclosed inline expression")
-
-   case(token_kind%string, token_kind%mstring, token_kind%literal, token_kind%mliteral, &
-         & token_kind%int, token_kind%float, token_kind%bool, token_kind%datetime)
-      call extract_value(parser, lexer, kval)
-
-      call next_token(parser, lexer)
-   end select
-end subroutine parse_value
-
-!> Check whether the current token is the expected one and advance the lexer
-subroutine consume(parser, lexer, kind)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Expected token kind
-   integer, intent(in) :: kind
-
-   if (parser%token%kind /= kind) then
-      call syntax_error(parser%diagnostic, lexer, parser%token, &
-         & "Invalid syntax in this context", &
-         & "expected "//stringify(toml_token(kind)))
+   if (de%tok%tok /= toml_tokentype%rbrace) then
+      call syntax_error(de%error, de%line, "expects }")
       return
    end if
 
-   call next_token(parser, lexer)
-end subroutine consume
+   call de%next(.true.)
 
-!> Create diagnostic for invalid syntax
-subroutine syntax_error(diagnostic, lexer, token, message, label)
-   !> Diagnostic for the syntax error
-   type(toml_diagnostic), allocatable, intent(out) :: diagnostic
-   !> Instance of the lexer providing the context
-   class(toml_lexer), intent(inout) :: lexer
-   !> Token that caused the error
-   type(toml_token), intent(in) :: token
-   !> Message for the error
-   character(len=*), intent(in) :: message
-   !> Label for the token
-   character(len=*), intent(in) :: label
+end subroutine parse_table
 
-   character(:, tfc), allocatable :: filename
 
-   call lexer%get_info("filename", filename)
+!> Generate a key
+subroutine key_from_token(key, tok)
 
-   allocate(diagnostic)
-   diagnostic = toml_diagnostic( &
-      & toml_level%error, &
-      & message, &
-      & filename, &
-      & [toml_label(toml_level%error, token%first, token%last, label, .true.)])
-end subroutine syntax_error
+   !> TOML raw key
+   character(kind=tfc, len=:), allocatable, intent(out) :: key
 
-!> Create diagnostic for incorrect semantics
-subroutine semantic_error(diagnostic, lexer, token1, token2, message, label1, label2)
-   !> Diagnostic for the duplicate key error
-   type(toml_diagnostic), allocatable, intent(out) :: diagnostic
-   !> Instance of the lexer providing the context
-   class(toml_lexer), intent(inout) :: lexer
-   !> Token identifying the duplicate key
-   type(toml_token), intent(in) :: token1
-   !> Token identifying the original key
-   type(toml_token), intent(in) :: token2
-   !> Message for the error
-   character(len=*), intent(in) :: message
-   !> Label for the first token
-   character(len=*), intent(in) :: label1
-   !> Label for the second token
-   character(len=*), intent(in) :: label2
+   !> String token containing the possible key
+   type(toml_token), intent(in) :: tok
 
-   character(:, tfc), allocatable :: filename
-
-   call lexer%get_info("filename", filename)
-
-   allocate(diagnostic)
-   diagnostic = toml_diagnostic( &
-      & toml_level%error, &
-      & message, &
-      & filename, &
-      & [toml_label(toml_level%error, token1%first, token1%last, label1, .true.), &
-      &  toml_label(toml_level%info, token2%first, token2%last, label2, .false.)])
-end subroutine semantic_error
-
-!> Create a diagnostic for a duplicate key entry
-subroutine duplicate_key_error(diagnostic, lexer, token1, token2, message)
-   !> Diagnostic for the duplicate key error
-   type(toml_diagnostic), allocatable, intent(out) :: diagnostic
-   !> Instance of the lexer providing the context
-   class(toml_lexer), intent(inout) :: lexer
-   !> Token identifying the duplicate key
-   type(toml_token), intent(in) :: token1
-   !> Token identifying the original key
-   type(toml_token), intent(in) :: token2
-   !> Message for the error
-   character(len=*), intent(in) :: message
-
-   call semantic_error(diagnostic, lexer, token1, token2, &
-      & message, "key already used", "first defined here")
-end subroutine duplicate_key_error
-
-!> Create an error from a diagnostic
-subroutine make_error(error, diagnostic, lexer, color)
-   !> Error to be created
-   type(toml_error), allocatable, intent(out) :: error
-   !> Diagnostic to be used
-   type(toml_diagnostic), intent(in) :: diagnostic
-   !> Instance of the lexer providing the context
-   class(toml_lexer), intent(in) :: lexer
-   !> Use colorful error messages
-   type(toml_terminal), intent(in) :: color
-
-   character(len=:), allocatable :: str
-
-   allocate(error)
-   call lexer%get_info("source", str)
-   error%message = render(diagnostic, str, color)
-   error%stat = toml_stat%fatal
-end subroutine make_error
-
-!> Wrapper around the lexer to retrieve the next token.
-!> Allows to record the tokens for keys and values in the parser context
-subroutine next_token(parser, lexer)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-
-   call lexer%next(parser%token)
-
-   select case(parser%token%kind)
-   case(token_kind%keypath, token_kind%string, token_kind%literal, token_kind%int, &
-         & token_kind%float, token_kind%bool, token_kind%datetime)
-      call parser%context%push_back(parser%token)
-   case(token_kind%newline, token_kind%dot, token_kind%comma, token_kind%equal, &
-         & token_kind%lbrace, token_kind%rbrace, token_kind%lbracket, token_kind%rbracket)
-      if (parser%config%context_detail > 0) &
-         call parser%context%push_back(parser%token)
-   case default
-      if (parser%config%context_detail > 1) &
-         call parser%context%push_back(parser%token)
-   end select
-end subroutine next_token
-
-!> Extract key from token
-subroutine extract_key(parser, lexer, key)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Key to be extracted
-   type(toml_key), intent(out) :: key
-
-   call lexer%extract(parser%token, key%key)
-   key%origin = parser%context%top
-   if (scan(key%key, TOML_NEWLINE) > 0) then
-      call syntax_error(parser%diagnostic, lexer, parser%token, &
-         & "Invalid character in key", &
-         & "key cannot contain newline")
-      return
+   if (toml_raw_to_string(tok%ptr(:tok%len), key)) then
+      if (index(key, toml_escape%newline) > 0) deallocate(key)
+   else
+      key = tok%ptr(:tok%len)
+      if (verify(key, TOML_BAREKEY) > 0) deallocate(key)
    end if
-end subroutine extract_key
 
-!> Extract value from token
-subroutine extract_value(parser, lexer, kval)
-   !> Instance of the parser
-   class(toml_parser), intent(inout) :: parser
-   !> Instance of the lexer
-   class(toml_lexer), intent(inout) :: lexer
-   !> Value to be extracted
-   type(toml_keyval), intent(inout) :: kval
+end subroutine key_from_token
 
-   character(:, tfc), allocatable :: sval
-   real(tfr) :: rval
-   integer(tfi) :: ival
-   logical :: bval
-   type(toml_datetime) :: dval
-
-   kval%origin_value = parser%context%top
-
-   select case(parser%token%kind)
-   case(token_kind%string, token_kind%literal, token_kind%mstring, token_kind%mliteral)
-      call lexer%extract_string(parser%token, sval)
-      call kval%set(sval)
-
-   case(token_kind%int)
-      call lexer%extract_integer(parser%token, ival)
-      call kval%set(ival)
-
-   case(token_kind%float)
-      call lexer%extract_float(parser%token, rval)
-      call kval%set(rval)
-
-   case(token_kind%bool)
-      call lexer%extract_bool(parser%token, bval)
-      call kval%set(bval)
-
-   case(token_kind%datetime)
-      call lexer%extract_datetime(parser%token, dval)
-      call kval%set(dval)
-   end select
-end subroutine extract_value
 
 !> Try to retrieve TOML table with key or create it
 subroutine get_table(table, key, ptr, stat)
+
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
+
    !> Key for the new table
-   type(toml_key), intent(in) :: key
+   character(kind=tfc, len=*), intent(in) :: key
+
    !> Pointer to the newly created table
    type(toml_table), pointer, intent(out) :: ptr
+
    !> Status of operation
    integer, intent(out), optional :: stat
 
    class(toml_value), pointer :: tmp
 
    nullify(ptr)
-   call table%get(key%key, tmp)
+
+   call table%get(key, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_table(tmp)
-      if (present(stat)) stat = merge(toml_stat%success, toml_stat%fatal, associated(ptr))
+      select type(tmp)
+      type is(toml_table)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       call add_table(table, key, ptr, stat)
    end if
+
 end subroutine get_table
 
-end module tomlf_de_parser
+
+!> Return next token
+subroutine next(de, dot_is_token, whitespace_is_precious)
+
+   !> Instance of the tokenizer
+   class(toml_tokenizer), intent(inout) :: de
+
+   !> Dot should be handled as token
+   logical, intent(in) :: dot_is_token
+
+   !> Whitespace tokens should be skipped
+   logical, intent(in), optional :: whitespace_is_precious
+
+   logical :: skip_whitespace
+
+   if (present(whitespace_is_precious)) then
+      skip_whitespace = .not.whitespace_is_precious
+   else
+      skip_whitespace = .true.
+   end if
+
+   call de%next_token(dot_is_token)
+   if (skip_whitespace) then
+      do while(de%tok%tok == toml_tokentype%whitespace)
+         if (allocated(de%error)) exit
+         call de%next_token(dot_is_token)
+      end do
+   end if
+
+end subroutine next
+
+
+end module tomlf_de_tokenizer
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
@@ -18741,98 +15600,29 @@ end module tomlf_de_parser
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Merge TOML data structures, the merge policy can be adjusted.
+!> Merge TOML data structures.
 !>
-!> Note that the context information cannot be preserved.
+!> Merge policy:
+!> - copy key-value pair in case it is not present in table
+!> - copy subtable in case it is not present in table
+!> - copy array in case it is not present in table
+!> - merge subtable in case it is present in table
+!> - append array in case it is present in table
 module tomlf_build_merge
    use tomlf_constants, only : tfc
    use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_value, &
-      & toml_key, cast_to_keyval, len
+      & toml_key, len
    implicit none
    private
 
-   public :: merge_table, merge_array, merge_policy, toml_merge_config
-
-
-   !> Possible merge policies
-   type :: enum_policy
-
-      !> Overwrite existing values
-      integer :: overwrite = 1
-
-      !> Preserve existing values
-      integer :: preserve = 2
-
-      !> Append to existing values
-      integer :: append = 3
-   end type enum_policy
-
-   !> Actual enumerator for merging data structures
-   type(enum_policy), parameter :: merge_policy = enum_policy()
-
-
-   !> Configuration for merging data structures
-   type :: toml_merge_config
-
-      !> Policy for merging tables
-      integer :: table = merge_policy%append
-
-      !> Policy for merging arrays
-      integer :: array = merge_policy%preserve
-
-      !> Policy for merging values
-      integer :: keyval = merge_policy%preserve
-   end type toml_merge_config
-
-   !> Constructor for merge configuration
-   interface toml_merge_config
-      module procedure :: new_merge_config
-   end interface toml_merge_config
+   public :: merge_table, merge_array
 
 
 contains
-
-
-!> Create a new merge configuration
-pure function new_merge_config(table, array, keyval) result(config)
-
-   !> Policy for merging tables
-   character(*), intent(in), optional :: table
-
-   !> Policy for merging arrays
-   character(*), intent(in), optional :: array
-
-   !> Policy for merging values
-   character(*), intent(in), optional :: keyval
-
-   !> Merge policy
-   type(toml_merge_config) :: config
-
-   if (present(table)) call set_enum(config%table, table)
-   if (present(array)) call set_enum(config%array, array)
-   if (present(keyval)) call set_enum(config%keyval, keyval)
-
-contains
-
-   pure subroutine set_enum(enum, str)
-      character(*), intent(in) :: str
-      integer, intent(inout) :: enum
-
-      select case(str)
-      case("append")
-         enum = merge_policy%append
-      case("overwrite")
-         enum = merge_policy%overwrite
-      case("preserve")
-         enum = merge_policy%preserve
-      end select
-   end subroutine set_enum
-
-end function new_merge_config
 
 
 !> Merge TOML tables by appending their values
-recursive subroutine merge_table(lhs, rhs, config)
+recursive subroutine merge_table(lhs, rhs)
 
    !> Instance of table to merge into
    class(toml_table), intent(inout) :: lhs
@@ -18840,19 +15630,11 @@ recursive subroutine merge_table(lhs, rhs, config)
    !> Instance of table to be merged
    class(toml_table), intent(inout) :: rhs
 
-   !> Merge policy
-   type(toml_merge_config), intent(in), optional :: config
-
-   type(toml_merge_config) :: policy
    type(toml_key), allocatable :: list(:)
    class(toml_value), pointer :: ptr1, ptr2
-   class(toml_keyval), pointer :: kv
    class(toml_value), allocatable :: tmp
    logical :: has_key
    integer :: i, n, stat
-
-   policy = toml_merge_config()
-   if (present(config)) policy = config
 
    call rhs%get_keys(list)
    n = size(list, 1)
@@ -18863,51 +15645,30 @@ recursive subroutine merge_table(lhs, rhs, config)
       has_key = lhs%has_key(list(i)%key)
       select type(ptr1)
       class is(toml_keyval)
-         if (has_key .and. policy%keyval == merge_policy%overwrite) then
-            call lhs%delete(list(i)%key)
-            has_key = .false.
-         end if
          if (.not.has_key) then
             allocate(tmp, source=ptr1)
-            kv => cast_to_keyval(tmp)
-            kv%origin_value = 0
-            kv%origin = 0
             call lhs%push_back(tmp, stat)
          end if
-
       class is(toml_array)
-         if (has_key .and. policy%array == merge_policy%overwrite) then
-            call lhs%delete(list(i)%key)
-            has_key = .false.
-         end if
-         if (has_key .and. policy%array == merge_policy%append) then
+         if (has_key) then
             call lhs%get(list(i)%key, ptr2)
             select type(ptr2)
             class is(toml_array)
                call merge_array(ptr2, ptr1)
             end select
-         end if
-         if (.not.has_key) then
+         else
             allocate(tmp, source=ptr1)
-            tmp%origin = 0
             call lhs%push_back(tmp, stat)
          end if
-
       class is(toml_table)
-         if (has_key .and. policy%table == merge_policy%overwrite) then
-            call lhs%delete(list(i)%key)
-            has_key = .false.
-         end if
-         if (has_key .and. policy%table == merge_policy%append) then
+         if (has_key) then
             call lhs%get(list(i)%key, ptr2)
             select type(ptr2)
             class is(toml_table)
-               call merge_table(ptr2, ptr1, policy)
+               call merge_table(ptr2, ptr1)
             end select
-         end if
-         if (.not.has_key) then
+         else
             allocate(tmp, source=ptr1)
-            tmp%origin = 0
             call lhs%push_back(tmp, stat)
          end if
       end select
@@ -18967,11 +15728,12 @@ end module tomlf_build_merge
 module tomlf_build_keyval
    use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
       & tf_sp, tf_dp, TOML_NEWLINE
-   use tomlf_datetime, only : toml_datetime
    use tomlf_error, only : toml_stat
    use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
       & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
-   use tomlf_utils, only : toml_escape_string, to_string
+   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
+      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp, &
+      & toml_raw_verify_string, toml_escape_string
    implicit none
    private
 
@@ -18987,7 +15749,6 @@ module tomlf_build_keyval
       module procedure :: set_value_integer_i4
       module procedure :: set_value_integer_i8
       module procedure :: set_value_bool
-      module procedure :: set_value_datetime
       module procedure :: set_value_string
    end interface set_value
 
@@ -19001,7 +15762,6 @@ module tomlf_build_keyval
       module procedure :: get_value_integer_i4
       module procedure :: get_value_integer_i8
       module procedure :: get_value_bool
-      module procedure :: get_value_datetime
       module procedure :: get_value_string
    end interface get_value
 
@@ -19014,7 +15774,7 @@ contains
 
 
 !> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_value_float_sp(self, val, stat, origin)
+subroutine get_value_float_sp(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19025,38 +15785,22 @@ subroutine get_value_float_sp(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   real(tfr) :: dummy
 
-   integer :: info
-   real(tfr), pointer :: dummy
-   integer(tfi), pointer :: idummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
       val = real(dummy, tf_sp)
-      info = toml_stat%success
+      if (present(stat)) stat = toml_stat%success
    else
-      call self%get(idummy)
-      if (associated(idummy)) then
-         val = real(idummy, tf_sp)
-         if (nint(val, tfi) == idummy) then
-            info = toml_stat%success
-         else
-            info = toml_stat%conversion_error
-         end if
-      else
-         info = toml_stat%type_mismatch
-      end if
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_float_sp
 
 
 !> Retrieve TOML value as double precision float
-subroutine get_value_float_dp(self, val, stat, origin)
+subroutine get_value_float_dp(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19067,38 +15811,22 @@ subroutine get_value_float_dp(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   real(tfr) :: dummy
 
-   integer :: info
-   real(tfr), pointer :: dummy
-   integer(tfi), pointer :: idummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_float(self%raw, dummy)
+   if (istat) then
       val = real(dummy, tf_dp)
-      info = toml_stat%success
+      if (present(stat)) stat = toml_stat%success
    else
-      call self%get(idummy)
-      if (associated(idummy)) then
-         val = real(idummy, tf_dp)
-         if (nint(val, tfi) == idummy) then
-            info = toml_stat%success
-         else
-            info = toml_stat%conversion_error
-         end if
-      else
-         info = toml_stat%type_mismatch
-      end if
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_float_dp
 
 
 !> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_value_integer_i1(self, val, stat, origin)
+subroutine get_value_integer_i1(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19109,31 +15837,22 @@ subroutine get_value_integer_i1(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   integer(tfi) :: dummy
 
-   integer :: info
-   integer(tfi), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
       val = int(dummy, tf_i1)
-      if (dummy <= huge(val) .and. dummy >= -huge(val)-1) then
-         info = toml_stat%success
-      else
-         info = toml_stat%conversion_error
-      end if
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i1
 
 
 !> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_value_integer_i2(self, val, stat, origin)
+subroutine get_value_integer_i2(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19144,31 +15863,22 @@ subroutine get_value_integer_i2(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   integer(tfi) :: dummy
 
-   integer :: info
-   integer(tfi), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
       val = int(dummy, tf_i2)
-      if (dummy <= huge(val) .and. dummy >= -huge(val)-1) then
-         info = toml_stat%success
-      else
-         info = toml_stat%conversion_error
-      end if
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i2
 
 
 !> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_value_integer_i4(self, val, stat, origin)
+subroutine get_value_integer_i4(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19179,31 +15889,22 @@ subroutine get_value_integer_i4(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   integer(tfi) :: dummy
 
-   integer :: info
-   integer(tfi), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
       val = int(dummy, tf_i4)
-      if (dummy <= huge(val) .and. dummy >= -huge(val)-1) then
-         info = toml_stat%success
-      else
-         info = toml_stat%conversion_error
-      end if
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i4
 
 
 !> Retrieve TOML value as eight byte integer
-subroutine get_value_integer_i8(self, val, stat, origin)
+subroutine get_value_integer_i8(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19214,27 +15915,22 @@ subroutine get_value_integer_i8(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
+   integer(tfi) :: dummy
 
-   integer :: info
-   integer(tfi), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
+   istat = toml_raw_to_integer(self%raw, dummy)
+   if (istat) then
       val = int(dummy, tf_i8)
-      info = toml_stat%success
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i8
 
 
 !> Retrieve TOML value as logical
-subroutine get_value_bool(self, val, stat, origin)
+subroutine get_value_bool(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19245,58 +15941,20 @@ subroutine get_value_bool(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
 
-   integer :: info
-   logical, pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
-      val = dummy
-      info = toml_stat%success
+   istat = toml_raw_to_bool(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_bool
 
 
-!> Retrieve TOML value as datetime
-subroutine get_value_datetime(self, val, stat, origin)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(in) :: self
-
-   !> Datetime value
-   type(toml_datetime), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: info
-   type(toml_datetime), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
-      val = dummy
-      info = toml_stat%success
-   else
-      info = toml_stat%type_mismatch
-   end if
-
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
-end subroutine get_value_datetime
-
-
 !> Retrieve TOML value as deferred-length character
-subroutine get_value_string(self, val, stat, origin)
+subroutine get_value_string(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(in) :: self
@@ -19307,27 +15965,20 @@ subroutine get_value_string(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   logical :: istat
 
-   integer :: info
-   character(:, tfc), pointer :: dummy
-
-   call self%get(dummy)
-   if (associated(dummy)) then
-      val = dummy
-      info = toml_stat%success
+   istat = toml_raw_to_string(self%raw, val)
+   if (istat) then
+      if (present(stat)) stat = toml_stat%success
    else
-      info = toml_stat%type_mismatch
+      if (present(stat)) stat = toml_stat%fatal
    end if
 
-   if (present(stat)) stat = info
-   if (present(origin)) origin = self%origin_value
 end subroutine get_value_string
 
 
 !> Set TOML value to single precision float
-subroutine set_value_float_sp(self, val, stat, origin)
+subroutine set_value_float_sp(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19338,19 +15989,22 @@ subroutine set_value_float_sp(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(real(val, tfr))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(es30.6)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_float_sp
 
 
 !> Set TOML value to double precision float
-subroutine set_value_float_dp(self, val, stat, origin)
+subroutine set_value_float_dp(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19361,19 +16015,22 @@ subroutine set_value_float_dp(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(real(val, tfr))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(es30.16)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_float_dp
 
 
 !> Set TOML value to one byte integer
-subroutine set_value_integer_i1(self, val, stat, origin)
+subroutine set_value_integer_i1(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19384,19 +16041,22 @@ subroutine set_value_integer_i1(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(int(val, tfi))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i1
 
 
 !> Set TOML value to two byte integer
-subroutine set_value_integer_i2(self, val, stat, origin)
+subroutine set_value_integer_i2(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19407,19 +16067,22 @@ subroutine set_value_integer_i2(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(int(val, tfi))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i2
 
 
 !> Set TOML value to four byte integer
-subroutine set_value_integer_i4(self, val, stat, origin)
+subroutine set_value_integer_i4(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19430,19 +16093,22 @@ subroutine set_value_integer_i4(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(int(val, tfi))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i4
 
 
 !> Set TOML value to eight byte integer
-subroutine set_value_integer_i8(self, val, stat, origin)
+subroutine set_value_integer_i8(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19453,19 +16119,22 @@ subroutine set_value_integer_i8(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(kind=tfc, len=buffersize) :: tmp
+   integer :: istat
 
-   call self%set(int(val, tfi))
-   if (present(stat)) stat = toml_stat%success
+   write(tmp, '(i0)', iostat=istat) val
+   if (istat == 0) then
+      self%raw = trim(adjustl(tmp))
+      if (present(stat)) stat = toml_stat%success
+   else
+      if (present(stat)) stat = toml_stat%fatal
+   end if
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i8
 
 
 !> Set TOML value to logical
-subroutine set_value_bool(self, val, stat, origin)
+subroutine set_value_bool(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19476,42 +16145,19 @@ subroutine set_value_bool(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   if (val) then
+      self%raw = 'true'
+   else
+      self%raw = 'false'
+   end if
 
-   call self%set(val)
    if (present(stat)) stat = toml_stat%success
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_bool
 
 
-!> Set TOML value to datetime
-subroutine set_value_datetime(self, val, stat, origin)
-
-   !> Instance of the key-value pair
-   class(toml_keyval), intent(inout) :: self
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call self%set(val)
-   if (present(stat)) stat = toml_stat%success
-
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
-end subroutine set_value_datetime
-
-
 !> Set TOML value to deferred-length character
-subroutine set_value_string(self, val, stat, origin)
+subroutine set_value_string(self, val, stat)
 
    !> Instance of the key-value pair
    class(toml_keyval), intent(inout) :: self
@@ -19522,21 +16168,23 @@ subroutine set_value_string(self, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
+   character(len=:), allocatable :: escaped
 
-   call self%set(val)
+   if (toml_raw_verify_string(val)) then
+      self%raw = val
+   else
+      call toml_escape_string(val, self%raw, .true.)
+   end if
+
    if (present(stat)) stat = toml_stat%success
 
-   self%origin_value = 0
-   if (present(origin)) origin = self%origin
 end subroutine set_value_string
 
 
 end module tomlf_build_keyval
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/de.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/de/character.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -19550,142 +16198,295 @@ end module tomlf_build_keyval
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
-!> Proxy module for providing loading and deserialization of TOML data structures
-module tomlf_de
-   use tomlf_constants, only : tfc, TOML_NEWLINE
-   use tomlf_de_context, only : toml_context
-   use tomlf_de_lexer, only : toml_lexer, new_lexer_from_string, new_lexer_from_unit, &
-      & new_lexer_from_file
-   use tomlf_de_parser, only : parse, toml_parser_config
-   use tomlf_diagnostic, only : toml_level
-   use tomlf_error, only : toml_error
-   use tomlf_type, only : toml_table
+!> Implementation of a tokenizer for character variables
+module tomlf_de_character
+   use tomlf_constants
+   use tomlf_error, only : syntax_error
+   use tomlf_de_tokenizer
+   use tomlf_utils
    implicit none
    private
 
-   public :: toml_parse
-   public :: toml_load, toml_loads
-   public :: toml_context, toml_parser_config, toml_level
+   public :: toml_character_tokenizer, new_character_tokenizer, new
 
 
-   !> Parse a TOML document.
-   !>
-   !> This interface is deprecated in favor of [[toml_load]] and [[toml_loads]]
-   interface toml_parse
-      module procedure :: toml_parse_unit
-      module procedure :: toml_parse_string
-   end interface toml_parse
+   !> Tokenizer for a sequence of characters
+   type, extends(toml_tokenizer) :: toml_character_tokenizer
 
-   !> Load a TOML data structure from the provided source
-   interface toml_load
-      module procedure :: toml_load_file
-      module procedure :: toml_load_unit
-   end interface toml_load
+      !> Link to the input configuration.
+      character(len=:), pointer :: conf
 
-   !> Load a TOML data structure from a string
-   interface toml_loads
-      module procedure :: toml_load_string
-   end interface toml_loads
+   contains
+
+      !> Return next token
+      procedure :: next_token
+
+   end type toml_character_tokenizer
+
+
+   interface new
+      module procedure :: new_character_tokenizer
+   end interface new
 
 
 contains
 
 
-!> Parse a TOML input from a given IO unit.
-!>
-!> @note This procedure is deprectated
-subroutine toml_parse_unit(table, unit, error)
-   !> Instance of the TOML data structure, not allocated in case of error
-   type(toml_table), allocatable, intent(out) :: table
-   !> Unit to read from
-   integer, intent(in) :: unit
-   !> Error handling, provides detailed diagnostic in case of error
-   type(toml_error), allocatable, intent(out), optional :: error
+!> Constructor for the deserializer implementation.
+subroutine new_character_tokenizer(de, conf)
+   type(toml_character_tokenizer), intent(out) :: de
+   character(len=*), intent(in), target :: conf
+   !> connect deserializer to configuration
+   de%conf => conf
+   de%line%ptr => conf
+   de%line%num = 1
+   !> first token is an artifical newline
+   de%tok = new_token(toml_tokentype%newline, de%conf, 0)
+end subroutine new_character_tokenizer
 
-   call toml_load(table, unit, error=error)
-end subroutine toml_parse_unit
 
-!> Wrapper to parse a TOML string.
-!>
-!> @note This procedure is deprectated
-subroutine toml_parse_string(table, string, error)
-   !> Instance of the TOML data structure, not allocated in case of error
-   type(toml_table), allocatable, intent(out) :: table
-   !> String containing TOML document
-   character(len=*), intent(in), target :: string
-   !> Error handling, provides detailed diagnostic in case of error
-   type(toml_error), allocatable, intent(out), optional :: error
+!> Return next token
+subroutine next_token(de, dot_is_token)
 
-   call toml_loads(table, string, error=error)
-end subroutine toml_parse_string
+   !> Instance of the tokenizer
+   class(toml_character_tokenizer), intent(inout) :: de
 
-!> Load TOML data structure from file
-subroutine toml_load_file(table, filename, config, context, error)
-   !> Instance of the TOML data structure, not allocated in case of error
-   type(toml_table), allocatable, intent(out) :: table
-   character(*, tfc), intent(in) :: filename
-   !> Configuration for the parser
-   type(toml_parser_config), intent(in), optional :: config
-   !> Context tracking the origin of the data structure to allow rich reports
-   type(toml_context), intent(out), optional :: context
-   !> Error handling, provides detailed diagnostic in case of error
-   type(toml_error), allocatable, intent(out), optional :: error
+   !> Dot should be handled as token
+   logical, intent(in) :: dot_is_token
 
-   type(toml_lexer) :: lexer
-   type(toml_error), allocatable :: error_
+   character(len=:), pointer :: ptr
+   integer :: i, skip
+   if (de%finished) return
+   ptr => de%tok%ptr
 
-   call new_lexer_from_file(lexer, filename, error_)
-   if (.not.allocated(error_)) then
-      call parse(lexer, table, config, context, error)
-   else
-      if (present(error)) call move_alloc(error_, error)
+   !> consume token
+   do i = 1, de%tok%len
+      de%line%pos = de%line%pos + 1
+      if (ptr(i:i) == TOML_NEWLINE) then
+         de%line%ptr => ptr(min(i+1, len(ptr)):)
+         de%line%num = de%line%num+1
+         de%line%pos = 1
+      end if
+   end do
+   ptr => ptr(de%tok%len+1:)
+
+   !> make next token
+   do while(len(ptr) > 0)
+      select case(ptr(1:1))
+      case('#')
+         i = index(ptr, TOML_NEWLINE)
+         if (i > 0) then
+            ptr => ptr(i:)
+            cycle
+         end if
+         exit
+      case('.')
+         if (dot_is_token) then
+            de%tok = new_token(toml_tokentype%dot, ptr, 1)
+            return
+         end if
+      case(','); de%tok = new_token(toml_tokentype%comma, ptr, 1); return
+      case('='); de%tok = new_token(toml_tokentype%equal, ptr, 1); return
+      case('{'); de%tok = new_token(toml_tokentype%lbrace, ptr, 1); return
+      case('}'); de%tok = new_token(toml_tokentype%rbrace, ptr, 1); return
+      case('['); de%tok = new_token(toml_tokentype%lbracket, ptr, 1); return
+      case(']'); de%tok = new_token(toml_tokentype%rbracket, ptr, 1); return
+      case(TOML_NEWLINE); de%tok = new_token(toml_tokentype%newline, ptr, 1); return
+      case(' ', char(9));
+         skip = verify(ptr, TOML_WHITESPACE)-1
+         de%tok = new_token(toml_tokentype%whitespace, ptr, skip)
+         return
+      end select
+
+      call scan_string(de, ptr, dot_is_token)
+      return
+   end do
+
+   !> return with EOF token
+   de%finished = .true.
+   de%tok = new_token(toml_tokentype%newline, ptr, 0)
+
+contains
+
+   subroutine scan_string(de, ptr, dot_is_token)
+   class(toml_character_tokenizer), intent(inout) :: de
+   character(len=:), pointer, intent(inout) :: ptr
+   logical, intent(in) :: dot_is_token
+   character(len=:), pointer :: orig
+   integer :: i, skip
+   integer :: hexreq
+   integer :: qcount
+   logical :: escape
+   orig => ptr
+
+   if (len(ptr) >= 6) then
+      if (ptr(1:3) == repeat(TOML_SQUOTE, 3)) then
+         ptr => ptr(4:)
+         i = index(ptr, repeat(TOML_SQUOTE, 3))
+         if (i == 0) then
+            call syntax_error(de%error, de%line, "unterminated triple-s-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, i+5)
+         return
+      end if
+
+      if (ptr(1:3) == repeat(TOML_DQUOTE, 3)) then
+         ptr => ptr(4:)
+         escape = .false.
+         hexreq = 0
+         qcount = 0
+         do i = 1, len(ptr)
+            if (escape) then
+               escape = .false.
+               if (ptr(i:i) == 'u') then
+                  hexreq = 4
+                  cycle
+               end if
+               if (ptr(i:i) == 'U') then
+                  hexreq = 8
+                  cycle
+               end if
+               if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+               ! allow for line ending backslash
+               skip = verify(ptr(i:), TOML_WHITESPACE)-1
+               if (ptr(i+skip:i+skip) == TOML_NEWLINE) cycle
+               call syntax_error(de%error, de%line, "bad escape char")
+               return
+            end if
+            if (hexreq > 0) then
+               hexreq = hexreq - 1
+               if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+               call syntax_error(de%error, de%line, "expect hex char")
+               return
+            end if
+            if (ptr(i:i) == TOML_DQUOTE) then
+               if (qcount < 5) then
+                  qcount = qcount + 1
+               else
+                  call syntax_error(de%error, de%line, "too many quotation marks")
+                  return
+               end if
+            else
+               if (qcount >= 3) then
+                  ptr => ptr(i:)
+                  exit
+               end if
+               qcount = 0
+            end if
+            if (ptr(i:i) == '\') then
+               escape = .true.
+               cycle
+            end if
+         end do
+         if (qcount < 3) then
+            call syntax_error(de%error, de%line, "unterminated triple-quote")
+            return
+         end if
+
+         de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr))
+         return
+      end if
    end if
-end subroutine toml_load_file
 
-!> Load TOML data structure from unit
-subroutine toml_load_unit(table, io, config, context, error)
-   !> Instance of the TOML data structure, not allocated in case of error
-   type(toml_table), allocatable, intent(out) :: table
-   !> Unit to read from
-   integer, intent(in) :: io
-   !> Configuration for the parser
-   type(toml_parser_config), intent(in), optional :: config
-   !> Context tracking the origin of the data structure to allow rich reports
-   type(toml_context), intent(out), optional :: context
-   !> Error handling, provides detailed diagnostic in case of error
-   type(toml_error), allocatable, intent(out), optional :: error
+   if (ptr(1:1) == TOML_SQUOTE) then
+      ptr => ptr(2:)
+      i = index(ptr, TOML_NEWLINE)
+      if (i == 0) i = len(ptr)
+      i = index(ptr(:i), TOML_SQUOTE)
+      if (i == 0) then
+         call syntax_error(de%error, de%line, "unterminated s-quote")
+         return
+      end if
 
-   type(toml_lexer) :: lexer
-   type(toml_error), allocatable :: error_
-
-   call new_lexer_from_unit(lexer, io, error_)
-   if (.not.allocated(error_)) then
-      call parse(lexer, table, config, context, error)
-   else
-      if (present(error)) call move_alloc(error_, error)
+      de%tok = new_token(toml_tokentype%string, orig, i+1)
+      return
    end if
-end subroutine toml_load_unit
 
-!> Load TOML data structure from string
-subroutine toml_load_string(table, string, config, context, error)
-   !> Instance of the TOML data structure, not allocated in case of error
-   type(toml_table), allocatable, intent(out) :: table
-   !> String containing TOML document
-   character(*, tfc), intent(in) :: string
-   !> Configuration for the parser
-   type(toml_parser_config), intent(in), optional :: config
-   !> Context tracking the origin of the data structure to allow rich reports
-   type(toml_context), intent(out), optional :: context
-   !> Error handling, provides detailed diagnostic in case of error
-   type(toml_error), allocatable, intent(out), optional :: error
+   if (ptr(1:1) == TOML_DQUOTE) then
+      ptr => ptr(2:)
+      escape = .false.
+      hexreq = 0
+      do i = 1, len(ptr)
+         if (escape) then
+            escape = .false.
+            if (ptr(i:i) == 'u') then
+               hexreq = 4
+               cycle
+            end if
+            if (ptr(i:i) == 'U') then
+               hexreq = 8
+               cycle
+            end if
+            if (verify(ptr(i:i), 'btnfr"\') == 0) cycle
+            call syntax_error(de%error, de%line, "bad escape char")
+            return
+         end if
+         if (hexreq > 0) then
+            hexreq = hexreq - 1
+            if (verify(ptr(i:i), TOML_HEXDIGITS) == 0) cycle
+            call syntax_error(de%error, de%line, "expect hex char")
+            return
+         end if
+         if (ptr(i:i) == '\') then
+            escape = .true.
+            cycle
+         end if
+         if (ptr(i:i) == TOML_NEWLINE) then
+            ptr => ptr(i:)
+            exit
+         end if
+         if (ptr(i:i) == TOML_DQUOTE) then
+            ptr => ptr(i:)
+            exit
+         end if
+      end do
+      if (ptr(1:1) /= TOML_DQUOTE) then
+            call syntax_error(de%error, de%line, "expect hex char")
+         return
+      end if
 
-   type(toml_lexer) :: lexer
+      de%tok = new_token(toml_tokentype%string, orig, len(orig)-len(ptr)+1)
+      return
+   end if
 
-   call new_lexer_from_string(lexer, string)
-   call parse(lexer, table, config, context, error)
-end subroutine toml_load_string
+   if (toml_raw_verify_date(ptr) .or. toml_raw_verify_time(ptr)) then
+      i = verify(ptr, TOML_TIMESTAMP)-1
+      if (i < 0) i = len(ptr)
+      de%tok = new_token(toml_tokentype%string, orig, i)
+      return
+   end if
 
-end module tomlf_de
+   do i = 1, len(ptr)
+      if (ptr(i:i) == '.' .and. dot_is_token) then
+         ptr => ptr(i:)
+         exit
+      end if
+      if (verify(ptr(i:i), TOML_LITERALS) == 0) cycle
+      ptr => ptr(i:)
+      exit
+   end do
+
+   de%tok = new_token(toml_tokentype%string, orig, len(orig) - len(ptr))
+
+end subroutine scan_string
+
+end subroutine next_token
+
+
+!> custom constructor to get pointer assignment right
+type(toml_token) function new_token(tok, ptr, len)
+   integer, intent(in) :: tok
+   character(len=:), pointer, intent(in) :: ptr
+   integer, intent(in) :: len
+   new_token%tok = tok
+   new_token%ptr => ptr
+   new_token%len = len
+end function new_token
+
+
+end module tomlf_de_character
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
@@ -19729,11 +16530,11 @@ module tomlf_build_array
    use tomlf_build_keyval, only : get_value, set_value
    use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
       & tf_sp, tf_dp
-   use tomlf_datetime, only : toml_datetime
    use tomlf_error, only : toml_stat
    use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
-      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, &
-      & cast_to_table, cast_to_array, cast_to_keyval, len
+      & new_table, new_array, new_keyval, add_table, add_array, add_keyval, len
+   use tomlf_utils, only : toml_raw_to_string, toml_raw_to_float, &
+      & toml_raw_to_bool, toml_raw_to_integer, toml_raw_to_timestamp
    implicit none
    private
 
@@ -19750,15 +16551,6 @@ module tomlf_build_array
       module procedure :: set_elem_value_int_i4
       module procedure :: set_elem_value_int_i8
       module procedure :: set_elem_value_bool
-      module procedure :: set_elem_value_datetime
-      module procedure :: set_array_value_float_sp
-      module procedure :: set_array_value_float_dp
-      module procedure :: set_array_value_int_i1
-      module procedure :: set_array_value_int_i2
-      module procedure :: set_array_value_int_i4
-      module procedure :: set_array_value_int_i8
-      module procedure :: set_array_value_bool
-      module procedure :: set_array_value_datetime
    end interface set_value
 
 
@@ -19775,22 +16567,13 @@ module tomlf_build_array
       module procedure :: get_elem_value_int_i4
       module procedure :: get_elem_value_int_i8
       module procedure :: get_elem_value_bool
-      module procedure :: get_elem_value_datetime
-      module procedure :: get_array_value_float_sp
-      module procedure :: get_array_value_float_dp
-      module procedure :: get_array_value_int_i1
-      module procedure :: get_array_value_int_i2
-      module procedure :: get_array_value_int_i4
-      module procedure :: get_array_value_int_i8
-      module procedure :: get_array_value_bool
-      module procedure :: get_array_value_datetime
    end interface get_value
 
 
 contains
 
 
-subroutine get_elem_table(array, pos, ptr, stat, origin)
+subroutine get_elem_table(array, pos, ptr, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19804,9 +16587,6 @@ subroutine get_elem_table(array, pos, ptr, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
 
    nullify(ptr)
@@ -19814,24 +16594,21 @@ subroutine get_elem_table(array, pos, ptr, stat, origin)
    call array%get(pos, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_table(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_table)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (present(stat)) stat = toml_stat%fatal
-      if (present(origin)) origin = array%origin
    end if
 
 end subroutine get_elem_table
 
 
-subroutine get_elem_array(array, pos, ptr, stat, origin)
+subroutine get_elem_array(array, pos, ptr, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19845,9 +16622,6 @@ subroutine get_elem_array(array, pos, ptr, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
 
    nullify(ptr)
@@ -19855,24 +16629,21 @@ subroutine get_elem_array(array, pos, ptr, stat, origin)
    call array%get(pos, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_array(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_array)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (present(stat)) stat = toml_stat%fatal
-      if (present(origin)) origin = array%origin
    end if
 
 end subroutine get_elem_array
 
 
-subroutine get_elem_keyval(array, pos, ptr, stat, origin)
+subroutine get_elem_keyval(array, pos, ptr, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19886,9 +16657,6 @@ subroutine get_elem_keyval(array, pos, ptr, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
 
    nullify(ptr)
@@ -19896,25 +16664,22 @@ subroutine get_elem_keyval(array, pos, ptr, stat, origin)
    call array%get(pos, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_keyval(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_keyval)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (present(stat)) stat = toml_stat%fatal
-      if (present(origin)) origin = array%origin
    end if
 
 end subroutine get_elem_keyval
 
 
 !> Retrieve TOML value as deferred-length character
-subroutine get_elem_value_string(array, pos, val, stat, origin)
+subroutine get_elem_value_string(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19928,15 +16693,12 @@ subroutine get_elem_value_string(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -19945,7 +16707,7 @@ end subroutine get_elem_value_string
 
 
 !> Retrieve TOML value as single precision floating point number
-subroutine get_elem_value_float_sp(array, pos, val, stat, origin)
+subroutine get_elem_value_float_sp(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19959,15 +16721,12 @@ subroutine get_elem_value_float_sp(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -19976,7 +16735,7 @@ end subroutine get_elem_value_float_sp
 
 
 !> Retrieve TOML value as double precision floating point number
-subroutine get_elem_value_float_dp(array, pos, val, stat, origin)
+subroutine get_elem_value_float_dp(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -19990,15 +16749,12 @@ subroutine get_elem_value_float_dp(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20007,7 +16763,7 @@ end subroutine get_elem_value_float_dp
 
 
 !> Retrieve TOML value as integer value
-subroutine get_elem_value_int_i1(array, pos, val, stat, origin)
+subroutine get_elem_value_int_i1(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20021,15 +16777,12 @@ subroutine get_elem_value_int_i1(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20038,7 +16791,7 @@ end subroutine get_elem_value_int_i1
 
 
 !> Retrieve TOML value as integer value
-subroutine get_elem_value_int_i2(array, pos, val, stat, origin)
+subroutine get_elem_value_int_i2(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20052,15 +16805,12 @@ subroutine get_elem_value_int_i2(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20069,7 +16819,7 @@ end subroutine get_elem_value_int_i2
 
 
 !> Retrieve TOML value as integer value
-subroutine get_elem_value_int_i4(array, pos, val, stat, origin)
+subroutine get_elem_value_int_i4(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20083,15 +16833,12 @@ subroutine get_elem_value_int_i4(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20100,7 +16847,7 @@ end subroutine get_elem_value_int_i4
 
 
 !> Retrieve TOML value as integer value
-subroutine get_elem_value_int_i8(array, pos, val, stat, origin)
+subroutine get_elem_value_int_i8(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20114,15 +16861,12 @@ subroutine get_elem_value_int_i8(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20131,7 +16875,7 @@ end subroutine get_elem_value_int_i8
 
 
 !> Retrieve TOML value as boolean
-subroutine get_elem_value_bool(array, pos, val, stat, origin)
+subroutine get_elem_value_bool(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20145,15 +16889,12 @@ subroutine get_elem_value_bool(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
+      call get_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20161,39 +16902,8 @@ subroutine get_elem_value_bool(array, pos, val, stat, origin)
 end subroutine get_elem_value_bool
 
 
-!> Retrieve TOML value as datetime
-subroutine get_elem_value_datetime(array, pos, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Position in the array
-   integer, intent(in) :: pos
-
-   !> Integer value
-   type(toml_datetime), intent(out) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_keyval), pointer :: ptr
-
-   call get_value(array, pos, ptr, stat, origin)
-
-   if (associated(ptr)) then
-      call get_value(ptr, val, stat, origin)
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine get_elem_value_datetime
-
-
 !> Retrieve TOML value as deferred-length character
-subroutine set_elem_value_string(array, pos, val, stat, origin)
+subroutine set_elem_value_string(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20207,12 +16917,9 @@ subroutine set_elem_value_string(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20221,7 +16928,7 @@ subroutine set_elem_value_string(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20230,7 +16937,7 @@ end subroutine set_elem_value_string
 
 
 !> Retrieve TOML value as single precision floating point number
-subroutine set_elem_value_float_sp(array, pos, val, stat, origin)
+subroutine set_elem_value_float_sp(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20244,12 +16951,9 @@ subroutine set_elem_value_float_sp(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20258,7 +16962,7 @@ subroutine set_elem_value_float_sp(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20267,7 +16971,7 @@ end subroutine set_elem_value_float_sp
 
 
 !> Retrieve TOML value as double precision floating point number
-subroutine set_elem_value_float_dp(array, pos, val, stat, origin)
+subroutine set_elem_value_float_dp(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20281,12 +16985,9 @@ subroutine set_elem_value_float_dp(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20295,7 +16996,7 @@ subroutine set_elem_value_float_dp(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20304,7 +17005,7 @@ end subroutine set_elem_value_float_dp
 
 
 !> Retrieve TOML value as integer value
-subroutine set_elem_value_int_i1(array, pos, val, stat, origin)
+subroutine set_elem_value_int_i1(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20318,12 +17019,9 @@ subroutine set_elem_value_int_i1(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20332,7 +17030,7 @@ subroutine set_elem_value_int_i1(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20341,7 +17039,7 @@ end subroutine set_elem_value_int_i1
 
 
 !> Retrieve TOML value as integer value
-subroutine set_elem_value_int_i2(array, pos, val, stat, origin)
+subroutine set_elem_value_int_i2(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20355,12 +17053,9 @@ subroutine set_elem_value_int_i2(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20369,7 +17064,7 @@ subroutine set_elem_value_int_i2(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20378,7 +17073,7 @@ end subroutine set_elem_value_int_i2
 
 
 !> Retrieve TOML value as integer value
-subroutine set_elem_value_int_i4(array, pos, val, stat, origin)
+subroutine set_elem_value_int_i4(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20392,12 +17087,9 @@ subroutine set_elem_value_int_i4(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20406,7 +17098,7 @@ subroutine set_elem_value_int_i4(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20415,7 +17107,7 @@ end subroutine set_elem_value_int_i4
 
 
 !> Retrieve TOML value as integer value
-subroutine set_elem_value_int_i8(array, pos, val, stat, origin)
+subroutine set_elem_value_int_i8(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20429,12 +17121,9 @@ subroutine set_elem_value_int_i8(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20443,7 +17132,7 @@ subroutine set_elem_value_int_i8(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
@@ -20452,7 +17141,7 @@ end subroutine set_elem_value_int_i8
 
 
 !> Retrieve TOML value as boolean value
-subroutine set_elem_value_bool(array, pos, val, stat, origin)
+subroutine set_elem_value_bool(array, pos, val, stat)
 
    !> Instance of the TOML array
    class(toml_array), intent(inout) :: array
@@ -20466,12 +17155,9 @@ subroutine set_elem_value_bool(array, pos, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(array, pos, ptr, stat, origin)
+   call get_value(array, pos, ptr, stat)
 
    if (.not.associated(ptr)) then
       if (pos == len(array) + 1) then
@@ -20480,521 +17166,12 @@ subroutine set_elem_value_bool(array, pos, val, stat, origin)
    end if
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) stat = toml_stat%fatal
    end if
 
 end subroutine set_elem_value_bool
-
-
-!> Retrieve TOML value as datetime value
-subroutine set_elem_value_datetime(array, pos, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Position in the array
-   integer, intent(in) :: pos
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_keyval), pointer :: ptr
-
-   call get_value(array, pos, ptr, stat, origin)
-
-   if (.not.associated(ptr)) then
-      if (pos == len(array) + 1) then
-         call add_keyval(array, ptr, stat)
-      end if
-   end if
-
-   if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
-   else
-      if (present(stat)) stat = toml_stat%fatal
-   end if
-
-end subroutine set_elem_value_datetime
-
-
-!> Retrieve TOML value as single precision floating point number
-subroutine get_array_value_float_sp(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Floating point value
-   real(tf_sp), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_float_sp
-
-
-!> Retrieve TOML value as double precision floating point number
-subroutine get_array_value_float_dp(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Floating point value
-   real(tf_dp), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_float_dp
-
-
-!> Retrieve TOML value as integer value
-subroutine get_array_value_int_i1(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i1), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_int_i1
-
-
-!> Retrieve TOML value as integer value
-subroutine get_array_value_int_i2(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i2), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_int_i2
-
-
-!> Retrieve TOML value as integer value
-subroutine get_array_value_int_i4(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i4), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_int_i4
-
-
-!> Retrieve TOML value as integer value
-subroutine get_array_value_int_i8(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i8), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_int_i8
-
-
-!> Retrieve TOML value as boolean
-subroutine get_array_value_bool(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   logical, allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_bool
-
-
-!> Retrieve TOML value as datetime
-subroutine get_array_value_datetime(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   type(toml_datetime), allocatable, intent(out) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it, info
-
-   allocate(val(len(array)))
-   do it = 1, size(val)
-      call get_value(array, it, val(it), info, origin)
-      if (info /= 0) exit
-   end do
-   if (info /= 0) deallocate(val)
-   if (present(stat)) stat = info
-   if (present(origin) .and. info == 0) origin = array%origin
-
-end subroutine get_array_value_datetime
-
-
-!> Retrieve TOML value as single precision floating point number
-subroutine set_array_value_float_sp(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Floating point value
-   real(tf_sp), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_float_sp
-
-
-!> Retrieve TOML value as double precision floating point number
-subroutine set_array_value_float_dp(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Floating point value
-   real(tf_dp), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_float_dp
-
-
-!> Retrieve TOML value as integer value
-subroutine set_array_value_int_i1(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i1), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_int_i1
-
-
-!> Retrieve TOML value as integer value
-subroutine set_array_value_int_i2(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i2), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_int_i2
-
-
-!> Retrieve TOML value as integer value
-subroutine set_array_value_int_i4(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i4), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_int_i4
-
-
-!> Retrieve TOML value as integer value
-subroutine set_array_value_int_i8(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Integer value
-   integer(tf_i8), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_int_i8
-
-
-!> Retrieve TOML value as boolean value
-subroutine set_array_value_bool(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Boolean value
-   logical, intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_bool
-
-
-!> Retrieve TOML value as datetime value
-subroutine set_array_value_datetime(array, val, stat, origin)
-
-   !> Instance of the TOML array
-   class(toml_array), intent(inout) :: array
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val(:)
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   class(toml_value), allocatable :: ptr
-
-   do while(len(array) > size(val))
-      call array%pop(ptr)
-   end do
-
-   do it = 1, size(val)
-      call set_value(array, it, val(it), stat, origin)
-   end do
-   if (present(origin)) origin = array%origin
-
-end subroutine set_array_value_datetime
 
 
 end module tomlf_build_array
@@ -21036,11 +17213,10 @@ module tomlf_build_table
    use tomlf_build_keyval, only : get_value, set_value
    use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
       & tf_sp, tf_dp
-   use tomlf_datetime, only : toml_datetime
    use tomlf_error, only : toml_stat
    use tomlf_type, only : toml_value, toml_table, toml_array, toml_keyval, &
       & new_table, new_array, new_keyval, add_table, add_array, add_keyval, &
-      & toml_key, cast_to_table, cast_to_array, cast_to_keyval, len
+      & toml_key, len
    implicit none
    private
 
@@ -21056,7 +17232,6 @@ module tomlf_build_table
       module procedure :: set_child_value_integer_i4
       module procedure :: set_child_value_integer_i8
       module procedure :: set_child_value_bool
-      module procedure :: set_child_value_datetime
       module procedure :: set_child_value_string
       module procedure :: set_key_value_float_sp
       module procedure :: set_key_value_float_dp
@@ -21065,7 +17240,6 @@ module tomlf_build_table
       module procedure :: set_key_value_integer_i4
       module procedure :: set_key_value_integer_i8
       module procedure :: set_key_value_bool
-      module procedure :: set_key_value_datetime
       module procedure :: set_key_value_string
    end interface set_value
 
@@ -21082,7 +17256,6 @@ module tomlf_build_table
       module procedure :: get_child_value_integer_i4
       module procedure :: get_child_value_integer_i8
       module procedure :: get_child_value_bool
-      module procedure :: get_child_value_datetime
       module procedure :: get_child_value_string
       module procedure :: get_key_table
       module procedure :: get_key_array
@@ -21094,7 +17267,6 @@ module tomlf_build_table
       module procedure :: get_key_value_integer_i4
       module procedure :: get_key_value_integer_i8
       module procedure :: get_key_value_bool
-      module procedure :: get_key_value_datetime
       module procedure :: get_key_value_string
    end interface get_value
 
@@ -21102,7 +17274,7 @@ module tomlf_build_table
 contains
 
 
-subroutine get_key_table(table, key, ptr, requested, stat, origin)
+subroutine get_key_table(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21119,15 +17291,12 @@ subroutine get_key_table(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, ptr, requested, stat, origin)
+   call get_value(table, key%key, ptr, requested, stat)
 
 end subroutine get_key_table
 
 
-subroutine get_key_array(table, key, ptr, requested, stat, origin)
+subroutine get_key_array(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21144,15 +17313,12 @@ subroutine get_key_array(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, ptr, requested, stat, origin)
+   call get_value(table, key%key, ptr, requested, stat)
 
 end subroutine get_key_array
 
 
-subroutine get_key_keyval(table, key, ptr, requested, stat, origin)
+subroutine get_key_keyval(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21169,16 +17335,13 @@ subroutine get_key_keyval(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, ptr, requested, stat, origin)
+   call get_value(table, key%key, ptr, requested, stat)
 
 end subroutine get_key_keyval
 
 
 !> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_key_value_float_sp(table, key, val, default, stat, origin)
+subroutine get_key_value_float_sp(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21195,16 +17358,13 @@ subroutine get_key_value_float_sp(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_float_sp
 
 
 !> Retrieve TOML value as double precision float
-subroutine get_key_value_float_dp(table, key, val, default, stat, origin)
+subroutine get_key_value_float_dp(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21221,16 +17381,13 @@ subroutine get_key_value_float_dp(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_float_dp
 
 
 !> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_key_value_integer_i1(table, key, val, default, stat, origin)
+subroutine get_key_value_integer_i1(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21247,16 +17404,13 @@ subroutine get_key_value_integer_i1(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_integer_i1
 
 
 !> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_key_value_integer_i2(table, key, val, default, stat, origin)
+subroutine get_key_value_integer_i2(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21273,16 +17427,13 @@ subroutine get_key_value_integer_i2(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_integer_i2
 
 
 !> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_key_value_integer_i4(table, key, val, default, stat, origin)
+subroutine get_key_value_integer_i4(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21299,16 +17450,13 @@ subroutine get_key_value_integer_i4(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_integer_i4
 
 
 !> Retrieve TOML value as eight byte integer
-subroutine get_key_value_integer_i8(table, key, val, default, stat, origin)
+subroutine get_key_value_integer_i8(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21325,16 +17473,13 @@ subroutine get_key_value_integer_i8(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_integer_i8
 
 
 !> Retrieve TOML value as logical
-subroutine get_key_value_bool(table, key, val, default, stat, origin)
+subroutine get_key_value_bool(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21351,42 +17496,13 @@ subroutine get_key_value_bool(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_bool
 
 
-!> Retrieve TOML value as datetime
-subroutine get_key_value_datetime(table, key, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key in this TOML table
-   type(toml_key), intent(in) :: key
-
-   !> Datetime value
-   type(toml_datetime), intent(out) :: val
-
-   !> Default datetime value
-   type(toml_datetime), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
-
-end subroutine get_key_value_datetime
-
-
 !> Retrieve TOML value as deferred-length character
-subroutine get_key_value_string(table, key, val, default, stat, origin)
+subroutine get_key_value_string(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21403,16 +17519,13 @@ subroutine get_key_value_string(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call get_value(table, key%key, val, default, stat, origin)
+   call get_value(table, key%key, val, default, stat)
 
 end subroutine get_key_value_string
 
 
 !> Set TOML value to single precision float
-subroutine set_key_value_float_sp(table, key, val, stat, origin)
+subroutine set_key_value_float_sp(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21426,16 +17539,13 @@ subroutine set_key_value_float_sp(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_float_sp
 
 
 !> Set TOML value to double precision float
-subroutine set_key_value_float_dp(table, key, val, stat, origin)
+subroutine set_key_value_float_dp(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21449,16 +17559,13 @@ subroutine set_key_value_float_dp(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_float_dp
 
 
 !> Set TOML value to one byte integer
-subroutine set_key_value_integer_i1(table, key, val, stat, origin)
+subroutine set_key_value_integer_i1(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21472,16 +17579,13 @@ subroutine set_key_value_integer_i1(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_integer_i1
 
 
 !> Set TOML value to two byte integer
-subroutine set_key_value_integer_i2(table, key, val, stat, origin)
+subroutine set_key_value_integer_i2(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21495,16 +17599,13 @@ subroutine set_key_value_integer_i2(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_integer_i2
 
 
 !> Set TOML value to four byte integer
-subroutine set_key_value_integer_i4(table, key, val, stat, origin)
+subroutine set_key_value_integer_i4(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21518,16 +17619,13 @@ subroutine set_key_value_integer_i4(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_integer_i4
 
 
 !> Set TOML value to eight byte integer
-subroutine set_key_value_integer_i8(table, key, val, stat, origin)
+subroutine set_key_value_integer_i8(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21541,16 +17639,13 @@ subroutine set_key_value_integer_i8(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_integer_i8
 
 
 !> Set TOML value to logical
-subroutine set_key_value_bool(table, key, val, stat, origin)
+subroutine set_key_value_bool(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21564,39 +17659,13 @@ subroutine set_key_value_bool(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_bool
 
 
-!> Set TOML value to datetime
-subroutine set_key_value_datetime(table, key, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key in this TOML table
-   type(toml_key), intent(in) :: key
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
-
-end subroutine set_key_value_datetime
-
-
 !> Set TOML value to deferred-length character
-subroutine set_key_value_string(table, key, val, stat, origin)
+subroutine set_key_value_string(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21610,15 +17679,12 @@ subroutine set_key_value_string(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   call set_value(table, key%key, val, stat, origin)
+   call set_value(table, key%key, val, stat)
 
 end subroutine set_key_value_string
 
 
-subroutine get_child_table(table, key, ptr, requested, stat, origin)
+subroutine get_child_table(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21635,9 +17701,6 @@ subroutine get_child_table(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
    logical :: is_requested
 
@@ -21652,28 +17715,25 @@ subroutine get_child_table(table, key, ptr, requested, stat, origin)
    call table%get(key, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_table(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_table)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (is_requested) then
          call add_table(table, key, ptr, stat)
       else
          if (present(stat)) stat = toml_stat%success
       end if
-      if (present(origin)) origin = table%origin
    end if
 
 end subroutine get_child_table
 
 
-subroutine get_child_array(table, key, ptr, requested, stat, origin)
+subroutine get_child_array(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21690,9 +17750,6 @@ subroutine get_child_array(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
    logical :: is_requested
 
@@ -21707,28 +17764,25 @@ subroutine get_child_array(table, key, ptr, requested, stat, origin)
    call table%get(key, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_array(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_array)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (is_requested) then
          call add_array(table, key, ptr, stat)
       else
          if (present(stat)) stat = toml_stat%success
       end if
-      if (present(origin)) origin = table%origin
    end if
 
 end subroutine get_child_array
 
 
-subroutine get_child_keyval(table, key, ptr, requested, stat, origin)
+subroutine get_child_keyval(table, key, ptr, requested, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21745,9 +17799,6 @@ subroutine get_child_keyval(table, key, ptr, requested, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    class(toml_value), pointer :: tmp
    logical :: is_requested
 
@@ -21762,29 +17813,26 @@ subroutine get_child_keyval(table, key, ptr, requested, stat, origin)
    call table%get(key, tmp)
 
    if (associated(tmp)) then
-      ptr => cast_to_keyval(tmp)
-      if (present(stat)) then
-         if (associated(ptr)) then
-            stat = toml_stat%success
-         else
-            stat = toml_stat%type_mismatch
-         end if
-      end if
-      if (present(origin)) origin = tmp%origin
+      select type(tmp)
+      type is(toml_keyval)
+         ptr => tmp
+         if (present(stat)) stat = toml_stat%success
+      class default
+         if (present(stat)) stat = toml_stat%fatal
+      end select
    else
       if (is_requested) then
          call add_keyval(table, key, ptr, stat)
       else
          if (present(stat)) stat = toml_stat%success
       end if
-      if (present(origin)) origin = table%origin
    end if
 
 end subroutine get_child_keyval
 
 
 !> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_child_value_float_sp(table, key, val, default, stat, origin)
+subroutine get_child_value_float_sp(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21801,16 +17849,13 @@ subroutine get_child_value_float_sp(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -21825,7 +17870,7 @@ end subroutine get_child_value_float_sp
 
 
 !> Retrieve TOML value as double precision float
-subroutine get_child_value_float_dp(table, key, val, default, stat, origin)
+subroutine get_child_value_float_dp(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21842,16 +17887,13 @@ subroutine get_child_value_float_dp(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -21866,7 +17908,7 @@ end subroutine get_child_value_float_dp
 
 
 !> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_child_value_integer_i1(table, key, val, default, stat, origin)
+subroutine get_child_value_integer_i1(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21883,16 +17925,13 @@ subroutine get_child_value_integer_i1(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -21907,7 +17946,7 @@ end subroutine get_child_value_integer_i1
 
 
 !> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_child_value_integer_i2(table, key, val, default, stat, origin)
+subroutine get_child_value_integer_i2(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21924,16 +17963,13 @@ subroutine get_child_value_integer_i2(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -21948,7 +17984,7 @@ end subroutine get_child_value_integer_i2
 
 
 !> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_child_value_integer_i4(table, key, val, default, stat, origin)
+subroutine get_child_value_integer_i4(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -21965,16 +18001,13 @@ subroutine get_child_value_integer_i4(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -21989,7 +18022,7 @@ end subroutine get_child_value_integer_i4
 
 
 !> Retrieve TOML value as eight byte integer
-subroutine get_child_value_integer_i8(table, key, val, default, stat, origin)
+subroutine get_child_value_integer_i8(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22006,16 +18039,13 @@ subroutine get_child_value_integer_i8(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -22030,7 +18060,7 @@ end subroutine get_child_value_integer_i8
 
 
 !> Retrieve TOML value as logical
-subroutine get_child_value_bool(table, key, val, default, stat, origin)
+subroutine get_child_value_bool(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22047,16 +18077,13 @@ subroutine get_child_value_bool(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -22070,49 +18097,8 @@ subroutine get_child_value_bool(table, key, val, default, stat, origin)
 end subroutine get_child_value_bool
 
 
-!> Retrieve TOML value as datetime
-subroutine get_child_value_datetime(table, key, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key in this TOML table
-   character(kind=tfc, len=*), intent(in) :: key
-
-   !> Datetime value
-   type(toml_datetime), intent(out) :: val
-
-   !> Default datetime value
-   type(toml_datetime), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_keyval), pointer :: ptr
-
-   call get_value(table, key, ptr, present(default), stat, origin)
-
-   if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
-      else
-         if (present(default)) then
-            call set_value(ptr, default)
-            call get_value(ptr, val, stat=stat)
-         else
-            if (present(stat)) stat = toml_stat%fatal
-         end if
-      end if
-   end if
-
-end subroutine get_child_value_datetime
-
-
 !> Retrieve TOML value as deferred-length character
-subroutine get_child_value_string(table, key, val, default, stat, origin)
+subroutine get_child_value_string(table, key, val, default, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22129,16 +18115,13 @@ subroutine get_child_value_string(table, key, val, default, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, present(default), stat, origin)
+   call get_value(table, key, ptr, present(default), stat)
 
    if (associated(ptr)) then
-      if (allocated(ptr%val)) then
-         call get_value(ptr, val, stat, origin)
+      if (allocated(ptr%raw)) then
+         call get_value(ptr, val, stat)
       else
          if (present(default)) then
             call set_value(ptr, default)
@@ -22153,7 +18136,7 @@ end subroutine get_child_value_string
 
 
 !> Set TOML value to single precision float
-subroutine set_child_value_float_sp(table, key, val, stat, origin)
+subroutine set_child_value_float_sp(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22167,15 +18150,12 @@ subroutine set_child_value_float_sp(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22186,7 +18166,7 @@ end subroutine set_child_value_float_sp
 
 
 !> Set TOML value to double precision float
-subroutine set_child_value_float_dp(table, key, val, stat, origin)
+subroutine set_child_value_float_dp(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22200,15 +18180,12 @@ subroutine set_child_value_float_dp(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22219,7 +18196,7 @@ end subroutine set_child_value_float_dp
 
 
 !> Set TOML value to one byte integer
-subroutine set_child_value_integer_i1(table, key, val, stat, origin)
+subroutine set_child_value_integer_i1(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22233,15 +18210,12 @@ subroutine set_child_value_integer_i1(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22252,7 +18226,7 @@ end subroutine set_child_value_integer_i1
 
 
 !> Set TOML value to two byte integer
-subroutine set_child_value_integer_i2(table, key, val, stat, origin)
+subroutine set_child_value_integer_i2(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22266,15 +18240,12 @@ subroutine set_child_value_integer_i2(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22285,7 +18256,7 @@ end subroutine set_child_value_integer_i2
 
 
 !> Set TOML value to four byte integer
-subroutine set_child_value_integer_i4(table, key, val, stat, origin)
+subroutine set_child_value_integer_i4(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22299,15 +18270,12 @@ subroutine set_child_value_integer_i4(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22318,7 +18286,7 @@ end subroutine set_child_value_integer_i4
 
 
 !> Set TOML value to eight byte integer
-subroutine set_child_value_integer_i8(table, key, val, stat, origin)
+subroutine set_child_value_integer_i8(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22332,15 +18300,12 @@ subroutine set_child_value_integer_i8(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22351,7 +18316,7 @@ end subroutine set_child_value_integer_i8
 
 
 !> Set TOML value to logical
-subroutine set_child_value_bool(table, key, val, stat, origin)
+subroutine set_child_value_bool(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22365,15 +18330,12 @@ subroutine set_child_value_bool(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22383,41 +18345,8 @@ subroutine set_child_value_bool(table, key, val, stat, origin)
 end subroutine set_child_value_bool
 
 
-!> Set TOML value to datetime
-subroutine set_child_value_datetime(table, key, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Key in this TOML table
-   character(kind=tfc, len=*), intent(in) :: key
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_keyval), pointer :: ptr
-
-   call get_value(table, key, ptr, .true., stat, origin)
-
-   if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
-   else
-      if (present(stat)) then
-         if (stat == toml_stat%success) stat = toml_stat%fatal
-      end if
-   end if
-
-end subroutine set_child_value_datetime
-
-
 !> Set TOML value to deferred-length character
-subroutine set_child_value_string(table, key, val, stat, origin)
+subroutine set_child_value_string(table, key, val, stat)
 
    !> Instance of the TOML table
    class(toml_table), intent(inout) :: table
@@ -22431,15 +18360,12 @@ subroutine set_child_value_string(table, key, val, stat, origin)
    !> Status of operation
    integer, intent(out), optional :: stat
 
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
    type(toml_keyval), pointer :: ptr
 
-   call get_value(table, key, ptr, .true., stat, origin)
+   call get_value(table, key, ptr, .true., stat)
 
    if (associated(ptr)) then
-      call set_value(ptr, val, stat, origin)
+      call set_value(ptr, val, stat)
    else
       if (present(stat)) then
          if (stat == toml_stat%success) stat = toml_stat%fatal
@@ -22450,811 +18376,6 @@ end subroutine set_child_value_string
 
 
 end module tomlf_build_table
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/build/path.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Support for retrieving and setting values using a key path.
-module tomlf_build_path
-   use tomlf_build_table, only : get_value, set_value
-   use tomlf_constants, only : tfc, tfi, tfr, tf_i1, tf_i2, tf_i4, tf_i8, &
-      & tf_sp, tf_dp
-   use tomlf_datetime, only : toml_datetime
-   use tomlf_error, only : toml_stat
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_key
-   implicit none
-   private
-
-   public :: toml_path, get_value, set_value
-
-
-   !> Setter functions to manipulate TOML tables
-   interface set_value
-      module procedure :: set_path_value_float_sp
-      module procedure :: set_path_value_float_dp
-      module procedure :: set_path_value_integer_i1
-      module procedure :: set_path_value_integer_i2
-      module procedure :: set_path_value_integer_i4
-      module procedure :: set_path_value_integer_i8
-      module procedure :: set_path_value_bool
-      module procedure :: set_path_value_datetime
-      module procedure :: set_path_value_string
-   end interface set_value
-
-
-   !> Getter functions to manipulate TOML tables
-   interface get_value
-      module procedure :: get_path_table
-      module procedure :: get_path_array
-      module procedure :: get_path_keyval
-      module procedure :: get_path_value_float_sp
-      module procedure :: get_path_value_float_dp
-      module procedure :: get_path_value_integer_i1
-      module procedure :: get_path_value_integer_i2
-      module procedure :: get_path_value_integer_i4
-      module procedure :: get_path_value_integer_i8
-      module procedure :: get_path_value_bool
-      module procedure :: get_path_value_datetime
-      module procedure :: get_path_value_string
-   end interface get_value
-
-
-   !> Wrapper for storing key paths
-   type :: toml_path
-      !> Path components
-      type(toml_key), allocatable :: path(:)
-   end type toml_path
-
-
-   !> Convenience constructors for building key paths from strings instead of keys
-   interface toml_path
-      module procedure :: new_path2
-      module procedure :: new_path3
-      module procedure :: new_path4
-   end interface toml_path
-
-
-contains
-
-
-!> Create a new path with two components
-pure function new_path2(key1, key2) result(path)
-
-   !> First key to retrieve
-   character(*), intent(in) :: key1
-
-   !> Second key to retrieve
-   character(*), intent(in) :: key2
-
-   !> New path
-   type(toml_path) :: path
-
-   allocate(path%path(2))
-   path%path(:) = [toml_key(key1), toml_key(key2)]
-end function new_path2
-
-
-!> Create a new path with three components
-pure function new_path3(key1, key2, key3) result(path)
-
-   !> First key to retrieve
-   character(*, tfc), intent(in) :: key1
-
-   !> Second key to retrieve
-   character(*, tfc), intent(in) :: key2
-
-   !> Third key to retrieve
-   character(*, tfc), intent(in) :: key3
-
-   !> New path
-   type(toml_path) :: path
-
-   allocate(path%path(3))
-   path%path(:) = [toml_key(key1), toml_key(key2), toml_key(key3)]
-end function new_path3
-
-
-!> Create a new path with three components
-pure function new_path4(key1, key2, key3, key4) result(path)
-
-   !> First key to retrieve
-   character(*, tfc), intent(in) :: key1
-
-   !> Second key to retrieve
-   character(*, tfc), intent(in) :: key2
-
-   !> Third key to retrieve
-   character(*, tfc), intent(in) :: key3
-
-   !> Forth key to retrieve
-   character(*, tfc), intent(in) :: key4
-
-   !> New path
-   type(toml_path) :: path
-
-   allocate(path%path(4))
-   path%path(:) = [toml_key(key1), toml_key(key2), toml_key(key3), toml_key(key4)]
-end function new_path4
-
-
-subroutine get_path_table(table, path, ptr, requested, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout), target :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Pointer to child table
-   type(toml_table), pointer, intent(out) :: ptr
-
-   !> Child value must be present
-   logical, intent(in), optional :: requested
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-   logical :: is_requested
-
-   is_requested = .true.
-   if (present(requested)) is_requested = requested
-
-   nullify(ptr)
-   call walk_path(table, path, child, is_requested, stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), ptr, is_requested, stat, origin)
-   else
-      if (.not.is_requested .and. present(stat)) stat = toml_stat%success
-   end if
-end subroutine get_path_table
-
-
-subroutine get_path_array(table, path, ptr, requested, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Pointer to child array
-   type(toml_array), pointer, intent(out) :: ptr
-
-   !> Child value must be present
-   logical, intent(in), optional :: requested
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-   logical :: is_requested
-
-   is_requested = .true.
-   if (present(requested)) is_requested = requested
-
-   nullify(ptr)
-   call walk_path(table, path, child, is_requested, stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), ptr, is_requested, stat, origin)
-   else
-      if (.not.is_requested .and. present(stat)) stat = toml_stat%success
-   end if
-end subroutine get_path_array
-
-
-subroutine get_path_keyval(table, path, ptr, requested, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Pointer to child value
-   type(toml_keyval), pointer, intent(out) :: ptr
-
-   !> Child value must be present
-   logical, intent(in), optional :: requested
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-   logical :: is_requested
-
-   is_requested = .true.
-   if (present(requested)) is_requested = requested
-
-   nullify(ptr)
-   call walk_path(table, path, child, is_requested, stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), ptr, is_requested, stat, origin)
-   else
-      if (.not.is_requested .and. present(stat)) stat = toml_stat%success
-   end if
-end subroutine get_path_keyval
-
-
-!> Retrieve TOML value as single precision float (might lose accuracy)
-subroutine get_path_value_float_sp(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Real value
-   real(tf_sp), intent(out) :: val
-
-   !> Default real value
-   real(tf_sp), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_float_sp
-
-
-!> Retrieve TOML value as double precision float
-subroutine get_path_value_float_dp(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Real value
-   real(tf_dp), intent(out) :: val
-
-   !> Default real value
-   real(tf_dp), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_float_dp
-
-
-!> Retrieve TOML value as one byte integer (might loose precision)
-subroutine get_path_value_integer_i1(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i1), intent(out) :: val
-
-   !> Default integer value
-   integer(tf_i1), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_integer_i1
-
-
-!> Retrieve TOML value as two byte integer (might loose precision)
-subroutine get_path_value_integer_i2(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i2), intent(out) :: val
-
-   !> Default integer value
-   integer(tf_i2), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_integer_i2
-
-
-!> Retrieve TOML value as four byte integer (might loose precision)
-subroutine get_path_value_integer_i4(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i4), intent(out) :: val
-
-   !> Default integer value
-   integer(tf_i4), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_integer_i4
-
-
-!> Retrieve TOML value as eight byte integer
-subroutine get_path_value_integer_i8(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i8), intent(out) :: val
-
-   !> Default integer value
-   integer(tf_i8), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_integer_i8
-
-
-!> Retrieve TOML value as logical
-subroutine get_path_value_bool(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Boolean value
-   logical, intent(out) :: val
-
-   !> Default boolean value
-   logical, intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_bool
-
-
-!> Retrieve TOML value as datetime
-subroutine get_path_value_datetime(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Datetime value
-   type(toml_datetime), intent(out) :: val
-
-   !> Default datetime value
-   type(toml_datetime), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_datetime
-
-
-!> Retrieve TOML value as deferred-length character
-subroutine get_path_value_string(table, path, val, default, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> String value
-   character(kind=tfc, len=:), allocatable, intent(out) :: val
-
-   !> Default string value
-   character(kind=tfc, len=*), intent(in), optional :: default
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, present(default), stat, origin)
-   if (associated(child)) then
-      call get_value(child, path%path(size(path%path)), val, default, stat, origin)
-   end if
-end subroutine get_path_value_string
-
-
-!> Set TOML value to single precision float
-subroutine set_path_value_float_sp(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Real value
-   real(tf_sp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_float_sp
-
-
-!> Set TOML value to double precision float
-subroutine set_path_value_float_dp(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Real value
-   real(tf_dp), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_float_dp
-
-
-!> Set TOML value to one byte integer
-subroutine set_path_value_integer_i1(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i1), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_integer_i1
-
-
-!> Set TOML value to two byte integer
-subroutine set_path_value_integer_i2(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i2), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_integer_i2
-
-
-!> Set TOML value to four byte integer
-subroutine set_path_value_integer_i4(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i4), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_integer_i4
-
-
-!> Set TOML value to eight byte integer
-subroutine set_path_value_integer_i8(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Integer value
-   integer(tf_i8), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_integer_i8
-
-
-!> Set TOML value to logical
-subroutine set_path_value_bool(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Boolean value
-   logical, intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_bool
-
-
-!> Set TOML value to datetime
-subroutine set_path_value_datetime(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Datetime value
-   type(toml_datetime), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_datetime
-
-
-!> Set TOML value to deferred-length character
-subroutine set_path_value_string(table, path, val, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> String value
-   character(kind=tfc, len=*), intent(in) :: val
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   type(toml_table), pointer :: child
-
-   call walk_path(table, path, child, .true., stat, origin)
-   if (associated(child)) then
-      call set_value(child, path%path(size(path%path)), val, stat, origin)
-   end if
-end subroutine set_path_value_string
-
-
-subroutine walk_path(table, path, ptr, requested, stat, origin)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout), target :: table
-
-   !> Path in this TOML table
-   type(toml_path), intent(in) :: path
-
-   !> Pointer to child table
-   type(toml_table), pointer, intent(out) :: ptr
-
-   !> Child value must be present
-   logical, intent(in), optional :: requested
-
-   !> Status of operation
-   integer, intent(out), optional :: stat
-
-   !> Origin in the data structure
-   integer, intent(out), optional :: origin
-
-   integer :: it
-   type(toml_table), pointer :: current, next
-
-   nullify(ptr)
-   if (.not.allocated(path%path)) then
-      if (present(stat)) stat = toml_stat%fatal
-      if (present(origin)) origin = table%origin
-      return
-   end if
-
-   current => table
-   do it = 1, size(path%path) - 1
-      call get_value(current, path%path(it)%key, next, requested, stat, origin)
-      if (.not.associated(next)) then
-         if (present(stat)) stat = toml_stat%fatal
-         if (present(origin)) origin = current%origin
-         return
-      end if
-      current => next
-   end do
-   ptr => current
-end subroutine walk_path
-
-
-end module tomlf_build_path
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
@@ -23278,17 +18399,124 @@ end module tomlf_build_path
 module tomlf_build
    use tomlf_build_array, only : get_value, set_value
    use tomlf_build_keyval, only : get_value, set_value
-   use tomlf_build_merge, only : merge_table, merge_array, merge_policy, toml_merge_config
-   use tomlf_build_path, only : get_value, set_value, toml_path
+   use tomlf_build_merge, only : merge_table, merge_array
    use tomlf_build_table, only : get_value, set_value
    implicit none
    private
 
-   public :: get_value, set_value
-   public :: merge_table, merge_array, merge_policy, toml_merge_config
-   public :: toml_path
+   public :: get_value, set_value, merge_table, merge_array
+
 
 end module tomlf_build
+
+
+!>>>>> build/dependencies/toml-f/src/tomlf/de.f90
+! This file is part of toml-f.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+module tomlf_de
+   use tomlf_constants, only : TOML_NEWLINE
+   use tomlf_de_character, only : toml_character_tokenizer, new
+   use tomlf_error, only : toml_error, io_error
+   use tomlf_type, only : toml_table
+   implicit none
+   private
+
+   public :: toml_parse
+
+
+   interface toml_parse
+      module procedure :: toml_parse_unit
+      module procedure :: toml_parse_string
+   end interface toml_parse
+
+
+contains
+
+
+!> Parse a TOML input from a given IO unit.
+subroutine toml_parse_unit(table, unit, error)
+   use iso_fortran_env
+   use tomlf_constants, only: TOML_NEWLINE
+   type(toml_table), allocatable, intent(out) :: table
+   integer, intent(in) :: unit
+   type(toml_error), allocatable, intent(out), optional :: error
+   character(len=:), allocatable :: conf
+   integer, parameter :: bufsize = 512
+   character(len=bufsize) :: buffer
+   character(len=bufsize) :: error_msg
+   integer :: size
+   integer :: stat
+   allocate(character(len=0) :: conf)
+   do
+      read(unit, '(a)', advance='no', iostat=stat, iomsg=error_msg, size=size) &
+         & buffer
+      if (stat > 0) exit
+      conf = conf // buffer(:size)
+      if (stat < 0) then
+         if (is_iostat_eor(stat)) then
+            stat = 0
+            conf = conf // TOML_NEWLINE
+         end if
+         if (is_iostat_end(stat)) then
+            stat = 0
+            exit
+         end if
+      end if
+   end do
+
+   if (stat /= 0) then
+      if (present(error)) then
+         call io_error(error, trim(error_msg))
+      else
+         write(error_unit, '(a, /, a)') "IO runtime error", trim(error_msg)
+      end if
+      return
+   end if
+
+   call toml_parse_string(table, conf, error)
+
+end subroutine toml_parse_unit
+
+
+!> Wrapper to parse a TOML string.
+subroutine toml_parse_string(table, conf, error)
+   use iso_fortran_env, only: error_unit
+   type(toml_table), allocatable, intent(out) :: table
+   character(len=*), intent(in), target :: conf
+   type(toml_error), allocatable, intent(out), optional :: error
+   type(toml_character_tokenizer) :: de
+
+   !> connect deserializer to configuration
+   call new(de, conf)
+
+   call de%parse
+
+   if (allocated(de%error)) then
+      if (present(error)) then
+         call move_alloc(de%error, error)
+      else
+         write(error_unit, '(a)') de%error%message
+      end if
+      return
+   end if
+
+   call move_alloc(de%root, table)
+
+end subroutine toml_parse_string
+
+
+end module tomlf_de
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf.f90
@@ -23307,15 +18535,12 @@ end module tomlf_build
 
 !> Minimal public API for TOML-Fortran
 module tomlf
-   use tomlf_build, only : get_value, set_value, toml_path
-   use tomlf_datetime, only : toml_datetime, to_string
-   use tomlf_de, only : toml_parse, toml_load, toml_loads, &
-      & toml_context, toml_parser_config, toml_level
+   use tomlf_build, only : get_value, set_value
+   use tomlf_de, only : toml_parse
    use tomlf_error, only : toml_error, toml_stat
    use tomlf_ser, only : toml_serializer
-   use tomlf_terminal, only : toml_terminal
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_key, is_array_of_tables, &
-      & new_table, add_table, add_array, add_keyval, len
+   use tomlf_type, only : toml_table, toml_array, toml_key, is_array_of_tables, &
+      & new_table, add_table, add_array, len
    use tomlf_utils_sort, only : sort
    use tomlf_version, only : tomlf_version_string, tomlf_version_compact, &
       & get_tomlf_version
@@ -25161,7 +20386,7 @@ contains
         !> Error handling
         type(error_t), allocatable, intent(out) :: error
 
-        character(len=:), allocatable :: name, url
+        character(len=:), allocatable :: name
         type(toml_key), allocatable :: list(:)
         logical :: url_present, git_target_present, has_path
         integer :: ikey
@@ -25184,25 +20409,13 @@ contains
                 call syntax_error(error, "Key "//list(ikey)%key//" is not allowed in dependency "//name)
                 exit
 
-            case("git")
-                if (url_present) then
-                    call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
-                    exit
-                end if
-                call get_value(table, "git", url)
-                if (.not.allocated(url)) then
-                    call syntax_error(error, "Dependency "//name//" has invalid git source")
-                    exit
-                end if
-                url_present = .true.
-
-            case("path")
+            case("git", "path")
                 if (url_present) then
                     call syntax_error(error, "Dependency "//name//" cannot have both git and path entries")
                     exit
                 end if
                 url_present = .true.
-                has_path = .true.
+                has_path = list(ikey)%key == 'path'
 
             case("branch", "rev", "tag")
                 if (git_target_present) then
@@ -27696,9 +22909,9 @@ function get_macros(id, macros_list, version) result(macros)
     !> Set macro defintion symbol on the basis of compiler used
     select case(id)
     case default
-        macro_definition_symbol = " -D"
+        macro_definition_symbol = "-D"
     case (id_intel_classic_windows, id_intel_llvm_windows)
-        macro_definition_symbol = " /D"
+        macro_definition_symbol = "/D"
     end select
 
     !> Check if macros are not allocated.
@@ -27722,14 +22935,23 @@ function get_macros(id, macros_list, version) result(macros)
                     if (index(valued_macros(size(valued_macros)), "version") /= 0) then
 
                         !> These conditions are placed in order to ensure proper spacing between the macros.
-                        macros = macros//macro_definition_symbol//trim(valued_macros(1))//'='//version
+                        if (len(macros) == 0) then
+                            macros = macros//macro_definition_symbol//trim(valued_macros(1))//'='//version
+                        else
+                            macros = macros//' '//macro_definition_symbol//trim(valued_macros(1))//'='//version
+                        end if
                         cycle
                     end if
                 end if
             end if
         end if
 
-        macros = macros//macro_definition_symbol//macros_list(i)%s
+        !> These conditions are placed in order to ensure proper spacing between the macros.
+        if (len(macros) == 0) then
+            macros = ' '//macros//macro_definition_symbol//macros_list(i)%s
+        else
+            macros = macros//' '//macro_definition_symbol//macros_list(i)%s
+        end if
 
     end do
 
@@ -30955,13 +26177,10 @@ subroutine resolve_target_linking(targets, model)
     integer :: i
     character(:), allocatable :: global_link_flags, local_link_flags
     character(:), allocatable :: global_include_flags
-    character(:), allocatable :: local_archives
 
     if (size(targets) == 0) return
 
     global_link_flags = ""
-    local_archives = ""
-
     if (allocated(model%link_libraries)) then
         if (size(model%link_libraries) > 0) then
             global_link_flags = model%compiler%enumerate_libraries(global_link_flags, model%link_libraries)
@@ -31010,7 +26229,6 @@ subroutine resolve_target_linking(targets, model)
             allocate(target%link_objects(0))
 
             if (target%target_type == FPM_TARGET_ARCHIVE) then
-                local_archives = ' '//target%output_file //' '// local_archives
                 global_link_flags = target%output_file // global_link_flags
 
                 call get_link_objects(target%link_objects,target,is_exe=.false.)
@@ -31026,12 +26244,8 @@ subroutine resolve_target_linking(targets, model)
 
                 if (allocated(target%link_libraries)) then
                     if (size(target%link_libraries) > 0) then
-                        target%link_flags=target%link_flags//local_archives
-                        target%link_flags = &
-                                model%compiler%enumerate_libraries(target%link_flags, target%link_libraries)
-                        local_link_flags=target%link_flags//local_archives
-                        local_link_flags = &
-                                model%compiler%enumerate_libraries(local_link_flags, target%link_libraries)
+                        target%link_flags = model%compiler%enumerate_libraries(target%link_flags, target%link_libraries)
+                        local_link_flags = model%compiler%enumerate_libraries(local_link_flags, target%link_libraries)
                     end if
                 end if
 
