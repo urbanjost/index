@@ -3,7 +3,8 @@
 xrdb -merge <<\EOF
 XTerm*VT100.geometry:	80x24
 EOF
-esc -xrdb|xrdb -merge
+# became very very slow XTerm(353) 20221217
+#esc -xrdb|xrdb -merge
 esc -bg brown -fg white -rows 40 -cols 132 -cr red -fn 5
 t
 exit
