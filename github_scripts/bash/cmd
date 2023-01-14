@@ -1,0 +1,327 @@
+#!/bin/bash --norc
+#set -x
+# @(#) fcmd(1sh) - find command pathnames and optionally act on them
+# Version 1.0; Copyright (c) 1991, by John S. Urban
+# Revision 2: 06/15/92
+# Revision 3: 06/15/05 CYGWIN commands sometimes need A.exe instead of A
+################################################################################
+# select editor:
+# use $FCEDIT, then $EDITOR, then vi
+# $FCEDIT - edit mode for bash(1) and korn(1) shell
+# $EDITOR - common variable used for this purpose (tcsh,...)
+# $VISUAL - common variable used for this purpose (tcsh,...)
+export EDIT
+EDIT=${FCEDIT:-${EDITOR:-${VISUAL:-vi}}}
+################################################################################
+usage="\
+fcmd [-vi] [-s] [-P] [-c 'CMD'] [-h] [-x] [-w] [-f] [-l] [-p] [-cat] command_name(s)
+fcmd [[-v|-vc|-vp|-vP] varname]
+full name: $0
+"
+################################################################################
+HELP(){
+echo "
+$usage
+////////////////////////////////////////////////////////////////////////////////
+//  Find commands in your search path and perform commands on them.           //
+//  The command names may contain wild-card strings like 'x*'.                //
+//  The default command is to echo the full pathnames.                        //
+//  Multiple occurrences of a command name in the path are listed.            //
+//                                                                            //
+//    -c 'CMD:CMD:CMD' use specified command(s) on each file. eg:             //
+//            ldd, what, sum, wc, file, whereis, vi, ...                      //
+//    -h put a header out with each file name                                 //
+//    -x place all command output from -c onto one line                       //
+//    Shortcuts for various -c CMDS:                                          //
+//       -cat    cat -vet                                                     //
+//       -f      file                                                         //
+//       -l      ls -l                                                        //
+//       -s      strings                                                      //
+//       -vi     vi -R    # invoke vi in read mode (use :w! to force a write) //
+//                          If variable EDIT is set, use it instead of vi.    //
+//                          EDIT=\${FCEDIT:-\${EDITOR:-\${VISUAL:-vi}}}          //
+//    -P      pretty layout of what(1), ls(1), file(1), whereis(1)            //
+//    -w      wild-card your string (make string '*string*')                  //
+//                                                                            //
+//  e.g:                                                                      //
+//    fcmd 'z*'         # list commands beginning with the letter z           //
+//    fcmd -w zip       # list all commands with string 'zip' in them.        //
+//    fcmd -c 'echo:sum:ls -l'  date                                          //
+//    fcmd -vi myscript # find command myscript and edit it                   //
+//    fcmd -c whereis '*'|grep -vw man # find commands missing a man page     //
+//    fcmd '*'          # list all commands in search path                    //
+//    fcmd -c wc:sum:ls\ -l -x  ls|column -t                                  //
+//                                                                            //
+//----------------------------------------------------------------------------//
+// List and clean up colon-delimited lists like the PATH variable ...         //
+//    -v      list variable of form A:B:C (MANPATH, LD_LIBRARY_PATH, ...)     //
+//            fcmd -v MANPATH. Default name is PATH                           //
+//    -vc     Like -v, but clean out duplicates                               //
+//    -ve     Like -v, but clean out duplicates and edit with \$EDITOR         //
+//    -vp     put clean list back together with space delimiter               //
+//    -vP     put clean list back together with colon delimiter               //
+//                                                                            //
+//    e.g: PATH=\`fcmd -vP\`  # clean up PATH variable in Bourne shell          //
+//         set path=\`fcmd -vp\`  # clean up path variable in C shell           //
+//         fcmd -v MANPATH   # make list of MANPATH variable                  //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
+"
+}
+################################################################################
+if (test $# -eq 0)
+then
+   clear
+   HELP
+   exit 1
+fi
+################################################################################
+listpath(){
+# @(#) listpath - List current Bourne shell search path
+# John S. Urban
+#
+# convert colons in $PATH to spaces so for command will parse it
+# and show neat (one directory per line) Bourne search path
+#
+echo "$LISTVAR" |tr ':' '\n'
+}
+################################################################################
+DRAWLINE(){
+# @(#) DRAWLINE - make a header for the -h switch
+test "$LINE" = TRUE && cat <<EOF 
+================================================================================
+$*
+--------------------------------------------------------------------------------
+EOF
+}
+################################################################################
+EXECUTE(){
+   (IFS=:
+      for execute in $CMDS2
+      do
+         case "`uname -s`" in
+         *CYGWIN*) [ -f "$files.exe" ]  && files="$files.exe";;
+         esac
+
+         eval IFS= ${execute:-':'} $files 
+      done
+   )
+}
+################################################################################
+UNIQ(){
+   # @(#) get rid of duplicates in a column list while retaining original order
+   # 1 number the lines so you can put them in original numeric order 
+   # 2 sort by the second field (the original first field before the numbers)
+   # 3 get rid of lines that are duplicates, ignoring the added numeric field
+   # 4 sort back into original order by using the added line numbers 
+   # 5 delete the added line numbers
+   cat -n|sort -b -k 2,2|uniq -f 1|sort -k 1n,1n|cut -f 2-
+}
+################################################################################
+UNIQ_EDIT(){
+   UNIQUE=$$_$USER.txt
+   # get rid of duplicates in a list while retaining original order
+   cat -n|sort -b -k 2,2|uniq -f 1|sort -k 1n,1n|cut -f 2- >/tmp/$UNIQUE
+#------------------------------------------------------------------------------#
+   $EDIT /tmp/$UNIQUE < $TTY
+   cat /tmp/$UNIQUE
+   rm /tmp/$UNIQUE
+}
+################################################################################
+PRETTY_TABLE(){
+FILENAME=$1
+[ -f $FILENAME.exe ]  && FILENAME=$FILENAME.exe  # for CYGWIN
+(
+cat <<EOF
+
+================================================================================
+sum: `sum $FILENAME`
+================================================================================
+Last modification ls -l. ..... `ls -l  $FILENAME`
+Last access       ls -ul ..... `ls -ul $FILENAME`
+Last inode change ls -cl ..... `ls -cl $FILENAME`
+--------------------------------------------------------------------------------
+file ...... `file $FILENAME`
+--------------------------------------------------------------------------------
+what ...... `what $FILENAME`
+--------------------------------------------------------------------------------
+whereis ... `whereis $FILENAME`
+================================================================================
+EOF
+)
+# whereis should only be used with full pathnames, so do not use pathnames
+# starting with .
+}
+################################################################################
+# Get the parameters
+#
+LISTVAR="PATH"
+LINE=FALSE
+FILTER="cat"
+CMDOPT=TRUE
+LISTPATH=FALSE
+PRETTY=FALSE
+WILD=FALSE
+CMDS=" "
+CMDS2=
+export CMDS2
+export CMDS
+LISTVAR=$PATH
+#-------------------------------------------------------------------------------
+while test -n "$1"
+do
+  case "$1" in
+#-------------------------------------------------------------------------------
+#      LIST PATH NAME or other colon-delimited name list.
+-v)
+       LISTPATH=TRUE
+       [ "$#" -gt 0 ] && shift
+       eval LISTVAR=\$${1:-PATH}
+       echo REMAIN $#
+       [ "$#" -gt 0 ] && shift
+;;
+-vc)
+       LISTPATH=TRUE FILTER=UNIQ
+       [ "$#" -gt 0 ] && shift
+       eval LISTVAR=\$${1:-PATH}
+       [ "$#" -gt 0 ] && shift
+;;
+-ve)
+       LISTPATH=TRUE FILTER=UNIQ_EDIT
+       [ "$#" -gt 0 ] && shift
+       export TTY=`tty`
+       eval LISTVAR=\$${1:-PATH}
+       [ "$#" -gt 0 ] && shift
+;;
+-vp)
+       LISTPATH=TRUE FILTER=UNIQ2
+       UNIQ2(){
+       UNIQ|xargs
+       }
+       [ "$#" -gt 0 ] && shift
+       eval LISTVAR=\$${1:-PATH}
+       [ "$#" -gt 0 ] && shift
+;;
+-vP)
+       LISTPATH=TRUE
+       FILTER=UNIQ3
+       UNIQ3(){
+       ( UNIQ
+         echo $OTHERS|tr ' ' '\n'
+       )|tr '\n' ':'
+       }
+       [ "$#" -gt 0 ] && shift
+       eval LISTVAR=\$${1:-PATH}
+       [ "$#" -gt 0 ] && shift
+       OTHERS="$*"
+       set --
+;;
+#-------------------------------------------------------------------------------
+-P)    PRETTY=TRUE FILTER=more; [ "$#" -gt 0 ] && shift ;; #      PRETTY LISTING
+#-------------------------------------------------------------------------------
+-w)    WILD=TRUE; [ "$#" -gt 0 ] && shift ;;              #      WILD-CARD THE STRINGS
+#-------------------------------------------------------------------------------
+--help|-help) HELP ;exit ;;
+#-------------------------------------------------------------------------------
+-h)
+       LINE=TRUE  [ "$#" -gt 0 ] && shift ;;              #      ADD HEADER
+#-------------------------------------------------------------------------------
+-x)    FILTER=xargs; [ "$#" -gt 0 ] && shift ;;           #      PUT OUTPUT ONTO A SINGLE LINE
+#-------------------------------------------------------------------------------
+-l)    CMDOPT=TRUE CMDS2="${CMDS2}:ls -l           ";[ "$#" -gt 0 ] && shift ;; # LS 
+-cat)  CMDOPT=TRUE CMDS2="${CMDS2}:cat -v -e -t    ";[ "$#" -gt 0 ] && shift ;; # CAT 
+-s)    CMDOPT=TRUE CMDS2="${CMDS2}:strings         ";[ "$#" -gt 0 ] && shift ;; # STRINGS 
+-f)    CMDOPT=TRUE CMDS2="${CMDS2}:file            ";[ "$#" -gt 0 ] && shift ;; # FILE 
+-vi)   CMDOPT=TRUE CMDS2="${CMDS2}:${EDIT:-vi -R}";[ "$#" -gt 0 ] && shift ;; # VI 
+#-------------------------------------------------------------------------------
+#      EXECUTE COMMAND ON EACH FILENAME
+-c)
+       CMDOPT=TRUE
+       CMDS2="${CMDS2}${2}:"
+       [ "$#" -gt 0 ] && shift
+       [ "$#" -gt 0 ] && shift
+;;
+#-------------------------------------------------------------------------------
+#      UNKNOWN KEYWORD (cannot look for commands starting with a -)
+-*)
+       echo "${0}:: Error:  unknown parameter --- $1" 1>&2
+       echo "$usage$" 1>&2
+       [ "$#" -gt 0 ] && shift
+;;
+#-------------------------------------------------------------------------------
+#      COMMAND NAME
+*)
+       CMDS="$CMDS ${1}"
+       [ "$#" -gt 0 ] && shift
+;;
+#-------------------------------------------------------------------------------
+esac
+#-------------------------------------------------------------------------------
+done
+CMDS2=${CMDS2:-':echo'}
+#echo -- "COMMANDS TO LIST ARE $CMDS"
+#echo -- "COMMANDS TO RUN ARE $CMDS2"
+################################################################################
+set -f
+for CMD in ${CMDS}
+do
+   FOUNDIT=FALSE
+   test "$WILD" = 'TRUE' && CMD='*'$CMD'*'
+   for paths in `listpath|UNIQ`
+   do
+      set +f
+      for files in `ls -d $paths/${CMD} 2>/dev/null` #  for files that are found
+      do
+         #----------------------------------------------------------------------
+         #  if file is not a directory and is executable
+         if  test -x $files -a  ! -d $files
+         then
+            FOUNDIT=TRUE
+            :
+         else
+            :
+            # break # break out of for loop 
+         fi
+         #----------------------------------------------------------------------
+         DRAWLINE "$files"
+         #----------------------------------------------------------------------
+         if test "$CMDOPT" = 'TRUE'
+         then
+	    if test "$FILTER" = 'cat'
+	    then
+	       EXECUTE
+	    else
+	       EXECUTE | $FILTER
+	    fi
+         fi
+
+         #----------------------------------------------------------------------
+         if test "$PRETTY" = 'TRUE'
+         then
+            PRETTY_TABLE $files
+         fi
+         #----------------------------------------------------------------------
+      done
+   done
+   [ "$FOUNDIT" = FALSE ] && echo "command $CMD is built in or doesn't exist in your current path" >&2
+done
+set +f
+################################################################################
+#-------------------------------------------------------------------------------
+if test "$LISTPATH" = 'TRUE'
+   then
+      if test "$FILTER" = 'cat'
+      then
+        listpath
+      else
+        listpath|eval $FILTER
+      fi
+fi
+################################################################################
+exit
+################################################################################
+# Next time:
+# Found there is a which command in C-shell that does something like this
+# should query if should do vi after file command
+# make it so can perform an arbitrary command with -cmd
+# maybe add a feature to invoke man(1)

@@ -1,0 +1,74 @@
+Rounding in Fortran
+Ashwin
+14h
+
+Does Fortran provide intrinsic functions to round off real numbers to the specified number of decimal points? Like
+
+round(5.2317,3)
+
+should result in 5.232.
+
+msz59
+13h
+
+No, there is no such intrinsic function. You can write your own function, like
+
+function round(val, n)
+implicit none
+real :: val, round
+integer :: n
+round = anint(val*10.0**n)/10.0**n
+end function round
+
+In old times, that would be a good candidate for a statement function, defined as single expression inside any program unit like
+round(val,n)=anint(val*10.0**n)/10.0**n
+but statement functions were declared obsolescent in Fortran 95 already.
+
+In any case, be warned that the rounded value may often be not representable exactly, so unless you use the proper format, you may get output like 5.2319997 or so.
+Ashwin
+7h
+
+Oh. That’s a nice way to round a number.
+epagone
+msz59
+6h
+
+Nice! It might be a great candidate for stdlib.
+
+EDIT: The solution suggested by @kargl based on rouding edit descriptors is preferable IMO. I completely forgot about them and I wonder why I don’t remember to use them myself.
+kargl
+4h
+
+Fortran 2018:
+
+   R1319 round-edit-desc  is RU
+                          or RD
+                          or RZ
+                          or RN
+                          or RC
+                          or RP
+
+13.7.2.3.8 Input/output rounding mode
+
+x = 5.2317
+write(*,'(F5.3)') x
+write(*,'(RU,F5.3)') x
+write(*,'(RD,F5.3)') x
+write(*,'(RN,F5.3)') x
+end
+
+ % gfortran11 -o z a.f90
+ % ./z
+ 5.232
+ 5.232
+ 5.231
+ 5.232
+
+msz59
+2h
+
+Surely for output this could serve, though would require creating the descriptor dynamically. But
+
+    fw.d may easily fail for values in bigger range
+    I thought the OP wanted to get that value for further proceeding, not just for output
+
