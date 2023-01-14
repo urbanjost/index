@@ -1,0 +1,179 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>indenting Fortran</h1>
+
+<h2>Using Common Editors</h2>
+
+<p>Several commonly available editors will automatically indent your
+source  as you compose the code. Two of the most popular 
+editors that will do so are vim(1) and emacs(1) <em>(assuming you
+have current versions installed that were built using the most common
+options)</em>.</p>
+
+<p>That is, those editors  will automatically recognize your code as
+Fortran if the file suffix is .F, .F90, .f, or .f90 and will apply
+language-specific indenting rules as you create your code.</p>
+
+<p>The editors can also be used to re-indent existing files:</p>
+
+<h3>vim(1)</h3>
+
+<p>Assuming vim(1) has been built with internal indenting (typically it is)
+To re-indent an entire file in the vim(1) editor, start editing the file
+and enter</p>
+
+<pre><code>gg=G
+</code></pre>
+
+<p>For more information on the "=" command enter</p>
+
+<pre><code>:help =
+</code></pre>
+
+<p>while in the vim(1) editor. If the indenting is incorrect for free-format source,
+look for the topic "free-format fortran in vim" and update your indent file.</p>
+
+<p>To use vim(1) as a command to indent many files use</p>
+
+<pre><code>vim -T dumb -c 'set backup' -c 'argdo execute "normal gg=G"|w' -c 'q!' --not-a-term *.f90
+</code></pre>
+
+<p>if you want backup files for each file, or use</p>
+
+<pre><code>vim -T dumb  -c 'set nobackup nowritebackup noswapfile' -c 'argdo execute "normal gg=G"|w' -c 'q!' --not-a-term *.f90
+</code></pre>
+
+<p>if you do not need the backup files (and to make it run optimally).</p>
+
+<h3>emacs(1)</h3>
+
+<p>To use emacs(1) to indent free-format fortran files as a command create
+a small script file called indent_emacs:</p>
+
+<pre><code>#!/bin/bash
+for FILENAME in $*
+do
+   emacs --batch $FILENAME -f mark-whole-buffer -f f90-indent-subprogram -f save-buffer
+done
+</code></pre>
+
+<p>And then enter "chmod u+xr indent_emacs". Now you can use</p>
+
+<pre><code>./indent_emacs *.f90
+</code></pre>
+
+<p>to batch indent many files.</p>
+
+<h2>Programs</h2>
+
+<p>A Fortran indenter program named
+<a href="https://sourceforge.net/projects/findent/"> findent(1) </a>
+can be used as a CLI (Command Line Interface) command, with a Java GUI
+interface, and from several editors such as vim.</p>
+
+<h2>Examples</h2>
+
+<p>Given the file</p>
+
+<pre><code> program demo_expand
+ !  test filter to expand escape sequences in input lines
+ use M_strings, only : expand
+ character(len=1024) :: line
+ integer             :: ios
+ READFILE: block
+ do
+ read(*,'(A)',iostat=ios)line
+ if(ios /= 0) exit READFILE
+ write(*,'(a)')trim(expand(line))
+ enddo
+ endblock READFILE
+ end program demo_expand
+</code></pre>
+
+<p>Then the commands</p>
+
+<pre><code>findent &lt;demo_expand.f90 &gt;demo_expand.f90.new;mv demo_expand.f90.new demo_expand.f90
+</code></pre>
+
+<p>produces</p>
+
+<pre><code>program demo_expand
+!  test filter to expand escape sequences in input lines
+   use M_strings, only : expand
+   character(len=1024) :: line
+   integer             :: ios
+   READFILE: block
+      do
+         read(*,'(A)',iostat=ios)line
+         if(ios /= 0) exit READFILE
+         write(*,'(a)')trim(expand(line))
+      enddo
+   endblock READFILE
+end program demo_expand
+</code></pre>
+
+<p>And the command</p>
+
+<pre><code>vim -T dumb -c 'normal gg=G' -c w -c 'q!' --not-a-term xxx.f90
+</code></pre>
+
+<p>Produces</p>
+
+<pre><code>program demo_expand
+        !  test filter to expand escape sequences in input lines
+        use M_strings, only : expand
+        character(len=1024) :: line
+        integer             :: ios
+        READFILE: block
+                do
+                read(*,'(A)',iostat=ios)line
+                if(ios /= 0) exit READFILE
+                write(*,'(a)')trim(expand(line))
+                enddo
+        endblock READFILE
+end program demo_expand
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:35 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

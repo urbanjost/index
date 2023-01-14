@@ -1,0 +1,161 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>block comments in Fortran</h1>
+
+<p>Fortran does not support block comments. </p>
+
+<h2>Editor support of block text</h2>
+
+<p>Some editors can support editing block comment
+sections in Fortran, such as <em>emacs</em>(1) and <em>vim</em>(1).</p>
+
+<h2>Using pre-processors</h2>
+
+<p>In general, a pre-processor can be used to provide support for
+documentation being combined with source code. For example, the commonly
+available <em>fpp</em>(1) or <em>cpp</em>(1) commands can be used If the file <em>source.F90</em>
+contains</p>
+
+<pre><code> #ifdef DOCUMENT
+
+This is a block of text that 
+can be used as documentation
+
+ #else 
+
+ program demo
+write(*,*)'Hello world'
+ end program demo 
+
+ #endif
+</code></pre>
+
+<p>Then the <em>cpp</em>(1) command can be used to extract the comments</p>
+
+<pre><code> # extract text block info file source.txt 
+ cpp -DDOCUMENT -P -C -traditional source.F90 &gt;source.txt
+ # compile code skipping text block.
+ f90 source.F90
+</code></pre>
+
+<p>Unfortunately, the text block can be placed in a seperate file, but
+will then not appear in the source file.  The much more powerful <em>m4</em>(1)
+pre-processor can be used to maintain code and documentation in the
+same file more flexibly, but has a steeper learning curve than <em>fpp</em>(1)
+or <em>cpp</em>(1).</p>
+
+<p><a href="http://www.urbanjost.altervista.org/LIBRARY/libGPF/GPF.html">ufpp</a>
+is a Fortran pre-processor included in the GPF (General Purpose Fortran)
+repository that supports several types of block text options to support
+generating man(1) pages as well as documented code. For example, the following
+input file</p>
+
+<pre><code> $!==============================================================================
+ $BLOCK COMMENT -file example.3.man
+ NAME
+    example(3f) - [FORTRAN] subroutine example using ufpp(1)
+ SYNOPSIS
+    subroutine example()
+ DESCRIPTION
+    This is an example program built using several of the modes
+    of the ufpp(1) $DOCUMENT directive. This section will become
+    comments in the code, and optionally also be written to the file
+    "$UFPP_DOCUMENT_DIR/example.3.man" if the environment variable
+    $UFPP_DOCUMENT_DIR is set.
+
+    In this case, the data could easily be processed with txt2man(1)
+    and made into an automatic man(1) page.
+
+    Other formats often used here are "markdown" documents, Tex, HTML,
+    and *roff files.
+
+ EXAMPLE
+ $BLOCK
+ $!==============================================================================
+ program testit
+ implicit none
+ integer :: i,io=6
+ $!==============================================================================
+ $BLOCK WRITE !  These will become write statements to unit IO
+ hello world!
+   hello world,again!
+     hello world, once more!
+ $BLOCK
+ end program testit
+ $!==============================================================================
+</code></pre>
+
+<p>would generate the following code, and optionally generate a seperate file
+with the help text in it.</p>
+
+<pre><code>! NAME
+!    example(3f) - [FORTRAN] subroutine example using ufpp(1)
+! SYNOPSIS
+!    subroutine example()
+! DESCRIPTION
+!    This is an example program built using several of the modes
+!    of the ufpp(1) $DOCUMENT directive. This section will become
+!    comments in the code, and optionally also be written to the file
+!    "$UFPP_DOCUMENT_DIR/example.3.man" if the environment variable
+!    $UFPP_DOCUMENT_DIR is set.
+! 
+!    In this case, the data could easily be processed with txt2man(1)
+!    and made into an automatic man(1) page.
+! 
+!    Other formats often used here are "markdown" documents, Tex, HTML,
+!    and *roff files.
+! 
+! EXAMPLE
+!============================================================================
+program testit
+implicit none
+integer :: i,io=6
+write(io,'(a)')'hello world!'
+write(io,'(a)')'  hello world,again!'
+write(io,'(a)')'    hello world, once more!'
+end program testit
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:34 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Stream I/O on stdin and stdout</h1>
+
+<p>Fortran 2003 introduces stream I/O for Fortran; but does not 
+supply a way to make stdin and stdout stream files. One method
+is to call C routines to do the I/O.</p>
+
+<p>It is strongly suggested you not mix I/O between Fortran and C on the
+same units.</p>
+
+<p>Callling C from Fortran is less problematic with the Fortran 2003 ISO_C_BINDING,
+so this example shows that method.</p>
+
+<h2>Example</h2>
+
+<p>This shell script makes the C routines getkeyC and putkeyC, a Fortran binding to the C
+routines, and an example program; and then builds and executes the program.</p>
+
+<pre><code> #!/bin/sh
+ ####To get stream I/O out of stdin and stdout, make a getc and putc callable from Fortran
+ cat &gt; getkey.c &lt;&lt;\EOF
+ #include &lt;stdlib.h&gt;
+ char getkeyC(void) {
+ /* @(#) Driver for reading a character from stdin */
+         char c;
+         read(0, &amp;c, 1);
+         return(c);
+ }
+ int putkeyC(char c) {
+ /* @(#) Driver for writing a character to stdout */
+         write(1, &amp;c, 1);
+         return(c);
+ }
+ /******************************************************************************/
+ EOF
+ ################################################################################
+ cat &gt; f2003.f90 &lt;&lt;\EOF
+ !=======================================================================--------
+ !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+ !=======================================================================--------
+ ! make Fortran/C interface for C routine getkey(3C)
+ module M_getkey
+    use iso_c_binding
+    implicit none
+    public
+       interface
+          function getkeyI() bind(c, name='getkeyC')
+             use iso_c_binding
+             implicit none
+             integer(kind=c_char) :: getkeyI
+          end function getkeyI
+
+          function pkey(char) bind(c, name='putkeyC')
+             use iso_c_binding
+             implicit none
+             integer(kind=c_int) :: pkey
+             character(kind=c_char) :: char
+          end function pkey
+       end interface
+       contains
+         character*1 function gkey()
+        gkey=char(getkeyI())
+    end function gkey
+ end module M_getkey
+ !=======================================================================--------
+ !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()
+ !=======================================================================--------
+ !-------------------------------------------------------------------------------
+ program test_getkey
+    use M_getkey
+    character :: A
+    integer :: icount
+    icount=0
+    write(*,*)'begin striking keys to demonstrate interactive raw I/O mode'
+    write(*,*)'q to quit; up to 40 characters'
+    istat=pkey('|')
+    do
+       A=gkey()
+       icount=icount+1
+       istat=pkey(A)
+       istat=pkey('|')
+       if(A.eq.'q')stop
+       if(icount.gt.40)stop
+    enddo
+ end program test_getkey
+ EOF
+ ################################################################################
+ (
+ exec 2&gt;&amp;1
+ set -x
+ rm -f getkey.o getkey getkey.exe
+ gcc -c getkey.c
+ gfortran f2003.f90 getkey.o -o getkey
+ # demonstrate non-interactive behavior
+ echo 'abcdefghijklmnopqrstuvwxyz'|./getkey
+ ls -ltrasd getkey
+ rm -f getkey.o m_getkey.mod # clean up
+ rm -f getkey.c f2003.f90
+ rm -f getkey.exe getkey
+ )|tee getkey.log
+ exit
+</code></pre>
+
+<h2>Alternatives</h2>
+
+<p>In some cases using non-advancing I/O on stdin and stdout will work.</p>
+
+<p>In SOME programming environments you can trick stdin and stdout to be direct access
+files of RECL=1, and read and write on RECL length at a time. Make sure your record
+length for RECL=1 is 1 byte, not some other unit like 4 bytes. There is often a compiler
+switch to make the unit bytes even if that is not the default.</p>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:36 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

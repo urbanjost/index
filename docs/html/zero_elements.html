@@ -1,0 +1,130 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>"array=[]" will not work</h1>
+
+<p>If you want to initialize an array to have zero elements, something like</p>
+
+<pre><code>integer,allocatable :: ints(:)
+ints=[]                         ! WILL NOT WORK
+ints=[ints,10] ! add element to array
+ints=[ints,20] ! add element to array
+ints=[ints,30] ! add element to array
+write(*,*) ints
+end
+</code></pre>
+
+<p>will produce a compiler error along the lines of  </p>
+
+<pre><code> Error: Empty array constructor at (1) is not allowed
+</code></pre>
+
+<p>In Fortran a general rule is that the right-hand side of an assignment
+must be evaluated first, and the simple expressions "[]" is incomplete
+because there is no way to determine the type of the expression. 
+Fortran does not have a NULL type. So you need to use something like</p>
+
+<pre><code>ints=[integer ::]
+!     ^^^^^^^^^^
+</code></pre>
+
+<p>or</p>
+
+<pre><code>allocate(ints(0))
+</code></pre>
+
+<p>For character variables something like</p>
+
+<pre><code>chars=[character(len=0) :: ]
+</code></pre>
+
+<p>or  </p>
+
+<pre><code>allocate(character(len=0) :: chars(0))
+</code></pre>
+
+<p>would allocate zero character elements of zero length.</p>
+
+<p>The following example program creates a file with various length lines
+and then reads it in to an array, allocating and reallocating the array
+that starts off with zero elements until the file has been read into the
+array. The length of the elements is adjusted to the longest length read
+so far with each read. </p>
+
+<p>Assuming you have a <em>small</em> file called "lines.txt" (note this does a lot
+of reallocations and is storing the file in memory) here is an example 
+program that starts with an array called WORDS which is initially allocated
+as having zero character elements of zero length and ends up having the
+entire contents of the file "lines.txt".</p>
+
+<pre><code>program dusty_corner
+implicit none
+character(len=:),allocatable :: words(:)
+character(len=4096)          :: line     ! ASSUMPTION that LINE is large enough for any input file
+integer                      :: big=0,ios,ipos,iposback=1,ilen
+
+words=[character(len=0)::]               ! Allocate zero-size array
+!!words=[]  ! is not standard because cannot tell type of a null array, but intuitively seems like
+!!          ! it should be a special case where LHS is used to determine type.
+open(10,file='lines.txt')
+
+INFINITE: do
+   read(10,'(a)',iostat=ios)line
+   if(ios.ne.0)exit INFINITE
+   write(*,*)'LINE=',trim(line)
+   ! get length of last line read ASSUMPTION: reading from standard disk file
+   inquire(10,pos=ipos) ! get position of file being read
+   ilen=ipos-iposback-1 ! find change from last read, which should be length of line read
+   iposback=ipos        ! store end of last line
+
+   big=max(big,ilen)    ! length of longest line read so far
+   words=[ CHARACTER(LEN=big) :: words, line ] ! words reallocated to LEN=BIG and new line added
+enddo INFINITE
+
+write(*,*)'FINAL ARRAY' ! should print entire file
+write(*,'("[",a,"]":)')words
+end program dusty_corner
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:35 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

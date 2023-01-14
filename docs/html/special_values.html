@@ -1,0 +1,139 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>special values (ie. Nan, Infinity, ...)</h1>
+
+<p>In general you are probably trying to avoid generating infinite values
+and NaNs (Not a Number) ; but there are now facilities for handing
+them in a standard fashion. Partly because of this you should consider
+making your procedures handle a Nan or Infinity appropriately  if they
+are likely to be used in a number of applications.</p>
+
+<p>When available, The best alternative is to use the IEEE_ARITHMETIC module.
+The IEEE interface lets you test for or set speical values.</p>
+
+<p>There are also a few examples included that might be useful in
+environments that do not support the IEEE_ARITHMETIC module; so test
+and use them carefully.</p>
+
+<h1>INFINITY</h1>
+
+<pre><code>program demo_inf
+use ieee_arithmetic ! If your compiler supports ISO TR 15580 IEEE Arithmetic !use procedures from ieee_* modules.
+implicit none
+
+block IEEE
+real :: ieee_support_inf
+if (ieee_support_inf(0.0)) then
+   inf_ieee = ieee_value(0.0,ieee_negative_inf)
+endif
+   write(*,*)'IEEE method ',inf_ieee
+endblock IEEE
+
+! Arguably, the next method to try to define an infinity is
+block BYREAD
+real :: inf_by_read
+character(len=8),save :: infinity='infinity'
+   read(infinity,*)inf_by_read
+   write(*,*)'By read ',inf_by_read
+endblock BYREAD
+
+! divide by zero may work
+block DIVIDE
+real :: inf_divide_by_zero
+   inf_divide_by_zero=1.0/0.0
+   write(*,*)'Divide by zero is ',inf_divide_by_zero
+end block DIVIDE
+
+! or if you know the size in bytes of your REAL value
+! you can try
+
+  write(*,*)inf_by_equivalence()
+! or maybe 
+  write(*,*)inf_inf_log()
+! or
+  write(*,*)inf_huge()
+
+! so if you can generate infinite values what do these produce?
+   inf=inf_ieee
+   write(*,*)inf
+   write(*,*)inf/huge(0.0)
+   write(*,*)inf/inf
+   write(*,*)2*inf/inf
+   write(*,*)0.0/inf
+   write(*,*)inf/0.0
+   write(*,*)inf.eq.inf
+!===============================================================================
+contains
+!===============================================================================
+function inf_by_equivalence()
+integer,save :: infi
+real,save    :: inf
+equivalence (inf,infi) !stores two variable at the same address
+data inf/z'7f800000'/ !Hex for +Infinity
+   inf_by_equivalence=inf
+end function inf_by_equivalence
+!===============================================================================
+real function inf_huge()
+real :: x
+   x = huge(1.0)
+   inf_huge = x + x
+ end function inf_huge
+!===============================================================================
+real function inf_log()
+real :: x
+! a nice mathematical way of reaching infinity as -log(0) that works nicely for complex variables
+! will work on IEEE compliant machines, if you do not enable FPE trapping (but then you probably 
+! are not working with infinities).
+   x=0.0
+   inf_log=-log(x)
+end function inf_log
+!===============================================================================
+end program demo_inf
+!===============================================================================
+</code></pre>
+
+<h1>How to tell if a value is a NaN?</h1>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:36 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

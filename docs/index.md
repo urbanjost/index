@@ -1,5 +1,3 @@
-::: {#Container}
-::: {#Content}
 Frequently Asked Questions About Fortran
 ========================================
 
@@ -49,7 +47,6 @@ Contents
 External Links
 --------------
 
-::: {#Content}
 ### Fortran standard
 
 The \"web home\" of ISO/IEC JTC1/SC22/WG5 (the international Fortran
@@ -58,7 +55,6 @@ standards committee, or WG5 for short) is <https://wg5-fortran.org/>
 The WG5 web site is where you\'ll find news about what\'s happening with
 the Fortran standard, and links to all WG5 documents. Information on
 current and past standards is also available there.
-:::
 
 ### Live Fortran pages
 
@@ -219,13 +215,5 @@ Documentation
 
 ------------------------------------------------------------------------
 
-::: {.property}
-category: [code](/fortran/list/code){.category_link}
-:::
-
-::: {.byline}
 Revised on Sat, Nov 18, 2017 6:28:56 PM by
 [JSU](JSU.xhtml){.existingWikiWord}
-:::
-:::
-:::

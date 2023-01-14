@@ -1,0 +1,458 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Frequently Asked Questions About Fortran</h1>
+
+<h2>Contents</h2>
+
+<ul>
+<li><a href="#compilers">Which Fortran compiler should I use?</a></li>
+<li><a href="#books">What are good books on Fortran?</a></li>
+<li><a href="#capitalization">How should one capitalize "Fortran?"</a></li>
+<li><a href="#libraries">How do I produce a library?</a></li>
+<li><a href="#fp-equality">Why doesn't <code>u == 1.4D0</code> produce the expected result?</a></li>
+<li><a href="#eof">How do I read until the end of a file (EOF)?</a></li>
+<li><a href="#getkey">How do I read a character without having the user press enter?</a></li>
+<li><a href="#real-precision">How do I set the precision of real variables in Fortran 90?</a></li>
+<li><a href="#strnum">How do I convert a numeric variable to a string, or vice-versa</a>?</li>
+<li><a href="#cmdline">How do I read command-line arguments?</a></li>
+<li><a href="#tmp">How can I create a temporary file?</a></li>
+<li><a href="#allocstr">Can I allocate a variable length character string?</a></li>
+<li><a href="#fileext">Which file extension should I use for my Fortran code?</a></li>
+<li><a href="#array_constructor">How do I initialize an array in row-column order?</a></li>
+</ul>
+
+<hr />
+
+<h2>Which Fortran compiler should I use? {: #compilers }</h2>
+
+<p>[[GFortran]], [[G95]], [[Open Watcom]], and Silverfrost are free Fortran compilers,
+while Absoft, IBM, [[Intel Fortran compiler|Intel]], [[LF Fortran|Lahey]], [[NAG Fortran compiler|NAG]], Pathscale, PGI, and [[Oracle Solaris Studio|Oracle]] produce commercial
+Fortran compilers.  Polyhedron Software provides compiler comparisons
+at <a href="http://www.polyhedron.com/compare0html">http://www.polyhedron.com/compare0html</a>.  See [[Compilers]] for more
+information.</p>
+
+<hr />
+
+<h2>What are good books on Fortran? {: #books }</h2>
+
+<p>See the [[Books]] page.</p>
+
+<hr />
+
+<h2>How should one capitalize "Fortran?" {: #capitalization }</h2>
+
+<p>Standard capitalization is now the preferred way to write
+Fortran for several reasons, most notably because that is
+how recent versions of the [[Standards|standard]] write it.  Another reason is due to an effort to standardize the capitalization of the names of programming languages.
+To quote Walt Brainerd (originally from the 1997-01-03
+version of Keith Bierman's Fortran FAQ):</p>
+
+<blockquote>
+  <p>The rule: if you say the letters, it is all caps (APL);
+if you pronounce it as a word, it is not (Cobol, Fortran,
+Ada).</p>
+</blockquote>
+
+<p>Some choose to write FORTRAN when referring to older versions
+of the language (prior to Fortran 90) to distinguish them
+from newer versions.</p>
+
+<hr />
+
+<h2>How do I produce a library? {: #libraries }</h2>
+
+<p>To build a static library <code>libfoo.a</code> containing all
+modules and procedures in the <code>.f90</code> files in the
+current directory on Linux:</p>
+
+<pre><code>% gfortran -c *.f90
+% ar cr libfoo.a *.o
+</code></pre>
+
+<p>The first command builds the object files and the
+second archives the object files into a static archive.</p>
+
+<p>To build a shared library <code>libfoo.so</code>:</p>
+
+<pre><code>% gfortran -shared *.f90 -o libfoo.so -fPIC
+</code></pre>
+
+<p>In both cases, other compiler flags such as <code>-O2</code> can
+be used.</p>
+
+<hr />
+
+<h2>Why doesn't <code>u == 1.4D0</code> produce the expected result? {: #fp-equality }</h2>
+
+<p>This has to do with the representation of real values as (binary) floating point values.</p>
+
+<p>See [[Floating point arithmetic]].</p>
+
+<hr />
+
+<h2>How do I read until the end of a file (EOF)? {: #eof }</h2>
+
+<p>A common [[Fortran 95]] idiom for reading lines until the
+end of file is</p>
+
+<pre><code>integer :: stat
+character(len=100) :: buf
+
+open(15, file='foo.txt')
+do
+   read(fh, iostat=stat) buf
+   if (stat /= 0) exit
+   ! process buf
+end do
+close(15)
+</code></pre>
+
+<p>{: lang=fortran }</p>
+
+<p>This example catches all conditions, not just the end of file.
+To specifically catch the EOF in [[Fortran 2003]] one can use
+the [[iso<em>fortran</em>env]] module and replace the <code>if</code> condition
+above with</p>
+
+<pre><code>if (stat == iostat_end) exit
+</code></pre>
+
+<p>{: lang=fortran }</p>
+
+<p>See also:
+<a href="http://groups.google.com/group/comp.lang.fortran/browse_thread/thread/149d94a68d30fba3">EOF idiom?</a>
+on [[comp.lang.fortran]].</p>
+
+<hr />
+
+<h2>How do I read a character without having the user press enter? {: #getkey }</h2>
+
+<p>There isn't a portable way to do this either in Fortran or C,
+in short, because the terminal controls when the input is sent
+to your program and by default it is buffered.  You must request
+that the terminal send each key and the method for doing so is
+platform-dependent.</p>
+
+<p><a href="http://www.star.le.ac.uk/~cgp/fortran.html">Clive Page's Fortran Resources</a>
+has a section on "Reading single keystrokes from Fortran" which provides
+a couple of short C functions
+(<a href="http://www.star.le.ac.uk/~cgp/sys_keyin.c">sys_keyin.c</a>)
+which can be called from Fortran to
+achieve the desired behavior on most Unix systems.</p>
+
+<p>John Urban also provides a
+<a href="http://home.comcast.net/~urbanjost/LIBRARY/libCLI/Getkey/getkey.html">getkey</a>
+function, written in C and callable from Fortran.</p>
+
+<p>See also: <a href="http://groups.google.com/groups?threadm=edf0a73b-ff05-4849-90f6-2aa93445d388@v35g2000pro.googlegroups.com">Get Key Function?</a>
+on [[comp.lang.fortran]].</p>
+
+<hr />
+
+<h2>How do I set the precision of real variables in Fortran 90? {: #real-precision }</h2>
+
+<p>See [[Real precision]].</p>
+
+<hr />
+
+<h2>How do I convert a numeric variable to a string, or vice-versa? {: #strnum }</h2>
+
+<p>There is no intrinsic procedure for converting character strings
+to numerical values, or vice-versa.  However, this can be accomplished
+using internal file IO.  To obtain a string representation of a numeric
+variable, one can perform a formatted write to a string, just as
+one does to a file.  Similarly, a formatted read from a string can
+extract a numeric value.  See the [[strnum]] program for an example.</p>
+
+<hr />
+
+<h2>How do I read command-line arguments? {: #cmdline }</h2>
+
+<p>See [[Command-line arguments]].</p>
+
+<hr />
+
+<h2>How can I create a temporary file? {: #tmp }</h2>
+
+<pre><code>open(7, form='unformatted', status='scratch')
+</code></pre>
+
+<p>{: lang=fortran }</p>
+
+<p>This will create a temporary file that only lives until it is closed.
+It doesn't need a filename as it will not be permanently saved to disk
+(although it could be stored somewhere as a temporary file).  In this
+example, the unit number is 7.</p>
+
+<p>The file will be deleted when the program terminates (but may not be deleted if the program terminates abnormally, i.e. crashes).
+Note that it is not permitted to prevent deletion of a scratch file by closing the file using a close statement with <code>status='keep'</code>.</p>
+
+<hr />
+
+<h2>Can I allocate a variable length character string? {: #allocstr }</h2>
+
+<p>Yes, in [[Fortran 2003]].  Declare the variable and allocate with a
+given length as follows:</p>
+
+<p>~~~~~~~~~~~~~~~~~~ {: lang=fortran }
+character(LEN=:), allocatable :: str
+integer :: n</p>
+
+<p>n = 27
+allocate(character(LEN=n) :: str)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+
+<p>A [[Fortran 95]] solution is the [[iso<em>varying</em>string]] module, or the variable length string module in [[FLIBS]].</p>
+
+<hr />
+
+<h2>Which file extension should I use for my Fortran code? {: #fileext }</h2>
+
+<p>Although there are no official file extensions for Fortran code,
+there are two widely established conventions.  Some use <code>.f</code> for
+fixed-form source and <code>.f90</code> for [[Free form layout]].
+The latter is a reference to the [[Fortran 90]] standard, when
+[[Free form layout]] was introduced.  The code contained in the
+file can be [[Fortran 95]], [[Fortran 2003]], etc.
+Others prefer to use file extensions that indicate the standard
+under which the code was written.  For example, <code>.f03</code> for
+[[Fortran 2003]] code and <code>.f08</code> for [[Fortran 2008]] code.
+Unfortunately, this results in a proliferation of file
+extensions and some compilers may not support the newer
+extensions yet.</p>
+
+<p>See [[File extensions]] for more discussion on these issues.</p>
+
+<hr />
+
+<h2>How do I initialize an array in row-column order?{: #array_constructor }</h2>
+
+<h1>Initializing small 2D numeric arrays with array constructors</h1>
+
+<p>Intuitively, one might assume that if one wants to initialize a
+small array by rows that something like the following will work:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   ! DOES NOT WORK
+   integer :: xx(3,5)= [ 1, 2, 3, 4, 5], &amp;
+                       [10,20,30,40,50], &amp;
+               [11,22,33,44,55]
+~~~~~~~~~~</p>
+
+<p>or perhaps</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   ! DOES NOT WORK
+   integer :: xx(3,5)= [ [ 1, 2, 3, 4, 5], &amp;
+                         [10,20,30,40,50], &amp;
+                         [11,22,33,44,55]  ]
+~~~~~~~~~~</p>
+
+<p>Someday something simpler might work, but currently the following syntax
+is required to specify the values in an intuitive row-column sequence
+using an array constructor:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   integer,save :: xx(3,5)= reshape([&amp;</p>
+
+<pre><code>   1, 2, 3, 4, 5, &amp;
+  10,20,30,40,50, &amp;
+  11,22,33,44,55  &amp;
+
+  ],shape(xx),order[2,1])
+</code></pre>
+
+<p>~~~~~~~~~~</p>
+
+<p>This is because <strong>an array constructor can be used to create and assign
+values only to rank-one arrays</strong>.  To define arrays of more than one
+dimension with an array constructor, you must use the <strong>RESHAPE(3f)</strong> intrinsic
+function.</p>
+
+<p>Note that the <strong>ORDER=</strong> option on <strong>RESHAPE(3f)</strong> is used to allow the values
+to be specified in row-column order instead of the default behavior,
+which fills columns first.</p>
+
+<p>Also note that if the expressions are of type character, Fortran 95/90
+requires each expression to have the same character length (there is a
+common compiler extension that extends all strings to the length of the
+longest value specified, but depending on it reduces portability).</p>
+
+<h2>Printing small arrays in row-column format</h2>
+
+<p>When working with small arrays the issue that there is no default Fortran
+routine for printing an array in row-column order becomes apparent. So
+lets create a simple solution for integer arrays <strong>(PRINT<em>MATRIX</em>INT(3f))</strong>:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   program demo<em>array</em>constructor ! initializing small arrays
+   implicit none
+   integer,save :: xx(3,5)= reshape([&amp;</p>
+
+<pre><code>   1, 2, 3, 4, 5, &amp;
+  10,20,30,40,50, &amp;
+  11,22,33,44,-1055  &amp;
+
+],shape(xx),order=[2,1])
+</code></pre>
+
+<p>call print<em>matrix</em>int('xx array:',xx)</p>
+
+<p>contains</p>
+
+<p>subroutine print<em>matrix</em>int(title,arr)
+   implicit none</p>
+
+<p>character(len=*),parameter::ident= "@(#)print<em>matrix</em>int(3f) - print small 2d integer arrays in row-column format"</p>
+
+<p>character(len=*),intent(in)  :: title
+   integer,intent(in)           :: arr(:,:)
+   integer                      :: i
+   character(len=:),allocatable :: biggest</p>
+
+<pre><code>  write(*,*)trim(title)                                                 ! print title
+  biggest='           '                                                 ! make buffer to write integer into
+  write(biggest,'(i0)')ceiling(log10(real(maxval(abs(arr)))))+2         ! find how many characters to use for integers
+  biggest='(" &gt; [",*(i'//trim(biggest)//':,","))'                       ! use this format to write a row
+  do i=1,size(arr,dim=1)                                                ! print one row of array at a time
+     write(*,fmt=biggest,advance='no')arr(i,:)
+     write(*,'(" ]")')
+  enddo
+</code></pre>
+
+<p>end subroutine print<em>matrix</em>int</p>
+
+<p>end program demo<em>array</em>constructor
+~~~~~~~~~~</p>
+
+<p>Results:</p>
+
+<pre><code> xx array:
+ &gt; [  1,  2,  3,  4,  5 ]
+ &gt; [ 10, 20, 30, 40, 50 ]
+ &gt; [ 11, 22, 33, 44, 55 ]
+</code></pre>
+
+<p>We could do a more robust version that handles REAL and COMPLEX values
+as well as NaN values, but it has already been done.  If you need to
+print a variety of small matrices see:</p>
+
+<pre><code>dispmodule(3f), "A Fortran 95 module for pretty-printing matrices".
+Kristjan Jonasson, Department of Computer Science,
+School of Science and Engineering, University of Iceland,
+Hjardarhaga 4, 107 Reykjavik, Iceland (jonasson@hi.is).
+</code></pre>
+
+<h1>Initializing a 2D array using <strong>DATA</strong> statements</h1>
+
+<p>Note that <strong>DATA</strong> statements are very flexible, and allow for perhaps the
+most intelligible way of specifying small arrays row by row. For example:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   ! fill rows using DATA statements
+   integer,save,dimension(3,5) :: gg
+   data gg(1,:)/  1,  2,  3,  4,  5 /
+   data gg(2,:)/ 10, 20, 30, 40, 50 /
+   data gg(3,:)/ 11, 22, 33, 44, 55 /
+~~~~~~~~~~</p>
+
+<p>There are other ways to use a <strong>DATA</strong> statement to fill in row-column order,
+including use of the <strong>SIZE(3f)</strong> function and an implied-DO:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   ! use implied-DO so data can be declared in row-column order
+   integer, dimension(3,5) :: ff
+   DATA (( ff(J,I), I=1,size(ff,dim=2)), J=1,size(ff,dim=1)) / &amp;
+      01,02,03,04,05, &amp;
+      10,20,30,40,50, &amp;
+      11,22,33,44,55  /
+~~~~~~~~~~</p>
+
+<h2>Initializing a 2D array from a vector using EQUIVALENCE</h2>
+
+<p>Sometimes instead of using <strong>RESHAPE(3f)</strong> you will see someone initialize a
+vector and then equivalence it to a multi-dimensional array; especially
+if the code has a reason to access the data as both a vector and a matrix:</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   ! multi-dimensional row1, row2, .... by equivalence
+   integer,parameter :: d1=3,d2=5
+   integer           :: ee(d1,d2)
+   ! note that the DATA statements could be used to initialize the array instead
+   integer           :: e(d1*d2) =[1,10,11, 2,20,22, 3,30,33, 4,40,44, 5,50,55]
+   equivalence       (e(1),ee(1,1))
+~~~~~~~~~~</p>
+
+<h2>Notes</h2>
+
+<p>Remember that for simple initializations vector statements can be used</p>
+
+<p>~~~~~~~~~~ {: lang=fortran}
+   real :: arr(10,20)=0.0
+   ! array constructors can be used to define constants, not just vectors
+   integer,parameter :: ii(10,10)=[(i,i=1,size(ii))] ! odd numbers using implied-DO
+~~~~~~~~~~</p>
+
+<p>and that if things are too complicated you can just set the values in the executable
+body of the code.
+~~~~~~~~~~ {: lang=fortran}
+   program test<em>random</em>number
+   real :: r(5,5)
+      call random_number(r)
+   end program
+~~~~~~~~~~</p>
+
+<p>Remember that a DATA statement does not require that all values be initialized, whereas an array constructor does; and that you cannot initialize values multiple times and be standard-conforming.</p>
+
+<h2>So be very careful when using DATA statements that you initialized everything you wanted to.</h2>
+
+<h2>External Links</h2>
+
+<ul>
+<li><a href="http://www.faqs.org/faqs/fortran-faq/">The Fortran FAQ</a></li>
+<li><a href="http://en.wikibooks.org/wiki/Fortran/FAQ">Fortran FAQ Wikibook</a></li>
+</ul>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:33 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

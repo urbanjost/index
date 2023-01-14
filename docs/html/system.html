@@ -1,0 +1,222 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>How to issue a command to the operating system</h1>
+
+<p>To execute a shell command use the f2008 procedure</p>
+
+<pre><code>   call execute_command_line(command [, wait, exitstat, cmdstat, cmdmsg ])
+</code></pre>
+
+<p>If it is not available, most Fortran compilers support an extension called system(3f).</p>
+
+<h2>DESCRIPTION</h2>
+
+<p>The COMMAND argument is passed to the shell and executed.  (The shell
+is generally sh(1) on Unix systems, and cmd.exe on Windows.) If <strong>WAIT</strong>
+is present and has the value false, the execution of the command is
+asynchronous if the system supports it; otherwise, the command is
+executed synchronously.</p>
+
+<p>The three last arguments allow the user to get status information.
+After synchronous execution, <strong>EXITSTAT</strong> contains the integer exit code of
+the command, as returned by <strong>SYSTEM</strong>. <strong>CMDSTAT</strong> is set to zero if the command
+line was executed (whatever its exit status was). <strong>CMDMSG</strong> is assigned an
+error message if an error has occurred.</p>
+
+<p>Note that the system call need not be thread-safe. It is the
+responsibility of the user to ensure that the system is not called
+concurrently if required.</p>
+
+<p>When the command is executed synchronously, <strong>EXECUTE_COMMAND_LINE</strong>(3f)
+returns after the command line has completed execution. Otherwise,
+<strong>EXECUTE_COMMAND_LINE</strong>(3f) returns without waiting.</p>
+
+<h2>ARGUMENTS</h2>
+
+<h3>COMMAND</h3>
+
+<p>a default <strong>CHARACTER</strong> scalar conntaining the command line to be executed. The interpretation is programming-
+  environment dependent.</p>
+
+<h3>WAIT</h3>
+
+<p>(Optional) a default <strong>LOGICAL</strong> scalar.  If <strong>WAIT</strong> is present with the value .false., and the processor supports
+  asynchronous execution of the command, the command is executed asynchronously; otherwise it is executed
+  synchronously.</p>
+
+<h3>EXITSTAT</h3>
+
+<p>(Optional) an <strong>INTEGER</strong> of the default kind with intent(INOUT).  If the command is executed synchronously, it is
+  assigned the value of the processor-dependent exit status. Otherwise, the value of <strong>EXITSTAT</strong> is unchanged.</p>
+
+<h3>CMDSTAT</h3>
+
+<p>(Optional) an <strong>INTEGER</strong> of  default kind with intent(INOUT).  If an error condition occurs and <strong>CMDSTAT</strong> is not
+  present, error termination of execution of the image is initiated.</p>
+
+<p>It is assigned the value -1 if the processor does not support command line execution, a processor-dependent
+  positive value if an error condition occurs, or the value -2 if no error condition occurs but <strong>WAIT</strong> is present with
+  the value false and the processor does not support asynchronous execution. Otherwise it is assigned the value 0.</p>
+
+<h3>CMDMSG</h3>
+
+<p>(Optional) a <strong>CHARACTER</strong> scalar of the default kind.  It is an <strong>INTENT (INOUT)</strong> argument. If an error condition
+  occurs, it is assigned a processor-dependent explanatory message. Otherwise, it is unchanged.</p>
+
+<h2>EXAMPLE</h2>
+
+<p>Sample program:</p>
+
+<pre><code>program test_exec
+implicit none
+integer :: i,istat
+character(len=1024) :: message
+
+   message=''
+   istat=0
+   call execute_command_line("ls -l", exitstat=i,cmdmsg=message,cmdstat=istat)
+   print *, "Exit status of 'ls -l' was ", i
+   if(istat.ne.0)then
+      print *, 'status=',istat
+      print *, trim(message)
+   endif
+
+   !!call execute_command_line("reindex_files.exe", wait=.false.)
+   !!print *, "Now reindexing files in the background"
+
+end program test_exec
+</code></pre>
+
+<h3>NOTE</h3>
+
+<p>Because this intrinsic is making a system call, it is very system
+dependent. Its behavior with respect to signaling is processor
+dependent. In particular, on POSIX-compliant systems, the SIGINT and
+SIGQUIT signals will be ignored, and the SIGCHLD will be blocked. As
+such, if the parent process is terminated, the child process might not
+be terminated alongside.</p>
+
+<h1>Calling a process</h1>
+
+<p>A module called M_process(3f) that uses the <strong>ISO_C_BINDING</strong>(3f) to call <strong>POSIX</strong> C routines
+to spawn a process and either write data to the stdin of the process or
+read the stdout of the process can be found in the <a href="../../GPF.html"><strong>GPF</strong></a> (General Purpose Fortran) collection.</p>
+
+<h2>EXAMPLE</h2>
+
+<p>Following is an example program that calls the M_process module to start a plotting
+program called gnuplot(1) and give it enough commands to generate
+a plot. It then lets you interactively interact with the program or
+continue on in the program.</p>
+
+<pre><code> program gnuExample
+    ! @(#)  Example of Fortran writing GNUPLOT command and data file.
+    use M_process ,only: process_open_write, process_writeline
+    use M_process ,only: streampointer, process_close
+    implicit none
+    !*! line of data to write (assumed long enough to hold any command line)
+    character(len=4096) :: line
+    !*! C file pointer returned by process_open()
+    type(streampointer) :: fp
+    !*! check status of calls to process module routines
+    integer :: ierr
+    !*! DO loop counter
+    integer :: i
+
+    !*! data file to create and put X,Y values into
+    character(len=60)   :: fidmap='SAMPLE.MAP'
+    !*! number of points to put into curve to be plotted
+    integer,parameter   :: n=50
+    !*! arrays to fill with curve data to be plotted
+    real                :: x(n),y(n)
+    integer             :: ios
+
+    !*! open data file to hold X,Y values to be plotted
+    open(70,file=fidmap)
+    !*! Define sample X,Y array.
+    do i=1,n
+       !*! set X() values as whole numbers 1 to N
+       x(i)=i
+       !*!
+       y(i)=(x(i)+0.5)**2
+    enddo
+
+    !*! Write the X,Y array as coordinates to be plotted.
+    write(70,'(2f10.3)')(x(i),y(i),i=1,n)
+    !*! if not closed or flushed, subprocess may not be able to read
+    flush(70, iostat = ios)
+
+    !*! Write the GnuPlot commands
+    !*! open process to write to (ie. start gnuplot(1) program)
+    call process_open_write('gnuplot',fp,ierr)
+    call process_writeline &amp;
+    &amp; ('set title " Example of GNUPlot data and command file generation"',fp,ierr)
+    !*! write a command to the process
+    call process_writeline('set nokey',fp,ierr)
+
+    !*! build a command with a formatted write
+    write(line,101) trim(fidmap)
+ 101 format('plot "',A,'" with lines')
+    !*! write a command to the process
+    call process_writeline(trim(line),fp,ierr)
+
+    !*! Additional gnuplot commands; in this case interactively entered
+    write(*,'(a)')'enter gnuplot commands or "." to exit'
+    do
+       write(*,'(a)',advance='no')'gnu&gt;&gt;'
+       read(*,'(a)',iostat=ios)line
+       if(line.eq.'.')exit
+       call process_writeline(trim(line),fp,ierr)
+    enddo
+
+    !*! Wrap up
+    call process_close(fp,ierr)
+    write(*,*)'CLOSED THE PROCESS. RETURNING TO PROGRAM'
+    !*! delete the data file
+    close(70,status='delete',iostat=ios)
+ end program gnuExample
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:33 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

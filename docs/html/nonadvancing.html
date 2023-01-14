@@ -1,0 +1,160 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>NON-ADVANCING I/O</h1>
+
+<p>The non-advancing I/O in Fortran 90 is <strong>not</strong> the same as stream I/O.
+Non-advancing I/O is still record-based (and there is a limit on the
+length of a line!). Record-based I/O can be useful. You can use formats
+that position within a partial record. You can backspace on most standard
+files. You can mix advancing and non-advancing I/O on a file without
+closing and reopening it. To efficiently impliment these features pretty
+much defines that the file must be record-based (especially on systems
+typically without system-defined file structures like Unix).</p>
+
+<h2>EXPLANATION</h2>
+
+<p>So non-advancing Fortran I/O supports some features not supported by
+Fortran stream I/O by being record-based.  But this means there is a
+record length limit for non-advancing I/O, whereas true stream I/O has
+no predefined record structure.  For many compilers the default record
+length is very large (e.g., 2147483647), essentially giving much of the
+appearance of stream I/O for files smaller than that size. But the limit
+may be much smaller.</p>
+
+<p>One can query the record length:</p>
+
+<pre><code>use,intrinsic :: iso_fortran_env, only : ERROR_UNIT, INPUT_UNIT, OUTPUT_UNIT
+! OUTPUT_UNIT is almost always six, but that is not required by the standard
+inquire(unit=OUTPUT_UNIT, recl=i)
+print *, 'recl=', i, ' stdout unit=',OUTPUT_UNIT
+end
+</code></pre>
+
+<p>In some programming environments it is possible to set the record length up
+to a system-defined limit:</p>
+
+<pre><code>character(len=256) :: message
+open(unit=6, recl=2147483646)
+inquire(unit=6, recl=i,iomsg=message,iostat=ios)
+if(iostat.ne.0)then
+   write(*,*)'ERROR:'//trim(message)
+endif
+write(*,*)'recl=',i
+end
+</code></pre>
+
+<p>However, in some programming environments the record length is predefined,
+especially for preconnected units such as stdout, and the record length
+cannot be changed.</p>
+
+<h2>EXAMPLES</h2>
+
+<pre><code>do i=1, 512
+   write (unit=6,fmt='(a)',advance='no') 'X'
+enddo
+end
+</code></pre>
+
+<p>We might expect this program to print 512 X's in a row on one
+line. However, if the record length for unit 6 is less than 512 the
+output will appear on multiple lines.</p>
+
+<p>Note that unit 6 and unit * are not necessarily the same. Although they
+both may point to the default output device.  Each could keep track of
+the current location in its own record separately, for example. Therefore
+we advise choosing one default unit and sticking with it (either use *
+or OUTPUT_UNIT(almost always unit 6).</p>
+
+<p>Note that you can close and open the numeric pre-connected file and
+call INQUIRE on it; and usually change some attributes of the OPEN,
+unlike the * unit.</p>
+
+<p>So what will this program produce?</p>
+
+<pre><code>program nonadvancing
+implicit none
+integer :: i
+integer :: ios
+character(len=256) :: message
+
+inquire(unit=6, recl=i)
+print *, 'initial stdout recl=', i
+
+open(unit=10)
+inquire(unit=10, recl=i)
+print *, 'initial regular file recl=', i
+
+! can you change stdout?
+open(unit=6, recl=80,iostat=ios,iomsg=message)
+if(ios.ne.0)then
+   write(*,*)'ERROR:'//trim(message)
+endif
+inquire(unit=6, recl=i)
+print *, 'stdout recl=', i
+
+open(unit=6, recl=huge(0),iostat=ios,iomsg=message)
+if(ios.ne.0)then
+   write(*,*)'ERROR:'//trim(message)
+endif
+inquire(unit=6, recl=i,iostat=ios,iomsg=message)
+print *, 'stdout recl=', i
+if(ios.ne.0)then
+   write(*,*)'ERROR:'//trim(message)
+endif
+
+! do you know whether positioning is relative to the entire line
+! or the current partial record? Compilers handled this differently
+! when non-advancing I/O was initially introduced. 
+! so what will this write?
+write(*,101)'xxxxxx', 'yyyyy'
+101 format(a,t4,a)
+write(*,101,advance='no')'AAAAAA', 'BBBBB'
+write(*,101,advance='no')'CCCCCC', 'DDDDD'
+write(*,'(a)')'EEEEEE'
+
+end program nonadvancing
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:34 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Procedure Pointers</h1>
+
+<p>In addition to being able to pass procedures as parameters since
+FORTRAN 77, Fortran 2003+ supports procedure pointers, allowing
+you to select one of a family of procedures with similar parameters</p>
+
+<p>First, make some example functions</p>
+
+<pre><code>module ExampleFuncs
+   implicit none
+contains
+function f1 (x)
+  real :: f1
+  real, intent (in) :: x
+  f1 = 2.0 * x
+end function f1
+function f2 (x)
+   real :: f2
+   real, intent (in) :: x
+   f2 = 3.0 * x**2
+end function f2
+end module ExampleFuncs
+</code></pre>
+
+<h2>A simple program</h2>
+
+<pre><code>program test_func_ptrs
+use ExampleFuncs
+implicit none
+!! define an abstract template defining the family of procedures
+abstract interface
+  function func (z)
+     real :: func
+     real, intent (in) :: z
+  end function func
+end interface
+
+!! define a pointer of the abstract type
+procedure (func), pointer :: f_ptr =&gt; null ()
+
+character(len=:),allocatable :: name
+integer :: i
+
+write (*, '( / "Input function name (f1|f2 ")', advance="no" )
+read (*, *) name
+select(name)
+case('f1'); f_ptr =&gt; f1
+case('f2'); f_ptr =&gt; f2
+case default
+   write(*,*)'bad function name, allowed names are "f1" and "f2"'
+   stop
+end select
+
+do i=1,100
+   write(*,*)'for ',i,'result is ',f_ptr (real(input))
+enddo
+
+end program test_func_ptrs
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:36 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

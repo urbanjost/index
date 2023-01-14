@@ -1,0 +1,91 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Convertings between Strings and numbers</h1>
+
+<p>Type conversion from strings to number and vice-versa is most commonly done
+with internal reads and writes. You can read and write from a CHARACTER 
+variable as with a file. There is no direct way to read or write from an
+allocatable array currently, so you have to use a variable of a defined
+length. </p>
+
+<h2>Converting simple values</h2>
+
+<p><code>fortran
+     program internal_io
+     implicit none
+     character (len=80) :: line
+     real               :: value
+     integer            :: ios
+     character(len=256) :: message
+     line='123.4e2'
+     read(line,*,iostat=ios,iomsg=message) value
+     if(ios.ne.0)then
+        write(*,*)'ERROR: could not obtain numeric value from '//trim(line)
+        write(*,*)'     : '//trim(message)
+     else
+        write(*,*)'VALUE=',value
+     endif
+     write(line,'("[",g0,"]")')1.0d0/3.0d0
+     write(*,*)'line=',trim(line)
+     end program internal_io
+</code>
+  Results:
+<code>text
+    VALUE=   12340.00 <br />
+    line=[.3333333333333333]
+</code>
+<!--</p>
+
+<h2>Lists</h2>
+
+<h2>Reading numbers from command arguments</h2>
+
+<h2>Expressions</h2>
+
+<h2>Interpreters</h2>
+
+<p>--></p>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:34 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Short-circuit of compound Boolean expressions</h1>
+
+<p>Short-circuit evaluation (aka. minimal evaluation or McCarthy evaluation)
+is when the remaining arguments in a Boolean operation are executed or
+evaluated only if the previous operations are true. Fortran does not
+provide short-circuit evalutations. This allows for optimizations such as
+parallel evaluation. Some compilers do provide an extension to provide
+short-circuit evaluation but to keep your code standard-conforming you
+should assume all sections of an expression may or may not be evaluated
+and executed, including function calls in the expression.</p>
+
+<p>The solution is to use nested conditionals. For example:</p>
+
+<pre><code>val=0.0
+if(val.ne.0 .and. (top/val.gt.10.0) )then ! DO NOT DO THIS
+   write(*,*)'met conditions'
+endif
+</code></pre>
+
+<p>Should be written as</p>
+
+<pre><code>val=0.0
+if(val.ne.0 )then
+   if (top/val.gt.10.0) )then
+      write(*,*)'met conditions'
+   endif
+endif
+</code></pre>
+
+<p>So any time you have a compound Boolean expression (anywhere, not just in
+an IF(3f) expression) make sure all subexpressions are safe to evaluate
+or change the expression to conditionally executed sections.</p>
+
+<h1>Common errors ...</h1>
+
+<pre><code>IF ( INDX .GT.0 .AND. ARRAY(INDX) .EQ. 'xxx' ) THEN ...
+</code></pre>
+
+<p>If II can be out of range for array A this could cause such
+problems as getting a run-time out-of-bounds error (for just
+one example) ...</p>
+
+<pre><code>MERGE (A(ii), 0, ii .GE. 1)
+</code></pre>
+
+<h1>By the way ...</h1>
+
+<p>I have seen several proposals to add lazy or short-circuit syntax for
+expressions. My favorite was one that looked like this ...</p>
+
+<pre><code>IF (i&gt;0) AND (arr(i) &gt; 20) OR (( X&gt;0 ) AND (SQRT(X) &gt; 3)) THEN ...
+</code></pre>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:34 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

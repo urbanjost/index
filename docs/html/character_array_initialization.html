@@ -1,0 +1,195 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>Trouble initialing character arrays</h1>
+
+<h2>or why</h2>
+
+<h3>character(len=*),parameter :: array(*)=['one','two','three']</h3>
+
+<h2>is an error</h2>
+
+<p>In Fortran all the elements of a character array must have the same
+length (well, unless the ISO_VARYING_STRING extension is supported).
+Primarily because of that, intuitive declarations like</p>
+
+<pre><code>character(len=*),parameter :: array(*)=['one','two','three']
+</code></pre>
+
+<p>will fail because the string declarations are of different lengths.
+Even if you specify the LEN value the strings have to be the same length</p>
+
+<pre><code>character(len=5),parameter :: array(*)=['one','two','three']
+</code></pre>
+
+<p>Here are things that will work ...</p>
+
+<pre><code>program odd ! implied shape array
+implicit none
+
+!!
+!! First, examples of character parameter array declarations
+!!
+
+CASE1 : BLOCK
+! for this syntax string length must be constant, but size of array and
+! LEN= an asterisk. This avoids any silent truncation or counting but
+! requires all the strings to be the same length ...
+   character(len=*),parameter :: array(*)=[ &amp;
+   'one   ', &amp;
+   'two   ', &amp;
+   'three ', &amp;
+   'last  ']
+   write(*,'(*("[",a,"]":))')array
+ENDBLOCK CASE1
+
+CASE2 : BLOCK
+! the strings can be specified more naturally without trailing spaces if
+! the length is explicitly declared but if the specified length is too
+! short the strings will be truncated. Note that as mentioned above, specifying
+! the LEN= value only on the left side of the assign will NOT work 
+   character(len=*),parameter :: array(*)=[character(len=5) :: 'one','two','three','last']
+!                                          ^^^^^^^^^^^^^^^^^^^^
+   write(*,'(*("[",a,"]":))')array
+ENDBLOCK CASE2
+
+CASE3 : BLOCK
+! of course explicitly specifying the number of elements is fine, but tedious. If you get
+! the count on the number of elements wrong the compiler will generate an error; but note that
+! if you declare the values with a DATA statement instead nothing will check that you 
+! specified all the elements
+   character(len=*),parameter :: array(4)=[character(len=5) :: 'one','two','three','last']
+!                                     ^^^
+   write(*,'(*("[",a,"]":))')array
+ENDBLOCK CASE3
+
+!!
+!! Next, examples for  an allocatable array 
+!!
+
+ALLOC1: BLOCK
+! an allocatable array can change size but cannot be initialized in
+! the declaration
+
+! If no explicit length is given the strings all have to be the same
+! length, which is tedious
+   character(len=:),allocatable :: arrayallo(:)
+   arrayallo=['one   ','two   ','three ','last  ']
+   write(*,'(*("[",a,"]":))')arrayallo
+ENDBLOCK ALLOC1
+
+ALLOC2: BLOCK
+! this is how you specify a length so the strings can be specified
+! more naturally (although the will all be stored with the same length)
+   character(len=:),allocatable :: arrayallo(:)
+   arrayallo=[character(len=5) :: 'one', 'two', 'three', 'last']
+   write(*,'(*("[",a,"]":))')arrayallo
+ENDBLOCK ALLOC2
+
+ALLOC3: BLOCK
+! if everthing else is the same as in case ALLOC2 but len is set to 2 
+! what happens (answer: truncation )?
+   character(len=:),allocatable :: arrayallo(:)
+   arrayallo=[character(len=2) :: 'one', 'two', 'three', 'last']
+   write(*,'(*("[",a,"]":))')arrayallo
+ENDBLOCK ALLOC3
+
+ALLOC4: BLOCK
+character(10) :: inp( 5 )
+integer :: i
+character(:), allocatable :: out(:)        ! this is NG
+inp = [ 'aAa', 'bBb', 'cCc', 'dDd', 'eEe' ]
+
+!! COPY INP TO OUT WITH SAME LENGTH
+out = [character(len=len(inp(i))) :: inp]               ; call printout()  
+!! GET UP TO FIRST TWO CHARACTERS OF INP
+out = [character(len=2) :: inp]                         ; call printout()
+!! GET SECOND CHARACTER OF INP
+out = [character(len=1) :: inp(:)(2:2)]                 ; call printout()
+!! AN IMPLIED DO ALLOWS FOR FUNCTIONS AND CONCATENATION AND EXPRESSIONS
+out = [character(len=2) :: (inp(i),i=1,size(inp))]      ; call printout()
+out = [character(len=3) :: ("#"//inp(i),i=1,size(inp))] ; call printout()
+
+!!out = [character(len=2+1) :: inp//"Z"]                  ; call printout()
+ENDBLOCK ALLOC4
+
+contains
+subroutine printout()
+   write(*,'(*("[",a,"]":,","))')out
+end subroutine printout
+end program odd
+</code></pre>
+
+<hr />
+
+<p>An example using a function</p>
+
+<pre><code>  module test
+  implicit none
+  contains
+
+  elemental function gettwo( s ) result( res )
+  character(*), intent(in) :: s
+  character(len(s)) :: res
+     res = s( 1 : 2 )
+  endfunction
+
+  endmodule
+
+  program main
+  use test
+  implicit none
+  character(10) :: inp( 5 )
+  character(:), allocatable :: out(:)        ! this is NG
+     inp = [ 'aaa', 'bbb', 'ccc', 'ddd', 'eee' ]
+
+     !out = gettwo( inp )  !! NOT ALLOWED
+     out = [character(len=2) :: gettwo(inp) ]
+     print *, out       ! aabbccddee 
+  endprogram
+</code></pre>
+
+<hr />
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:35 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

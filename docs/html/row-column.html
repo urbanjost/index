@@ -1,0 +1,216 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h1>How do I initialize an array in row-column order?</h1>
+
+<h2>Initializing small 2D numeric arrays with array constructors</h2>
+
+<p>Intuitively, one might assume that if one wants to initialize a
+small array by rows that something like the following will work:</p>
+
+<pre><code> ! DOES NOT WORK
+ integer :: xx(3,5)= [ 1, 2, 3, 4, 5], &amp;
+                   [10,20,30,40,50], &amp;
+           [11,22,33,44,55]
+</code></pre>
+
+<p>or perhaps</p>
+
+<pre><code> ! DOES NOT WORK
+ integer :: xx(3,5)= [ [ 1, 2, 3, 4, 5], &amp;
+                     [10,20,30,40,50], &amp;
+                     [11,22,33,44,55]  ]
+</code></pre>
+
+<p>Someday something simpler might work, but currently the following syntax
+is required to specify the values in an intuitive row-column sequence
+using an array constructor:</p>
+
+<pre><code>  integer,save :: xx(3,5)= reshape([&amp;
+
+   1, 2, 3, 4, 5, &amp;
+  10,20,30,40,50, &amp;
+  11,22,33,44,55  &amp;
+
+  ],shape(xx),order[2,1])
+</code></pre>
+
+<p>This is because <strong>an array constructor can be used to create and assign
+values only to rank-one arrays</strong>.  To define arrays of more than one
+dimension with an array constructor, you must use the <strong>RESHAPE(3f)</strong> intrinsic
+function.</p>
+
+<p>Note that the <strong>ORDER=</strong> option on <strong>RESHAPE(3f)</strong> is used to allow the values
+to be specified in row-column order instead of the default behavior,
+which fills columns first.</p>
+
+<p>Also note that if the expressions are of type character, Fortran 95/90
+requires each expression to have the same character length (there is a
+common compiler extension that extends all strings to the length of the
+longest value specified, but depending on it reduces portability).</p>
+
+<h2>Printing small arrays in row-column format</h2>
+
+<p>When working with small arrays the issue that there is no default Fortran
+routine for printing an array in row-column order becomes apparent. So
+lets create a simple solution for integer arrays <strong>(PRINT<em>MATRIX</em>INT(3f))</strong>:</p>
+
+<pre><code> program demo_array_constructor ! initializing small arrays
+ implicit none
+ integer,save :: xx(3,5)= reshape([&amp;
+
+     1, 2, 3, 4, 5, &amp;
+    10,20,30,40,50, &amp;
+    11,22,33,44,-1055  &amp;
+
+  ],shape(xx),order=[2,1])
+
+ call print_matrix_int('xx array:',xx)
+
+ contains
+
+ subroutine print_matrix_int(title,arr)
+ implicit none
+
+ character(len=*),parameter::ident= "@(#)print_matrix_int(3f) - print small 2d integer arrays in row-column format"
+
+ character(len=*),intent(in)  :: title
+ integer,intent(in)           :: arr(:,:)
+ integer                      :: i
+ character(len=:),allocatable :: biggest
+
+    write(*,*)trim(title)                                                 ! print title
+    biggest='           '                                                 ! make buffer to write integer into
+    write(biggest,'(i0)')ceiling(log10(real(maxval(abs(arr)))))+2         ! find how many characters to use for integers
+    biggest='(" &gt; [",*(i'//trim(biggest)//':,","))'                       ! use this format to write a row
+    do i=1,size(arr,dim=1)                                                ! print one row of array at a time
+       write(*,fmt=biggest,advance='no')arr(i,:)
+       write(*,'(" ]")')
+    enddo
+
+ end subroutine print_matrix_int
+
+ end program demo_array_constructor
+</code></pre>
+
+<p>Results:</p>
+
+<pre><code> xx array:
+ &gt; [  1,  2,  3,  4,  5 ]
+ &gt; [ 10, 20, 30, 40, 50 ]
+ &gt; [ 11, 22, 33, 44, 55 ]
+</code></pre>
+
+<p>We could do a more robust version that handles REAL and COMPLEX values
+as well as NaN values, but it has already been done.  If you need to
+print a variety of small matrices see:</p>
+
+<pre><code> dispmodule(3f), "A Fortran 95 module for pretty-printing matrices".
+ Kristjan Jonasson, Department of Computer Science,
+ School of Science and Engineering, University of Iceland,
+ Hjardarhaga 4, 107 Reykjavik, Iceland (jonasson@hi.is).
+</code></pre>
+
+<h1>Initializing a 2D array using <strong>DATA</strong> statements</h1>
+
+<p>Note that <strong>DATA</strong> statements are very flexible, and allow for perhaps the
+most intelligible way of specifying small arrays row by row. For example:</p>
+
+<pre><code>  ! fill rows using DATA statements
+  integer,save,dimension(3,5) :: gg
+  data gg(1,:)/  1,  2,  3,  4,  5 /
+  data gg(2,:)/ 10, 20, 30, 40, 50 /
+  data gg(3,:)/ 11, 22, 33, 44, 55 /
+</code></pre>
+
+<p>There are other ways to use a <strong>DATA</strong> statement to fill in row-column order,
+including use of the <strong>SIZE(3f)</strong> function and an implied-DO:</p>
+
+<pre><code>  ! use implied-DO so data can be declared in row-column order
+  integer, dimension(3,5) :: ff
+  DATA (( ff(J,I), I=1,size(ff,dim=2)), J=1,size(ff,dim=1)) / &amp;
+     01,02,03,04,05, &amp;
+     10,20,30,40,50, &amp;
+     11,22,33,44,55  /
+</code></pre>
+
+<h2>Initializing a 2D array from a vector using EQUIVALENCE</h2>
+
+<p>Sometimes instead of using <strong>RESHAPE(3f)</strong> you will see someone initialize a
+vector and then equivalence it to a multi-dimensional array; especially
+if the code has a reason to access the data as both a vector and a matrix:</p>
+
+<pre><code>  ! multi-dimensional row1, row2, .... by equivalence
+  integer,parameter :: d1=3,d2=5
+  integer           :: ee(d1,d2)
+  ! note that the DATA statements could be used to initialize the array instead
+  integer           :: e(d1*d2) =[1,10,11, 2,20,22, 3,30,33, 4,40,44, 5,50,55]
+  equivalence       (e(1),ee(1,1))
+</code></pre>
+
+<h2>Notes</h2>
+
+<p>Remember that for simple initializations vector statements can be used</p>
+
+<pre><code>  real :: arr(10,20)=0.0
+  ! array constructors can be used to define constants, not just vectors
+  integer,parameter :: ii(10,10)=[(i,i=1,size(ii))] ! odd numbers using implied-DO
+</code></pre>
+
+<p>and that if things are too complicated you can just set the values in the executable
+body of the code.</p>
+
+<pre><code>  program test_random_number
+  real :: r(5,5)
+     call random_number(r)
+  end program
+</code></pre>
+
+<p>Remember that a DATA statement does not require that all values be
+initialized, whereas an array constructor does; and that you cannot
+initialize values multiple times and be standard-conforming.  So be very
+careful when using DATA statements that you initialized everything you
+wanted to.</p>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 14 Jan 2023 01:45:35 PM EST
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>
