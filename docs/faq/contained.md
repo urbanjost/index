@@ -1,4 +1,6 @@
 #Gotchas: Inheritance control for CONTAIN-ed procedures
+   NOTE:
+     In upcoming Fortran releases see the IMPORT directive.
 
    New Fortran programmers using a contained procedure often do not know
    that a CONTAIN-ed procedure has access to all the variables in the
