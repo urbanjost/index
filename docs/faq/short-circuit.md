@@ -3,7 +3,7 @@
 Short-circuit evaluation (aka. minimal evaluation or McCarthy evaluation)
 is when the remaining arguments in a Boolean operation are executed or
 evaluated only if the previous operations are true. Fortran does not
-provide short-circuit evalutations. This allows for optimizations such as
+provide short-circuit evaluations. This allows for optimizations such as
 parallel evaluation. Some compilers do provide an extension to provide
 short-circuit evaluation but to keep your code standard-conforming you
 should assume all sections of an expression may or may not be evaluated
@@ -33,9 +33,10 @@ or change the expression to conditionally executed sections.
 
     IF ( INDX .GT.0 .AND. ARRAY(INDX) .EQ. 'xxx' ) THEN ...
 
-If II can be out of range for array A this could cause such
-problems as getting a run-time out-of-bounds error (for just
-one example) ...
+If INDX can be out of range for array ARRAY this could cause such
+problems as getting a run-time out-of-bounds error. This is true
+not just in IF statements but anywhere a compound Boolean expression
+is used ...
 
     MERGE (A(ii), 0, ii .GE. 1)
 

@@ -86,13 +86,10 @@ Please provide feedback on the
 
     + [index of intrinsics](https://urbanjost.github.io/M_intrinsics/index3.html)
     + [index of statements](https://urbanjost.github.io/M_intrinsics/index7.html)
-    + HTML [faq](https://urbanjost.github.io/index/docs/index.html)
-    + markdown [faq](docs/index.md)
-
+    + [faq](docs/index.md)
 
 ---
 # EXTERNAL SITES OF INTEREST
----
 ---
 ## Fortran Documentation
 

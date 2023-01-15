@@ -24,22 +24,25 @@ Contents
     -   [\"array=\[\]\" will not work in Fortran](faq/zero_elements.md)
     -   [How do I compare arrays in Fortran?](faq/compare_arrays.md)
 
--   [How does Fortran handle a scratch file?](faq/scratch.md)
+-   [Notes on compound Boolean expressions](faq/short-circuit.md)
+-   [Procedure pointer](faq/procedure_pointer.md)
 -   [How do I put block comments in Fortran source?](faq/comments.md)
 -   [How do I get a file size in Fortran?](faq/file_size.md)
--   [Writing to stderr](faq/stderr.md)
--   [Automatically indenting a Fortran file](faq/indent.md)
 -   [How to issue a command to the operating system](faq/system.md)
+-   [Automatically indenting a Fortran file](faq/indent.md)
 -   [Build Tools](faq/make.md)
 -   [Calling gnuplot(1) from Fortran](faq/gnuplot.md)
 -   [Variable length CHARACTER arrays](faq/difflength.md)
--   [Non-advancing I/O](faq/nonadvancing.md)
--   [Notes on list-directed output](faq/list_directed.md)
--   [Notes on compound Boolean expressions](faq/short-circuit.md)
 -   [Notes on including metadata in programs, objects, and
     source](faq/metadata.md)
--   [Procedure pointer](faq/procedure_pointer.md)
 -   [Special values](faq/special_values.md)
+
+### I/O
+-   [Creating sequentially numbered filenames](faq/numbered_files.md)
+-   [Writing to stderr](faq/stderr.md)
+-   [How does Fortran handle a scratch file?](faq/scratch.md)
+-   [Non-advancing I/O](faq/nonadvancing.md)
+-   [Notes on list-directed output](faq/list_directed.md)
 -   [Leading space on list-directed output](faq/leading_space.md)
 
 ------------------------------------------------------------------------
