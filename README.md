@@ -1,6 +1,6 @@
 ---
 ---
-# INDEX OF THIS GITHUB SITE
+# Index of this Github Site
 ## GitHub Stats
 ![Your Repository's Stats](https://github-readme-stats.vercel.app/api?username=urbanjost&show_icons=true)
 
@@ -10,7 +10,7 @@
 + [CD/CI STATUS](STATUS.md)
 + [ISSUES](ISSUES.md)
 ---
-## FEEDBACK REMINDER
+## Feedback Reminder
 
 Please provide feedback via the github "Issues", "Wiki", and "Discussion"
 features on github.  If you use a module from this collection please
@@ -89,7 +89,7 @@ Please provide feedback on the
     + [faq](docs/index.md)
 
 ---
-# EXTERNAL SITES OF INTEREST
+# ExternaL Sites of Interest
 ---
 ## Fortran Documentation
 
