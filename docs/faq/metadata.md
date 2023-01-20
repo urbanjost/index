@@ -1,4 +1,4 @@
-#metadata
+# metadata
 
 Fortran does not have a specific way to include metadata in object files
 or executables. See 

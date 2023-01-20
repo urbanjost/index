@@ -1,4 +1,4 @@
-#How do you get the size of a file?
+# How do you get the size of a file?
 
    Fortran does not have an intrinsic that returns the size of a file,
    but with a modern compiler the answer to this question has gotten
@@ -23,7 +23,7 @@
    every method has problems with special file types. I have not had
    the INQUIRE(SIZE=...) statement fail on regular external files.
    
-#Other methods
+# Other methods
 
    If the _INQUIRE_(3f) statement does not yet work with _SIZE=_ in your
    programming environment, there are several alternative methods for
@@ -36,13 +36,13 @@
      * calling system command and reading command output
      * reading the entire file and counting line lengths and lines
 
-##Using non-standard extensions
+## Using non-standard extensions
 
    If you are not concerned about portability many compilers
    support at least a subset of the _POSIX_ system interface routines.
    Look for routines like _STAT_(3f) or _PXFSTAT_(3f).
 
-##Opening a file at end-of-file and reading position
+## Opening a file at end-of-file and reading position
 
    Depending on what vintage of fortran you have available, if you
    _OPEN_(3f) the file with _POSITION='APPEND'_ and then use _INQUIRE(3f)_
@@ -122,7 +122,7 @@
        ierr=ios
     end subroutine filesize
 
-###Example output
+### Example output
 
     file_size *
 
@@ -140,7 +140,7 @@
     scratch.html is 28136 bytes
     zero_elements.html is 7485 bytes
 
-##call C routines via ISO\_C\_BINDING module
+## call C routines via ISO\_C\_BINDING module
 
 With modern Fortran it is relatively standard and portable to
 call C routines. There is an extensive interface in module

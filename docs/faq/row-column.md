@@ -1,26 +1,26 @@
-#How do I initialize an array in row-column order?
+# How do I initialize an array in row-column order?
 
 ## Initializing small 2D numeric arrays with array constructors #
 
 Intuitively, one might assume that if one wants to initialize a
 small array by rows that something like the following will work:
-
+```fortran
      ! DOES NOT WORK
      integer :: xx(3,5)= [ 1, 2, 3, 4, 5], &
                        [10,20,30,40,50], &
   		       [11,22,33,44,55]
-
+```
 or perhaps
-
+```fortran
      ! DOES NOT WORK
      integer :: xx(3,5)= [ [ 1, 2, 3, 4, 5], &
                          [10,20,30,40,50], &
                          [11,22,33,44,55]  ]
-
+```
 Someday something simpler might work, but currently the following syntax
 is required to specify the values in an intuitive row-column sequence
 using an array constructor:
-
+```fortran
       integer,save :: xx(3,5)= reshape([&
 
        1, 2, 3, 4, 5, &
@@ -28,7 +28,7 @@ using an array constructor:
       11,22,33,44,55  &
 
       ],shape(xx),order[2,1])
-
+```
 This is because __an array constructor can be used to create and assign
 values only to rank-one arrays__.  To define arrays of more than one
 dimension with an array constructor, you must use the **RESHAPE(3f)** intrinsic
@@ -48,7 +48,7 @@ longest value specified, but depending on it reduces portability).
 When working with small arrays the issue that there is no default Fortran
 routine for printing an array in row-column order becomes apparent. So
 lets create a simple solution for integer arrays **(PRINT_MATRIX_INT(3f))**:
-
+```fortran
      program demo_array_constructor ! initializing small arrays
      implicit none
      integer,save :: xx(3,5)= reshape([&
@@ -85,14 +85,14 @@ lets create a simple solution for integer arrays **(PRINT_MATRIX_INT(3f))**:
      end subroutine print_matrix_int
   
      end program demo_array_constructor
-
+```
 Results:
-
+```text
      xx array:
      > [  1,  2,  3,  4,  5 ]
      > [ 10, 20, 30, 40, 50 ]
      > [ 11, 22, 33, 44, 55 ]
-
+```
 We could do a more robust version that handles REAL and COMPLEX values
 as well as NaN values, but it has already been done.  If you need to
 print a variety of small matrices see:
@@ -102,7 +102,7 @@ print a variety of small matrices see:
      School of Science and Engineering, University of Iceland,
      Hjardarhaga 4, 107 Reykjavik, Iceland (jonasson@hi.is).
 
-#Initializing a 2D array using **DATA** statements
+# Initializing a 2D array using **DATA** statements
 
 Note that **DATA** statements are very flexible, and allow for perhaps the
 most intelligible way of specifying small arrays row by row. For example:

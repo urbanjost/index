@@ -1,13 +1,13 @@
-#block comments in Fortran
+# block comments in Fortran
 
 Fortran does not support block comments. 
 
-##Editor support of block text
+## Editor support of block text
 
 Some editors can support editing block comment
 sections in Fortran, such as _emacs_(1) and _vim_(1).
 
-##Using pre-processors
+## Using pre-processors
 
 In general, a pre-processor can be used to provide support for
 documentation being combined with source code. For example, the commonly

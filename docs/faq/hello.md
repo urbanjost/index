@@ -1,4 +1,4 @@
-#Hello World!
+# Hello World!
 
 Generally, Fortran source is created as a plain ASCII text file with
 a file suffix of .f for fixed-source style, and .f90 for free-format
@@ -8,7 +8,7 @@ the convention most commonly followed is to capitalize the suffix
 (ie. .F or .F90). Other suffixes such as .for and .ftn are sometimes
 supported.
 
-##A simple program
+## A simple program
 
 Create a simple textfile called "hello.f90" with the following contents:
 
@@ -17,7 +17,7 @@ Create a simple textfile called "hello.f90" with the following contents:
        write(*,*)'Hello World!'
     end program hello_demo
 
-##Compiling 
+## Compiling 
 
 Determine the name of your compiler (gfortran, ifort, g95, f90, f95, pathf90, minGW95, ...).
 Compile your program according to your compiler documentation with something like
@@ -30,11 +30,11 @@ Execute your program, typically by entering
 or
     hello
 
-###Compiler Options for development
+### Compiler Options for development
 
-###Compiler Options for production executables
+### Compiler Options for production executables
 
-##Making a library
+## Making a library
 Create a simple textfile called "hello.f90" with the following contents:
 
     program hello_demo
@@ -60,6 +60,6 @@ Make a second file called "subroutines.f90":
        write(*,*)'STRING=',trim(string)
     end subroutine print_string
 
-##Using a module
+## Using a module
 
-##Simple make(1) files
+## Simple make(1) files

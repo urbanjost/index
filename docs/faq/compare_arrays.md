@@ -1,4 +1,4 @@
-#How do I compare arrays?
+# How do I compare arrays?
 
 You cannot use a simple compare of two arrays in an *IF*(3f), because a
 comparison of two arrays returns a logical array, not a single scalar
@@ -11,7 +11,7 @@ logical. So this *IF*(3f) statement will return a compiler error:
     endif
     end
 ```
-##ANY(3f) and ALL(3f) are probably what you are looking for
+## ANY(3f) and ALL(3f) are probably what you are looking for
 
 There is not an specific intrinsic function to compare arrays in Fortran.
 but you can use the very flexible and generic *ALL*(3f) and *ANY*(3f)
@@ -41,7 +41,7 @@ Results:
 which works for all arrays as long as they have the same type
 and length.
 
-##DO-ing it yourself
+## DO-ing it yourself
 
 Of course, you can loop through the elements with a DO(3f):
 ```fortran
@@ -100,7 +100,7 @@ Results:
 ```text
     A and B are equal
 ```
-##Be careful when comparing floating-point values
+## Be careful when comparing floating-point values
 
 If the arrays are *INTEGER* or *CHARACTER*, then the comparison can be exact.
 However, if the arrays contain floating-points values such as  *REAL*,
@@ -125,7 +125,7 @@ floating point values, but there are several good sources on why you want
 to compare using a tolerance and how to determine what that tolerance
 should be.
 
-##*ANY*(3f) and *ALL*(3f) may not be the most efficient method
+## *ANY*(3f) and *ALL*(3f) may not be the most efficient method
 
 The *ANY*(3f) and *ALL*(3f) functions may generate a logical array the size of
 the input arrays or always test all elements; depending on how they are

@@ -1,4 +1,4 @@
-#"array=[]" will not work
+# "array=[]" will not work
 
 If you want to initialize an array to have zero elements, something like
 

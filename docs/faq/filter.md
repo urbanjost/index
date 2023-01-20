@@ -1,4 +1,4 @@
-#Stream I/O on stdin and stdout
+# Stream I/O on stdin and stdout
 
 Fortran 2003 introduces stream I/O for Fortran; but does not 
 supply a way to make stdin and stdout stream files. One method
@@ -10,7 +10,7 @@ same units.
 Callling C from Fortran is less problematic with the Fortran 2003 ISO\_C\_BINDING,
 so this example shows that method.
 
-##Example
+## Example
 
 This shell script makes the C routines getkeyC and putkeyC, a Fortran binding to the C
 routines, and an example program; and then builds and executes the program.

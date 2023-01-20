@@ -1,4 +1,4 @@
-#conformance and elemental functions
+#c*onformance and elemental functions
 
 The Fortran standard requires the programmer to make sure that arrays
 conform for elemental functions.

@@ -1,6 +1,6 @@
-#indenting Fortran
+# indenting Fortran
 
-##Using Common Editors
+# #Using Common Editors
 
 Several commonly available editors will automatically indent your
 source  as you compose the code. Two of the most popular 
@@ -14,7 +14,7 @@ language-specific indenting rules as you create your code.
 
 The editors can also be used to re-indent existing files:
 
-###vim(1)
+# ##vim(1)
 
 Assuming vim(1) has been built with internal indenting (typically it is)
 To re-indent an entire file in the vim(1) editor, start editing the file
@@ -39,7 +39,7 @@ if you want backup files for each file, or use
 
 if you do not need the backup files (and to make it run optimally).
 
-###emacs(1)
+### emacs(1)
 
 To use emacs(1) to indent free-format fortran files as a command create
 a small script file called indent\_emacs:
@@ -56,14 +56,14 @@ And then enter "chmod u+xr indent\_emacs". Now you can use
 
 to batch indent many files.
 
-##Programs
+## Programs
 
 A Fortran indenter program named
 <a href="https://sourceforge.net/projects/findent/"> findent(1) </a>
 can be used as a CLI (Command Line Interface) command, with a Java GUI
 interface, and from several editors such as vim.
 
-##Examples
+## Examples
 
 Given the file
 

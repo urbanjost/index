@@ -1,4 +1,4 @@
-#Gotchas: Inheritance control for CONTAIN-ed procedures
+# Gotchas: Inheritance control for CONTAIN-ed procedures
    NOTE:
      In upcoming Fortran releases see the IMPORT directive.
 
@@ -29,7 +29,7 @@
    convention such as starting local variables with the name of the routine
    can be helpful.
    
-##Sample program to test your understanding of inheritance with ...
+## Sample program to test your understanding of inheritance with ...
 
       program testit
       implicit none
@@ -64,7 +64,7 @@
       
       end program testit
 
-##Expected Output
+## Expected Output
 
    10.0000000    
    11.0000000    

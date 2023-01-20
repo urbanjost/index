@@ -1,4 +1,4 @@
-#special values (ie. Nan, Infinity, ...)
+# special values (ie. Nan, Infinity, ...)
 
 In general you are probably trying to avoid generating infinite values
 and NaNs (Not a Number) ; but there are now facilities for handing
@@ -13,9 +13,9 @@ There are also a few examples included that might be useful in
 environments that do not support the IEEE_ARITHMETIC module; so test
 and use them carefully.
 
-#INFINITY
+# INFINITY
 
-
+```fortran
     program demo_inf
     use ieee_arithmetic ! If your compiler supports ISO TR 15580 IEEE Arithmetic !use procedures from ieee_* modules.
     implicit none
@@ -89,5 +89,6 @@ and use them carefully.
     !===============================================================================
     end program demo_inf
     !===============================================================================
+```
 
-#How to tell if a value is a NaN?
+# How to tell if a value is a NaN?

@@ -1,4 +1,4 @@
-#How to issue a command to the operating system
+# How to issue a command to the operating system
 
 To execute a shell command use the f2008 procedure
 
@@ -6,7 +6,7 @@ To execute a shell command use the f2008 procedure
 
 If it is not available, most Fortran compilers support an extension called system(3f).
 
-##DESCRIPTION
+## DESCRIPTION
 
 The COMMAND argument is passed to the shell and executed.  (The shell
 is generally sh(1) on Unix systems, and cmd.exe on Windows.) If **WAIT**
@@ -28,22 +28,22 @@ When the command is executed synchronously, **EXECUTE\_COMMAND\_LINE**(3f)
 returns after the command line has completed execution. Otherwise,
 **EXECUTE\_COMMAND\_LINE**(3f) returns without waiting.
 
-##ARGUMENTS
+## ARGUMENTS
 
-###COMMAND
+### COMMAND
   a default **CHARACTER** scalar conntaining the command line to be executed. The interpretation is programming-
   environment dependent.
 
-###WAIT
+### WAIT
   (Optional) a default **LOGICAL** scalar.  If **WAIT** is present with the value .false., and the processor supports
   asynchronous execution of the command, the command is executed asynchronously; otherwise it is executed
   synchronously.
 
-###EXITSTAT
+### EXITSTAT
   (Optional) an **INTEGER** of the default kind with intent(INOUT).  If the command is executed synchronously, it is
   assigned the value of the processor-dependent exit status. Otherwise, the value of **EXITSTAT** is unchanged.
 
-###CMDSTAT
+### CMDSTAT
   (Optional) an **INTEGER** of  default kind with intent(INOUT).  If an error condition occurs and **CMDSTAT** is not
   present, error termination of execution of the image is initiated.
 
@@ -51,11 +51,11 @@ returns after the command line has completed execution. Otherwise,
   positive value if an error condition occurs, or the value -2 if no error condition occurs but **WAIT** is present with
   the value false and the processor does not support asynchronous execution. Otherwise it is assigned the value 0.
 
-###CMDMSG
+### CMDMSG
   (Optional) a **CHARACTER** scalar of the default kind.  It is an **INTENT (INOUT)** argument. If an error condition
   occurs, it is assigned a processor-dependent explanatory message. Otherwise, it is unchanged.
 
-##EXAMPLE
+## EXAMPLE
 
 Sample program:
 
@@ -78,7 +78,7 @@ Sample program:
 
     end program test_exec
 
-###NOTE
+### NOTE
 
 Because this intrinsic is making a system call, it is very system
 dependent. Its behavior with respect to signaling is processor
@@ -87,13 +87,13 @@ SIGQUIT signals will be ignored, and the SIGCHLD will be blocked. As
 such, if the parent process is terminated, the child process might not
 be terminated alongside.
 
-#Calling a process
+# Calling a process
 
 A module called M\_process(3f) that uses the **ISO\_C\_BINDING**(3f) to call **POSIX** C routines
 to spawn a process and either write data to the stdin of the process or
 read the stdout of the process can be found in the [**GPF**](../../GPF.html) (General Purpose Fortran) collection.
 
-##EXAMPLE
+## EXAMPLE
 
 Following is an example program that calls the M\_process module to start a plotting
 program called gnuplot(1) and give it enough commands to generate

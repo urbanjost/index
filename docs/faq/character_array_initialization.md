@@ -1,4 +1,4 @@
-#Trouble initialing character arrays#
+# Trouble initialing character arrays#
 ## or why 
 ###    character(len=\*),parameter :: array(\*)=['one','two','three']
 ## is an error 

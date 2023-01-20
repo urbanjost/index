@@ -1,4 +1,4 @@
-#Convertings between Strings and numbers
+# Convertings between Strings and numbers
 
 Type conversion from strings to number and vice-versa is most commonly done
 with internal reads and writes. You can read and write from a CHARACTER 
@@ -6,7 +6,7 @@ variable as with a file. There is no direct way to read or write from an
 allocatable array currently, so you have to use a variable of a defined
 length. 
 
-##Converting simple values
+## Converting simple values
 ```fortran
      program internal_io
      implicit none
@@ -32,11 +32,11 @@ length.
     line=[.3333333333333333]
 ```
 <!--
-##Lists
+## Lists
 
-##Reading numbers from command arguments
+## Reading numbers from command arguments
 
-##Expressions
+## Expressions
 
-##Interpreters
+## Interpreters
 -->

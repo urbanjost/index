@@ -1,4 +1,4 @@
-#Procedure Pointers
+# Procedure Pointers
 
 In addition to being able to pass procedures as parameters since
 FORTRAN 77, Fortran 2003+ supports procedure pointers, allowing
@@ -21,7 +21,7 @@ First, make some example functions
     end function f2
     end module ExampleFuncs
 
-##A simple program
+## A simple program
 
     program test_func_ptrs
     use ExampleFuncs
