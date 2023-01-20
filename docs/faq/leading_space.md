@@ -8,7 +8,7 @@
      statements so they line up with the list-directed output
   1. come very close to list-directed output format
      by using the G descriptor. For example:
-
+```fortran
       character(len=*),parameter :: any = '(*(g0,1x))' ! a space between entries
       character(len=*),parameter :: g =   "(*(g0))"    ! no spaces between items
       i=10
@@ -18,4 +18,5 @@
 
       i = 10
       10 1234.56702 9876543210.1234570 T 123.456001 789.012024 Gee!
+```
 
