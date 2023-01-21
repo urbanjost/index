@@ -1,4 +1,3 @@
-!wget https://raw.githubusercontent.com/urbanjost/index/main/bootstrap/fpm.F90
 #undef linux
 #undef unix
 #define FPM_BOOTSTRAP
@@ -1406,7 +1405,7 @@ module tomlf_version
 
 
    !> String representation of the TOML-Fortran version
-   character(len=*), parameter :: tomlf_version_string = "0.3.0"
+   character(len=*), parameter :: tomlf_version_string = "0.3.1"
 
    !> Major version number of the above TOML-Fortran version
    integer, parameter :: tomlf_major = 0
@@ -1415,7 +1414,7 @@ module tomlf_version
    integer, parameter :: tomlf_minor = 3
 
    !> Patch version number of the above TOML-Fortran version
-   integer, parameter :: tomlf_patch = 0
+   integer, parameter :: tomlf_patch = 1
 
    !> Compact numeric representation of the TOML-Fortran version
    integer, parameter :: tomlf_version_compact = &
@@ -3487,7 +3486,7 @@ integer                      :: ios
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:FILENAME=',filename
 
    ! look for name.rsp in directories from environment variable assumed to be a colon-separated list of directories
-   call split(get_env('CLI_RESPONSE_PATH','~/.local/share/rsp'),paths)
+   call split(get_env('CLI_RESPONSE_PATH'),paths)
    paths=[character(len=len(paths)) :: ' ',paths]
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:PATHS=',paths
 
@@ -8613,6 +8612,15 @@ contains
         first_run = .false.
         r = OS_UNKNOWN
 
+        ! Check environment variable `OS`.
+        call get_environment_variable('OS', val, length, rc)
+
+        if (rc == 0 .and. length > 0 .and. index(val, 'Windows_NT') > 0) then
+            r = OS_WINDOWS
+            ret = r
+            return
+        end if
+
         ! Check environment variable `OSTYPE`.
         call get_environment_variable('OSTYPE', val, length, rc)
 
@@ -8665,15 +8673,6 @@ contains
                 ret = r
                 return
             end if
-        end if
-
-        ! Check environment variable `OS`.
-        call get_environment_variable('OS', val, length, rc)
-
-        if (rc == 0 .and. length > 0 .and. index(val, 'Windows_NT') > 0) then
-            r = OS_WINDOWS
-            ret = r
-            return
         end if
 
         ! Linux
@@ -10667,12 +10666,10 @@ end function which
 subroutine run(cmd,echo,exitstat,verbose,redirect)
     character(len=*), intent(in) :: cmd
     logical,intent(in),optional  :: echo
-    integer, intent(out),optional :: exitstat
+    integer, intent(out),optional  :: exitstat
     logical, intent(in), optional :: verbose
     character(*), intent(in), optional :: redirect
 
-    integer            :: cmdstat
-    character(len=256) :: cmdmsg
     logical :: echo_local, verbose_local
     character(:), allocatable :: redirect_str
     character(:), allocatable :: line
@@ -10709,10 +10706,7 @@ subroutine run(cmd,echo,exitstat,verbose,redirect)
 
     if(echo_local) print *, '+ ', cmd
 
-    call execute_command_line(cmd//redirect_str, exitstat=stat,cmdstat=cmdstat,cmdmsg=cmdmsg)
-    if(cmdstat /= 0)then
-        write(stderr,'(*(g0,1x))')'<ERROR>',trim(cmdmsg)
-    endif
+    call execute_command_line(cmd//redirect_str, exitstat=stat)
 
     if (verbose_local.and.present(redirect)) then
 
@@ -11493,7 +11487,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.7.0, alpha-20230120',                      &
+         &  'Version:     0.7.0, alpha',                               &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -13320,6 +13314,8 @@ recursive pure function render_diagnostic(diag, input, color) result(string)
    type(toml_terminal), intent(in) :: color
    character(len=:), allocatable :: string
 
+   integer :: is
+
    string = &
       render_message(diag%level, diag%message, color)
 
@@ -13384,7 +13380,6 @@ function render_text(input, color, source) result(string)
    integer :: it, offset
    type(line_token), allocatable :: token(:)
 
-   allocate(token(0))  ! avoid compiler warning
    token = line_tokens(input)
    offset = integer_width(size(token))
 
@@ -13415,7 +13410,6 @@ function render_text_with_label(input, label, color, source) result(string)
    integer :: it, offset, first, last, line, shift
    type(line_token), allocatable :: token(:)
 
-   allocate(token(0))  ! avoid compiler warning
    token = line_tokens(input)
    line = count(token%first < label%first)
    associate(first => token%first)
@@ -13462,7 +13456,6 @@ pure function render_text_with_labels(input, label, color, source) result(string
    type(line_token), allocatable :: token(:)
    logical, allocatable :: display(:)
 
-   allocate(token(0))  ! avoid compiler warning
    token = line_tokens(input)
    line(:) = [(count(token%first <= label(it)%first), it = 1, size(label))]
    associate(first => token%first)
@@ -13995,89 +13988,7 @@ end function cast_string
 end module tomlf_type_keyval
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/structure/node.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Implementation of a basic storage structure as pointer list of pointers.
-!>
-!> This implementation does purposely not use pointer attributes in the
-!> datastructure to make it safer to work with.
-module tomlf_structure_node
-   use tomlf_type_value, only : toml_value
-   implicit none
-   private
-
-   public :: toml_node, resize
-
-
-   !> Wrapped TOML value to generate pointer list
-   type :: toml_node
-
-      !> TOML value payload
-      class(toml_value), allocatable :: val
-
-   end type toml_node
-
-
-   !> Initial storage capacity of the datastructure
-   integer, parameter :: initial_size = 16
-
-
-contains
-
-
-!> Change size of the TOML value list
-subroutine resize(list, n)
-
-   !> Array of TOML values to be resized
-   type(toml_node), allocatable, intent(inout), target :: list(:)
-
-   !> New size of the list
-   integer, intent(in) :: n
-
-   type(toml_node), allocatable, target :: tmp(:)
-   integer :: i
-
-
-   if (allocated(list)) then
-      call move_alloc(list, tmp)
-      allocate(list(n))
-
-      do i = 1, min(size(tmp), n)
-         if (allocated(tmp(i)%val)) then
-            call move_alloc(tmp(i)%val, list(i)%val)
-         end if
-      end do
-
-      do i = n+1, size(tmp)
-         if (allocated(tmp(i)%val)) then
-            call tmp(i)%val%destroy
-            deallocate(tmp(i)%val)
-         end if
-      end do
-
-      deallocate(tmp)
-   else
-      allocate(list(n))
-   end if
-
-end subroutine resize
-
-end module tomlf_structure_node
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/structure/list.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/structure/base.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -14092,24 +14003,43 @@ end module tomlf_structure_node
 ! limitations under the License.
 
 !> Abstract base class definitions for data structures to store TOML values
-module tomlf_structure_list
+module tomlf_structure_base
    use tomlf_constants, only : tfc
    use tomlf_type_value, only : toml_value, toml_key
    implicit none
    private
 
-   public :: toml_list_structure
+   public :: toml_structure, toml_ordered
+
+
+   !> Abstract data structure
+   type, abstract :: toml_structure
+   contains
+
+      !> Find a TOML value based on its key
+      procedure(find), deferred :: find
+
+      !> Push back a TOML value to the structure
+      procedure(push_back), deferred :: push_back
+
+      !> Get list of all keys in the structure
+      procedure(get_keys), deferred :: get_keys
+
+      !> Delete TOML value at a given key
+      procedure(delete), deferred :: delete
+
+      !> Destroy the data structure
+      procedure(destroy), deferred :: destroy
+
+   end type toml_structure
 
 
    !> Ordered data structure, allows iterations
-   type, abstract :: toml_list_structure
+   type, abstract, extends(toml_structure) :: toml_ordered
    contains
 
       !> Get number of TOML values in the structure
       procedure(get_len), deferred :: get_len
-
-      !> Push back a TOML value to the structure
-      procedure(push_back), deferred :: push_back
 
       !> Remove the first element from the structure
       procedure(shift), deferred :: shift
@@ -14120,19 +14050,31 @@ module tomlf_structure_list
       !> Get TOML value at a given index
       procedure(get), deferred :: get
 
-      !> Destroy the data structure
-      procedure(destroy), deferred :: destroy
-
-   end type toml_list_structure
+   end type toml_ordered
 
 
    abstract interface
-      !> Get number of TOML values in the structure
-      pure function get_len(self) result(length)
-         import :: toml_list_structure
+      !> Find a TOML value based on its key
+      subroutine find(self, key, ptr)
+         import :: toml_structure, toml_value, tfc
 
          !> Instance of the structure
-         class(toml_list_structure), intent(in), target :: self
+         class(toml_structure), intent(inout), target :: self
+
+         !> Key to the TOML value
+         character(kind=tfc, len=*), intent(in) :: key
+
+         !> Pointer to the stored value at given key
+         class(toml_value), pointer, intent(out) :: ptr
+      end subroutine find
+
+
+      !> Get number of TOML values in the structure
+      pure function get_len(self) result(length)
+         import :: toml_ordered
+
+         !> Instance of the structure
+         class(toml_ordered), intent(in), target :: self
 
          !> Current length of the ordered structure
          integer :: length
@@ -14141,10 +14083,10 @@ module tomlf_structure_list
 
       !> Get TOML value at a given index
       subroutine get(self, idx, ptr)
-         import :: toml_list_structure, toml_value
+         import :: toml_ordered, toml_value
 
          !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
+         class(toml_ordered), intent(inout), target :: self
 
          !> Position in the ordered structure
          integer, intent(in) :: idx
@@ -14156,10 +14098,10 @@ module tomlf_structure_list
 
       !> Push back a TOML value to the structure
       subroutine push_back(self, val)
-         import :: toml_list_structure, toml_value
+         import :: toml_structure, toml_value
 
          !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
+         class(toml_structure), intent(inout), target :: self
 
          !> TOML value to be stored
          class(toml_value), allocatable, intent(inout) :: val
@@ -14169,10 +14111,10 @@ module tomlf_structure_list
 
       !> Remove the first element from the data structure
       subroutine shift(self, val)
-         import :: toml_list_structure, toml_value
+         import :: toml_ordered, toml_value
 
          !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
+         class(toml_ordered), intent(inout), target :: self
 
          !> TOML value to be retrieved
          class(toml_value), allocatable, intent(out) :: val
@@ -14182,10 +14124,10 @@ module tomlf_structure_list
 
       !> Remove the last element from the data structure
       subroutine pop(self, val)
-         import :: toml_list_structure, toml_value
+         import :: toml_ordered, toml_value
 
          !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
+         class(toml_ordered), intent(inout), target :: self
 
          !> TOML value to be retrieved
          class(toml_value), allocatable, intent(out) :: val
@@ -14193,118 +14135,12 @@ module tomlf_structure_list
       end subroutine pop
 
 
-      !> Delete TOML value at a given key
-      subroutine delete(self, key)
-         import :: toml_list_structure, toml_value, tfc
-
-         !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
-
-         !> Key to the TOML value
-         character(kind=tfc, len=*), intent(in) :: key
-
-      end subroutine delete
-
-
-      !> Deconstructor for data structure
-      subroutine destroy(self)
-         import :: toml_list_structure
-
-         !> Instance of the structure
-         class(toml_list_structure), intent(inout), target :: self
-
-      end subroutine destroy
-
-   end interface
-
-
-end module tomlf_structure_list
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/structure/map.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Abstract base class definitions for data structures to store TOML values
-module tomlf_structure_map
-   use tomlf_constants, only : tfc
-   use tomlf_type_value, only : toml_value, toml_key
-   implicit none
-   private
-
-   public :: toml_map_structure
-
-
-   !> Abstract data structure
-   type, abstract :: toml_map_structure
-   contains
-
-      !> Get TOML value at a given key
-      procedure(get), deferred :: get
-
-      !> Push back a TOML value to the structure
-      procedure(push_back), deferred :: push_back
-
-      !> Get list of all keys in the structure
-      procedure(get_keys), deferred :: get_keys
-
-      !> Remove TOML value at a given key and return it
-      procedure(pop), deferred :: pop
-
-      !> Delete TOML value at a given key
-      procedure(delete), deferred :: delete
-
-      !> Destroy the data structure
-      procedure(destroy), deferred :: destroy
-
-   end type toml_map_structure
-
-
-   abstract interface
-      !> Get TOML value at a given key
-      subroutine get(self, key, ptr)
-         import :: toml_map_structure, toml_value, tfc
-
-         !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
-
-         !> Key to the TOML value
-         character(kind=tfc, len=*), intent(in) :: key
-
-         !> Pointer to the stored value at given key
-         class(toml_value), pointer, intent(out) :: ptr
-      end subroutine get
-
-
-      !> Push back a TOML value to the structure
-      subroutine push_back(self, val)
-         import :: toml_map_structure, toml_value
-
-         !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
-
-         !> TOML value to be stored
-         class(toml_value), allocatable, intent(inout) :: val
-
-      end subroutine push_back
-
-
       !> Get list of all keys in the structure
       subroutine get_keys(self, list)
-         import :: toml_map_structure, toml_key
+         import :: toml_structure, toml_key
 
          !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
+         class(toml_structure), intent(inout), target :: self
 
          !> List of all keys
          type(toml_key), allocatable, intent(out) :: list(:)
@@ -14312,28 +14148,12 @@ module tomlf_structure_map
       end subroutine get_keys
 
 
-      !> Remove TOML value at a given key and return it
-      subroutine pop(self, key, val)
-         import :: toml_map_structure, toml_value, tfc
-
-         !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
-
-         !> Key to the TOML value
-         character(kind=tfc, len=*), intent(in) :: key
-
-         !> Removed TOML value
-         class(toml_value), allocatable, intent(out) :: val
-
-      end subroutine pop
-
-
       !> Delete TOML value at a given key
       subroutine delete(self, key)
-         import :: toml_map_structure, toml_value, tfc
+         import :: toml_structure, toml_value, tfc
 
          !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
+         class(toml_structure), intent(inout), target :: self
 
          !> Key to the TOML value
          character(kind=tfc, len=*), intent(in) :: key
@@ -14343,17 +14163,17 @@ module tomlf_structure_map
 
       !> Deconstructor for data structure
       subroutine destroy(self)
-         import :: toml_map_structure
+         import :: toml_structure
 
          !> Instance of the structure
-         class(toml_map_structure), intent(inout), target :: self
+         class(toml_structure), intent(inout), target :: self
 
       end subroutine destroy
 
    end interface
 
 
-end module tomlf_structure_map
+end module tomlf_structure_base
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/sort.f90
@@ -14421,7 +14241,7 @@ contains
       low = 1
       high = size(list)
 
-      allocate(sorted, source=list)
+      sorted = list
 
       allocate(indexarray(high), source=[(i, i=low, high)])
 
@@ -14500,7 +14320,7 @@ contains
 end module tomlf_utils_sort
 
 
-!>>>>> build/dependencies/toml-f/src/tomlf/structure/ordered_map.f90
+!>>>>> build/dependencies/toml-f/src/tomlf/structure/vector.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
 !
@@ -14518,19 +14338,27 @@ end module tomlf_utils_sort
 !>
 !> This implementation does purposely not use pointer attributes in the
 !> datastructure to make it safer to work with.
-module tomlf_structure_ordered_map
+module tomlf_structure_vector
    use tomlf_constants, only : tfc
-   use tomlf_structure_map, only : toml_map_structure
-   use tomlf_structure_node, only : toml_node, resize
+   use tomlf_structure_base, only : toml_ordered
    use tomlf_type_value, only : toml_value, toml_key
    implicit none
    private
 
-   public :: toml_ordered_map, new_ordered_map
+   public :: toml_vector, new_vector
+
+
+   !> Wrapped TOML value to generate pointer list
+   type :: toml_node
+
+      !> TOML value payload
+      class(toml_value), allocatable :: val
+
+   end type toml_node
 
 
    !> Stores TOML values in a list of pointers
-   type, extends(toml_map_structure) :: toml_ordered_map
+   type, extends(toml_ordered) :: toml_vector
 
       !> Current number of stored TOML values
       integer :: n = 0
@@ -14540,13 +14368,22 @@ module tomlf_structure_ordered_map
 
    contains
 
-      !> Get TOML value at a given key
+      !> Get number of TOML values in the structure
+      procedure :: get_len
+
+      !> Find a TOML value based on its key
+      procedure :: find
+
+      !> Get TOML value at a given index
       procedure :: get
 
       !> Push back a TOML value to the structure
       procedure :: push_back
 
-      !> Remove TOML value at a given key and return it
+      !> Remove the first element from the structure
+      procedure :: shift
+
+      !> Remove the last element from the structure
       procedure :: pop
 
       !> Get list of all keys in the structure
@@ -14558,7 +14395,7 @@ module tomlf_structure_ordered_map
       !> Destroy the data structure
       procedure :: destroy
 
-   end type toml_ordered_map
+   end type toml_vector
 
 
    !> Initial storage capacity of the datastructure
@@ -14569,10 +14406,10 @@ contains
 
 
 !> Constructor for the storage data structure
-subroutine new_ordered_map(self, n)
+subroutine new_vector(self, n)
 
    !> Instance of the structure
-   type(toml_ordered_map), intent(out) :: self
+   type(toml_vector), intent(out) :: self
 
    !> Initial storage capacity
    integer, intent(in), optional :: n
@@ -14584,14 +14421,28 @@ subroutine new_ordered_map(self, n)
       allocate(self%lst(initial_size))
    end if
 
-end subroutine new_ordered_map
+end subroutine new_vector
 
 
-!> Get TOML value at a given key
-subroutine get(self, key, ptr)
+!> Get number of TOML values in the structure
+pure function get_len(self) result(length)
 
    !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
+   class(toml_vector), intent(in), target :: self
+
+   !> Current length of the ordered structure
+   integer :: length
+
+   length = self%n
+
+end function get_len
+
+
+!> Find a TOML value based on its key
+subroutine find(self, key, ptr)
+
+   !> Instance of the structure
+   class(toml_vector), intent(inout), target :: self
 
    !> Key to the TOML value
    character(kind=tfc, len=*), intent(in) :: key
@@ -14612,243 +14463,14 @@ subroutine get(self, key, ptr)
       end if
    end do
 
-end subroutine get
-
-
-!> Push back a TOML value to the structure
-subroutine push_back(self, val)
-
-   !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
-
-   !> TOML value to be stored
-   class(toml_value), allocatable, intent(inout) :: val
-
-   integer :: m
-
-   if (.not.allocated(self%lst)) then
-      call resize(self%lst, initial_size)
-   end if
-
-   m = size(self%lst)
-   if (self%n >= m) then
-      call resize(self%lst, m + m/2 + 1)
-   end if
-
-   self%n = self%n + 1
-   call move_alloc(val, self%lst(self%n)%val)
-
-end subroutine push_back
-
-
-!> Get list of all keys in the structure
-subroutine get_keys(self, list)
-
-   !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
-
-   !> List of all keys
-   type(toml_key), allocatable, intent(out) :: list(:)
-
-   integer :: i
-
-   allocate(list(self%n))
-
-   do i = 1, self%n
-      if (allocated(self%lst(i)%val)) then
-         if (allocated(self%lst(i)%val%key)) then
-            list(i)%key = self%lst(i)%val%key
-            list(i)%origin = self%lst(i)%val%origin
-         end if
-      end if
-   end do
-
-end subroutine get_keys
-
-
-!> Remove TOML value at a given key and return it
-subroutine pop(self, key, val)
-
-   !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
-
-   !> Key to the TOML value
-   character(kind=tfc, len=*), intent(in) :: key
-
-   !> Removed TOML value
-   class(toml_value), allocatable, intent(out) :: val
-
-   integer :: idx, i
-
-   idx = 0
-   do i = 1, self%n
-      if (allocated(self%lst(i)%val)) then
-         if (self%lst(i)%val%match_key(key)) then
-            idx = i
-            exit
-         end if
-      end if
-   end do
-
-   if (idx > 0) then
-      call move_alloc(self%lst(idx)%val, val)
-      do i = idx+1, self%n
-         call move_alloc(self%lst(i)%val, self%lst(i-1)%val)
-      end do
-      self%n = self%n - 1
-   end if
-
-end subroutine pop
-
-
-!> Delete TOML value at a given key
-subroutine delete(self, key)
-
-   !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
-
-   !> Key to the TOML value
-   character(kind=tfc, len=*), intent(in) :: key
-
-   class(toml_value), allocatable :: val
-
-   call self%pop(key, val)
-   if (allocated(val)) then
-      call val%destroy()
-   end if
-
-end subroutine delete
-
-
-!> Deconstructor for data structure
-subroutine destroy(self)
-
-   !> Instance of the structure
-   class(toml_ordered_map), intent(inout), target :: self
-
-   integer :: i
-
-   do i = 1, self%n
-      if (allocated(self%lst(i)%val)) then
-         call self%lst(i)%val%destroy
-      end if
-   end do
-
-   deallocate(self%lst)
-   self%n = 0
-
-end subroutine destroy
-
-
-end module tomlf_structure_ordered_map
-
-
-!>>>>> build/dependencies/toml-f/src/tomlf/structure/array_list.f90
-! This file is part of toml-f.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Implementation of a basic storage structure as pointer list of pointers.
-!>
-!> This implementation does purposely not use pointer attributes in the
-!> datastructure to make it safer to work with.
-module tomlf_structure_array_list
-   use tomlf_constants, only : tfc
-   use tomlf_structure_list, only : toml_list_structure
-   use tomlf_structure_node, only : toml_node, resize
-   use tomlf_type_value, only : toml_value, toml_key
-   implicit none
-   private
-
-   public :: toml_array_list, new_array_list
-
-
-   !> Stores TOML values in a list of pointers
-   type, extends(toml_list_structure) :: toml_array_list
-
-      !> Current number of stored TOML values
-      integer :: n = 0
-
-      !> List of TOML values
-      type(toml_node), allocatable :: lst(:)
-
-   contains
-
-      !> Get number of TOML values in the structure
-      procedure :: get_len
-
-      !> Get TOML value at a given index
-      procedure :: get
-
-      !> Push back a TOML value to the structure
-      procedure :: push_back
-
-      !> Remove the first element from the structure
-      procedure :: shift
-
-      !> Remove the last element from the structure
-      procedure :: pop
-
-      !> Destroy the data structure
-      procedure :: destroy
-
-   end type toml_array_list
-
-
-   !> Initial storage capacity of the datastructure
-   integer, parameter :: initial_size = 16
-
-
-contains
-
-
-!> Constructor for the storage data structure
-subroutine new_array_list(self, n)
-
-   !> Instance of the structure
-   type(toml_array_list), intent(out) :: self
-
-   !> Initial storage capacity
-   integer, intent(in), optional :: n
-
-   self%n = 0
-   if (present(n)) then
-      allocate(self%lst(min(1, n)))
-   else
-      allocate(self%lst(initial_size))
-   end if
-
-end subroutine new_array_list
-
-
-!> Get number of TOML values in the structure
-pure function get_len(self) result(length)
-
-   !> Instance of the structure
-   class(toml_array_list), intent(in), target :: self
-
-   !> Current length of the ordered structure
-   integer :: length
-
-   length = self%n
-
-end function get_len
+end subroutine find
 
 
 !> Get TOML value at a given index
 subroutine get(self, idx, ptr)
 
    !> Instance of the structure
-   class(toml_array_list), intent(inout), target :: self
+   class(toml_vector), intent(inout), target :: self
 
    !> Position in the ordered structure
    integer, intent(in) :: idx
@@ -14871,7 +14493,7 @@ end subroutine get
 subroutine push_back(self, val)
 
    !> Instance of the structure
-   class(toml_array_list), intent(inout), target :: self
+   class(toml_vector), intent(inout), target :: self
 
    !> TOML value to be stored
    class(toml_value), allocatable, intent(inout) :: val
@@ -14897,7 +14519,7 @@ end subroutine push_back
 subroutine shift(self, val)
 
    !> Instance of the structure
-   class(toml_array_list), intent(inout), target :: self
+   class(toml_vector), intent(inout), target :: self
 
    !> TOML value to be retrieved
    class(toml_value), allocatable, intent(out) :: val
@@ -14919,7 +14541,7 @@ end subroutine shift
 subroutine pop(self, val)
 
    !> Instance of the structure
-   class(toml_array_list), intent(inout), target :: self
+   class(toml_vector), intent(inout), target :: self
 
    !> TOML value to be retrieved
    class(toml_value), allocatable, intent(out) :: val
@@ -14932,11 +14554,106 @@ subroutine pop(self, val)
 end subroutine pop
 
 
+!> Get list of all keys in the structure
+subroutine get_keys(self, list)
+
+   !> Instance of the structure
+   class(toml_vector), intent(inout), target :: self
+
+   !> List of all keys
+   type(toml_key), allocatable, intent(out) :: list(:)
+
+   integer :: i
+
+   allocate(list(self%n))
+
+   do i = 1, self%n
+      if (allocated(self%lst(i)%val)) then
+         if (allocated(self%lst(i)%val%key)) then
+            list(i)%key = self%lst(i)%val%key
+            list(i)%origin = self%lst(i)%val%origin
+         end if
+      end if
+   end do
+
+end subroutine get_keys
+
+
+!> Delete TOML value at a given key
+subroutine delete(self, key)
+
+   !> Instance of the structure
+   class(toml_vector), intent(inout), target :: self
+
+   !> Key to the TOML value
+   character(kind=tfc, len=*), intent(in) :: key
+
+   integer :: idx, i
+
+   idx = 0
+   do i = 1, self%n
+      if (allocated(self%lst(i)%val)) then
+         if (self%lst(i)%val%match_key(key)) then
+            idx = i
+            exit
+         end if
+      end if
+   end do
+
+   if (idx > 0) then
+      call self%lst(idx)%val%destroy
+      do i = idx+1, self%n
+         call move_alloc(self%lst(i)%val, self%lst(i-1)%val)
+      end do
+      self%n = self%n - 1
+   end if
+
+end subroutine delete
+
+
+!> Change size of the TOML value vector
+subroutine resize(list, n)
+
+   !> Array of TOML values to be resized
+   type(toml_node), allocatable, intent(inout), target :: list(:)
+
+   !> New size of the list
+   integer, intent(in) :: n
+
+   type(toml_node), allocatable, target :: tmp(:)
+   integer :: i
+
+
+   if (allocated(list)) then
+      call move_alloc(list, tmp)
+      allocate(list(n))
+
+      do i = 1, min(size(tmp), n)
+         if (allocated(tmp(i)%val)) then
+            call move_alloc(tmp(i)%val, list(i)%val)
+         end if
+      end do
+
+      do i = n+1, size(tmp)
+         if (allocated(tmp(i)%val)) then
+            call tmp(i)%val%destroy
+            deallocate(tmp(i)%val)
+         end if
+      end do
+
+      deallocate(tmp)
+   else
+      allocate(list(n))
+   end if
+
+end subroutine resize
+
+
 !> Deconstructor for data structure
 subroutine destroy(self)
 
    !> Instance of the structure
-   class(toml_array_list), intent(inout), target :: self
+   class(toml_vector), intent(inout), target :: self
 
    integer :: i
 
@@ -14952,7 +14669,7 @@ subroutine destroy(self)
 end subroutine destroy
 
 
-end module tomlf_structure_array_list
+end module tomlf_structure_vector
 
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/context.f90
@@ -15139,52 +14856,67 @@ end module tomlf_de_context
 !> requiring pointer attributes have to define an assignment(=) interface to
 !> allow deep-copying of TOML values.
 module tomlf_structure
-   use tomlf_structure_list, only : toml_list_structure
-   use tomlf_structure_map, only : toml_map_structure
-   use tomlf_structure_array_list, only : toml_array_list, new_array_list
-   use tomlf_structure_ordered_map, only : toml_ordered_map, new_ordered_map
+   use tomlf_structure_base, only : toml_structure, toml_ordered
+   use tomlf_structure_vector, only : toml_vector, new_vector
    implicit none
    private
 
-   public :: toml_list_structure, toml_map_structure
-   public :: new_list_structure, new_map_structure
+   public :: toml_structure, toml_ordered
+   public :: new_structure, new_ordered
+   public :: len
+
+
+   !> Overload len function
+   interface len
+      module procedure :: get_len
+   end interface
 
 
 contains
 
 
-!> Constructor for the ordered storage data structure
-subroutine new_list_structure(self)
-
-   !> Instance of the structure
-   class(toml_list_structure), allocatable, intent(out) :: self
-
-   block
-      type(toml_array_list), allocatable :: list
-
-      allocate(list)
-      call new_array_list(list)
-      call move_alloc(list, self)
-   end block
-
-end subroutine new_list_structure
-
-
 !> Constructor for the storage data structure
-subroutine new_map_structure(self)
+subroutine new_structure(self)
 
    !> Instance of the structure
-   class(toml_map_structure), allocatable, intent(out) :: self
+   class(toml_structure), allocatable, intent(out) :: self
 
-   block
-      type(toml_ordered_map), allocatable :: map
+   type(toml_vector), allocatable :: vect
 
-      allocate(map)
-      call new_ordered_map(map)
-      call move_alloc(map, self)
-   end block
+   allocate(vect)
+   call new_vector(vect)
+   call move_alloc(vect, self)
 
-end subroutine new_map_structure
+end subroutine new_structure
+
+
+!> Constructor for the ordered storage data structure
+subroutine new_ordered(self)
+
+   !> Instance of the structure
+   class(toml_ordered), allocatable, intent(out) :: self
+
+   type(toml_vector), allocatable :: vect
+
+   allocate(vect)
+   call new_vector(vect)
+   call move_alloc(vect, self)
+
+end subroutine new_ordered
+
+
+!> Get number of TOML values in the structure
+pure function get_len(self) result(length)
+
+   !> Instance of the structure
+   class(toml_ordered), intent(in) :: self
+
+   !> Current length of the ordered structure
+   integer :: length
+
+   length = self%get_len()
+
+end function get_len
 
 
 end module tomlf_structure
@@ -15407,6 +15139,7 @@ subroutine new_lexer_from_string(lexer, string)
    character(*, tfc), intent(in) :: string
 
    integer :: length
+   character(1, tfc) :: ch
 
    length = len(string)
    lexer%pos = 0
@@ -15633,7 +15366,6 @@ subroutine next_dstring(lexer, token)
 
    prev = lexer%pos
    pos = lexer%pos
-   hex = 0
 
    if (all(match(lexer, [pos+1, pos+2], char_kind%dquote))) then
       pos = pos + 3
@@ -16333,6 +16065,22 @@ contains
 
 end function strstr
 
+!> Extract raw value of token
+subroutine extract_raw(lexer, token, string)
+   !> Instance of the lexer
+   class(toml_lexer), intent(in) :: lexer
+   !> Token to extract raw value from
+   type(toml_token), intent(in) :: token
+   !> Raw value of token
+   character(len=:), allocatable, intent(out) :: string
+
+   integer :: length
+
+   length = token%last - token%first + 1
+   allocate(character(length) :: string)
+   string = lexer%chunk(token%first:token%last)
+end subroutine extract_raw
+
 !> Extract string value of token, works for keypath, string, multiline string, literal,
 !> and mulitline literal tokens.
 subroutine extract_string(lexer, token, string)
@@ -16763,7 +16511,7 @@ end module tomlf_de_lexer
 module tomlf_type_array
    use tomlf_error, only : toml_stat
    use tomlf_type_value, only : toml_value, toml_visitor
-   use tomlf_structure, only : toml_list_structure, new_list_structure
+   use tomlf_structure, only : toml_ordered, new_ordered
    implicit none
    private
 
@@ -16777,7 +16525,7 @@ module tomlf_type_array
       logical :: inline = .true.
 
       !> Storage unit for TOML values of this array
-      class(toml_list_structure), allocatable, private :: list
+      class(toml_ordered), allocatable :: list
 
    contains
 
@@ -16826,7 +16574,7 @@ subroutine new_array(self)
    !> Instance of the TOML array
    type(toml_array), intent(out) :: self
 
-   call new_list_structure(self%list)
+   call new_ordered(self%list)
 
 end subroutine new_array
 
@@ -16968,7 +16716,7 @@ module tomlf_type_table
    use tomlf_constants, only : tfc
    use tomlf_error, only : toml_stat
    use tomlf_type_value, only : toml_value, toml_visitor, toml_key
-   use tomlf_structure, only : toml_map_structure, new_map_structure
+   use tomlf_structure, only : toml_structure, new_structure
    implicit none
    private
 
@@ -16985,7 +16733,7 @@ module tomlf_type_table
       logical :: inline = .false.
 
       !> Storage unit for TOML values of this table
-      class(toml_map_structure), allocatable, private :: map
+      class(toml_structure), allocatable :: list
 
    contains
 
@@ -17000,9 +16748,6 @@ module tomlf_type_table
 
       !> Append value to table (checks automatically for key)
       procedure :: push_back
-
-      !> Remove TOML value at a given key and return it
-      procedure :: pop
 
       !> Delete TOML value at a given key
       procedure :: delete
@@ -17034,7 +16779,7 @@ subroutine new_table(self)
    !> Instance of the TOML table
    type(toml_table), intent(out) :: self
 
-   call new_map_structure(self%map)
+   call new_structure(self%list)
 
 end subroutine new_table
 
@@ -17062,7 +16807,7 @@ subroutine get(self, key, ptr)
    !> Pointer to the TOML value
    class(toml_value), pointer, intent(out) :: ptr
 
-   call self%map%get(key, ptr)
+   call self%list%find(key, ptr)
 
 end subroutine get
 
@@ -17076,7 +16821,7 @@ subroutine get_keys(self, list)
    !> List of all keys
    type(toml_key), allocatable, intent(out) :: list(:)
 
-   call self%map%get_keys(list)
+   call self%list%get_keys(list)
 
 end subroutine get_keys
 
@@ -17095,7 +16840,7 @@ function has_key(self, key) result(found)
 
    class(toml_value), pointer :: ptr
 
-   call self%map%get(key, ptr)
+   call self%list%find(key, ptr)
 
    found = associated(ptr)
 
@@ -17132,28 +16877,11 @@ subroutine push_back(self, val, stat)
       return
    end if
 
-   call self%map%push_back(val)
+   call self%list%push_back(val)
 
    stat = toml_stat%success
 
 end subroutine push_back
-
-
-!> Remove TOML value at a given key and return it
-subroutine pop(self, key, val)
-
-   !> Instance of the TOML table
-   class(toml_table), intent(inout) :: self
-
-   !> Key to the TOML value
-   character(kind=tfc, len=*), intent(in) :: key
-
-   !> Removed TOML value to return
-   class(toml_value), allocatable, intent(out) :: val
-
-   call self%map%pop(key, val)
-
-end subroutine pop
 
 
 !> Delete TOML value at a given key
@@ -17165,7 +16893,7 @@ subroutine delete(self, key)
    !> Key to the TOML value
    character(kind=tfc, len=*), intent(in) :: key
 
-   call self%map%delete(key)
+   call self%list%delete(key)
 
 end subroutine delete
 
@@ -17180,9 +16908,9 @@ subroutine destroy(self)
       deallocate(self%key)
    end if
 
-   if (allocated(self%map)) then
-      call self%map%destroy
-      deallocate(self%map)
+   if (allocated(self%list)) then
+      call self%list%destroy
+      deallocate(self%list)
    end if
 
 end subroutine destroy
@@ -20814,7 +20542,6 @@ subroutine get_array_value_float_sp(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20844,7 +20571,6 @@ subroutine get_array_value_float_dp(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20874,7 +20600,6 @@ subroutine get_array_value_int_i1(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20904,7 +20629,6 @@ subroutine get_array_value_int_i2(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20934,7 +20658,6 @@ subroutine get_array_value_int_i4(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20964,7 +20687,6 @@ subroutine get_array_value_int_i8(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -20994,7 +20716,6 @@ subroutine get_array_value_bool(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -21024,7 +20745,6 @@ subroutine get_array_value_datetime(array, val, stat, origin)
 
    integer :: it, info
 
-   info = 0
    allocate(val(len(array)))
    do it = 1, size(val)
       call get_value(array, it, val(it), info, origin)
@@ -23594,8 +23314,8 @@ module tomlf
    use tomlf_error, only : toml_error, toml_stat
    use tomlf_ser, only : toml_serializer
    use tomlf_terminal, only : toml_terminal
-   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_key, toml_value, &
-      & is_array_of_tables, new_table, add_table, add_array, add_keyval, len
+   use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_key, is_array_of_tables, &
+      & new_table, add_table, add_array, add_keyval, len
    use tomlf_utils_sort, only : sort
    use tomlf_version, only : tomlf_version_string, tomlf_version_compact, &
       & get_tomlf_version
@@ -31235,10 +30955,13 @@ subroutine resolve_target_linking(targets, model)
     integer :: i
     character(:), allocatable :: global_link_flags, local_link_flags
     character(:), allocatable :: global_include_flags
+    character(:), allocatable :: local_archives
 
     if (size(targets) == 0) return
 
     global_link_flags = ""
+    local_archives = ""
+
     if (allocated(model%link_libraries)) then
         if (size(model%link_libraries) > 0) then
             global_link_flags = model%compiler%enumerate_libraries(global_link_flags, model%link_libraries)
@@ -31287,6 +31010,7 @@ subroutine resolve_target_linking(targets, model)
             allocate(target%link_objects(0))
 
             if (target%target_type == FPM_TARGET_ARCHIVE) then
+                local_archives = ' '//target%output_file //' '// local_archives
                 global_link_flags = target%output_file // global_link_flags
 
                 call get_link_objects(target%link_objects,target,is_exe=.false.)
@@ -31302,8 +31026,12 @@ subroutine resolve_target_linking(targets, model)
 
                 if (allocated(target%link_libraries)) then
                     if (size(target%link_libraries) > 0) then
-                        target%link_flags = model%compiler%enumerate_libraries(target%link_flags, target%link_libraries)
-                        local_link_flags = model%compiler%enumerate_libraries(local_link_flags, target%link_libraries)
+                        target%link_flags=target%link_flags//local_archives
+                        target%link_flags = &
+                                model%compiler%enumerate_libraries(target%link_flags, target%link_libraries)
+                        local_link_flags=target%link_flags//local_archives
+                        local_link_flags = &
+                                model%compiler%enumerate_libraries(local_link_flags, target%link_libraries)
                     end if
                 end if
 
