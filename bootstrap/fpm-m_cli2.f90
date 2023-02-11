@@ -23468,7 +23468,7 @@ integer                      :: start_keep, end_keep
 
     if(regex.ne.' ')then
        if (getpat(merge(lower(regex),regex,ignorecase), p%pat) .eq. ERR) then
-          stop '*fpm-M_CLI2* Illegal pattern.'
+          stop '*fpm-m_cli2* Illegal pattern.'
        endif
     endif
 
@@ -23498,9 +23498,9 @@ integer                      :: start_keep, end_keep
     ! display selected text
     if(size(manual).eq.0)then
        write(*,'(g0)')'Sorry. did not find that. Perhaps you should search the TOC. try'
-       write(*,'(g0)')'   fpm-M_CLI2 -e TOPIC'
+       write(*,'(g0)')'   fpm-m_cli2 -e TOPIC'
        write(*,'(g0)')'or search the entire manual:'
-       write(*,'(g0)')'   fpm-M_CLI2 manual -i -e TOPIC'
+       write(*,'(g0)')'   fpm-m_cli2 manual -i -e TOPIC'
        stop 1
     else
        ! display what was found
@@ -23551,7 +23551,7 @@ integer :: ii,jj,kk
       enddo
     endif
     if(size(newsection).eq.0)then
-       write(*,*)'!<ERROR> *fpm-M_CLI2* standard demo code format not found for ',trim(topics(i))
+       write(*,*)'!<ERROR> *fpm-m_cli2* standard demo code format not found for ',trim(topics(i))
        section=['']
     else
        section=newsection
@@ -23609,17 +23609,17 @@ end function than
 subroutine setup()
 help_text=[ CHARACTER(LEN=128) :: &
 'NAME                                                                            ',&
-'    fpm-M_CLI2(1f) - [DEVELOPER] output descriptions of Fortran intrinsics  ',&
+'    fpm-m_cli2(1f) - [DEVELOPER] output descriptions of Fortran intrinsics  ',&
 '    (LICENSE:PD)                                                                ',&
 '                                                                                ',&
 'SYNOPSIS                                                                        ',&
-'    fpm-M_CLI2 NAME(s) [[-ignorecase][--regex Regular_Expression]]|         ',&
+'    fpm-m_cli2 NAME(s) [[-ignorecase][--regex Regular_Expression]]|         ',&
 '                [-topic_only][--color][--demo]                                  ',&
 '                                                                                ',&
-'    fpm-M_CLI2 [ --help| --version]                                         ',&
+'    fpm-m_cli2 [ --help| --version]                                         ',&
 '                                                                                ',&
 'DESCRIPTION                                                                     ',&
-'   fpm-M_CLI2(1) print descriptions of procedures as simple flat text.      ',&
+'   fpm-m_cli2(1) print descriptions of procedures as simple flat text.      ',&
 '                                                                                ',&
 '   The text is formatted in the txt2man(1) markdown language so one can easily  ',&
 '   generate man-pages on ULS (Unix-Like Systems).                               ',&
@@ -23645,24 +23645,24 @@ help_text=[ CHARACTER(LEN=128) :: &
 'EXAMPLES                                                                        ',&
 '  Sample commands                                                               ',&
 '                                                                                ',&
-'   fpm-M_CLI2              # list table of contents                         ',&
-'   fpm-M_CLI2 -e character # check TOC for string. try "loc","prank","sort" ',&
-'   fpm-M_CLI2 tan|less     # display a description of tan(3f)               ',&
+'   fpm-m_cli2              # list table of contents                         ',&
+'   fpm-m_cli2 -e character # check TOC for string. try "loc","prank","sort" ',&
+'   fpm-m_cli2 set_args|less  # display a description of tan(3f)               ',&
 '                                                                                ',&
-'   fpm-M_CLI2 --regex ''character'' # look for string in TOC ignoring case  ',&
+'   fpm-m_cli2 --regex ''character'' # look for string in TOC ignoring case  ',&
 '                                                                                ',&
-'   fpm-M_CLI2 manual>fortran.txt    # create a copy of all descriptions     ',&
+'   fpm-m_cli2 manual>fortran.txt    # create a copy of all descriptions     ',&
 '                                                                                ',&
-'   # list the topic "scan" if found and lines containing "scan" from the entire ',&
+'   # list the topic "response" if found and lines containing "response" from the entire ',&
 '   # manual, prefixing the lines with the section name, while ignoring case.    ',&
-'   fpm-M_CLI2 -e scan -i manual                                             ',&
+'   fpm-m_cli2 -e response -i manual                                             ',&
 '                                                                                ',&
-'   fpm-M_CLI2 -d pack >demo_pack.f90 # get sample program to try VERIFY(3f).',&
+'   fpm-m_cli2 -d set_mode >demo_set_mode.f90 # get sample program to try SET_MODE(3f).',&
 '']
 
 version_text=[ CHARACTER(LEN=128) :: &
 'PRODUCT:         GPF (General Purpose Fortran) utilities and examples           ',&
-'PROGRAM:         fpm-M_CLI2(1)                                              ',&
+'PROGRAM:         fpm-m_cli2(1)                                              ',&
 'DESCRIPTION:     output Fortran intrinsic descriptions                          ',&
 !'VERSION:         1.0.0, 20201215                                               ',&
 !'VERSION:         1.0.1, 20201217                                               ',&
