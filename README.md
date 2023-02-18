@@ -89,7 +89,7 @@ Please provide feedback on the
     + [faq](docs/index.md)
 
 ---
-# ExternaL Sites of Interest
+# External Sites of Interest
 ---
 ## Fortran Documentation
 
