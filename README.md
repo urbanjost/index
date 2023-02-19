@@ -89,6 +89,11 @@ Please provide feedback on the
     + [faq](docs/index.md)
 
 ---
+## Fortran setup
+
+ + [Doomemacs](https://github.com/doomemacs/doomemacs/blob/master/modules/lang/fortran/README.org) complete setup of emacs and Fortran for MacOS/Linux
+
+---
 # External Sites of Interest
 ---
 ## Fortran Documentation
