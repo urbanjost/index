@@ -20,8 +20,8 @@ well as to why not, and what you did use.
 Additionally discussion is welcome as well at
 
  - [Fortran Discourse](https://fortran-lang.discourse.group)
- - [Fortran Wiki](http://fortranwiki.org)
- - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran)
+ - [Fortran Wiki](http://fortranwiki.org) longue vie Fortran
+ - [Google Fortran newsgroup](https://groups.google.com/forum/#!forum/comp.lang.fortran) long live Fortran
 
 <!--
 Please provide feedback on the
@@ -121,6 +121,8 @@ Please provide feedback on the
  - [SAL](http://www.sai.msu.su/sal)
  - [SPDX licenses list](https://spdx.org/licenses/)
  - [Fortran trending on github](https://github.com/trending/fortran)
+ - [fortranlib](http://www.fortran-2000.com)
+ - [Arnaud's Recipes](http://www.fortran-2000.com/ArnaudRecipes)
 
 ## Standards
  - [J3](https://j3-fortran.org)
@@ -253,6 +255,7 @@ Please provide feedback on the
 
 ## Regular Expressions
  - We do these things not because they are easy, but because we thought they would be.
+ - [fregex](https://github.com/andreww/fregex)
 
 <!--
  - blas : The BLAS (Basic Linear Algebra Subprograms) are routines that provide standard building blocks for performing basic vector and matrix operations.
