@@ -5,17 +5,14 @@ Contents
 --------
 
 -   Gotchas:
-    -   [Gotchas: Inheritance control for CONTAIN-ed procedures in
-        Fortran](faq/contained.md)
-    -   [Gotchas: significant digits and simple
-        assigns](faq/assign_precision.md)
+    -   [Gotchas: Inheritance control for CONTAIN-ed procedures in Fortran](faq/contained.md)
+    -   [Gotchas: significant digits and simple assigns](faq/assign_precision.md)
+    -   [Gotchas: other assignment and initialization erros] (faq/assign_precision.md)
     -   [Gotchas: conformance and elemental functions](faq/conform.md)
     -   [Gotchas: avoiding allocatables](faq/avoiding_allocatables.md)
 -   Arrays:
-    -   [How do I initialize an array in row-column order in
-        Fortran?](faq/row-column.md)
-    -   [Trouble initializing character arrays in
-        Fortran;](faq/character_array_initialization.md) or why
+    -   [How do I initialize an array in row-column order in Fortran?](faq/row-column.md)
+    -   [Trouble initializing character arrays in Fortran;](faq/character_array_initialization.md) or why
 
             character(len=*),parameter :: array(*)=['one','two','three']
 
@@ -59,15 +56,20 @@ The WG5 web site is where you\'ll find news about what\'s happening with
 the Fortran standard, and links to all WG5 documents. Information on
 current and past standards is also available there.
 
-### Live Fortran pages
+### Live Fortran pages (Online Compilers)
 
+-   [GodBolt compiler explorer](https://godbolt.org/)
 -   [fortran-lang \"play\"](https://play.fortran-lang.org/)
--   [TutorialsPoint
-    (beautify)](https://www.tutorialspoint.com/compile_fortran_online.php)
--   [JDoodle (compiler
-    options)](https://www.jdoodle.com/execute-fortran-online/)
--   [GodBolt](https://godbolt.org/)
+-   [CodersEditor.com](https://coderseditor.com/)
+-   [ideone.com](https://ideone.com/)
+-   [JDoodle (compiler options)](https://www.jdoodle.com/execute-fortran-online/)
+-   [myCompiler.io](https://www.mycompiler.io/new/fortran)
+-   [onecompiler.com](https://onecompiler.com/fortran)
 -   [OnlineGDB](https://www.onlinegdb.com/online_fortran_compiler)
+-   [rextester.com](https://rextester.com/l/fortran_online_compiler)
+-   [techiedelight.com](https://techiedelight.com/compiler/fortran)
+-   [TutorialsPoint (beautify)](https://www.tutorialspoint.com/compile_fortran_online.php)
+-   [W3Schools](https://www.w3schools.com/tryit/trycompiler.asp?filename=demo_fortran)
 
 ### Fortran FAQs
 

@@ -8,17 +8,17 @@ If it is not available, most Fortran compilers support an extension called syste
 
 ## DESCRIPTION
 
-The COMMAND argument is passed to the shell and executed.  (The shell
-is generally sh(1) on Unix systems, and cmd.exe on Windows.) If **WAIT**
+The COMMAND argument is passed to the shell and executed.  (The shell is
+generally sh(1) on Unix systems, and cmd.exe on Windows.) If **WAIT**
 is present and has the value false, the execution of the command is
 asynchronous if the system supports it; otherwise, the command is
 executed synchronously.
 
 The three last arguments allow the user to get status information.
-After synchronous execution, **EXITSTAT** contains the integer exit code of
-the command, as returned by **SYSTEM**. **CMDSTAT** is set to zero if the command
-line was executed (whatever its exit status was). **CMDMSG** is assigned an
-error message if an error has occurred.
+After synchronous execution, **EXITSTAT** contains the integer exit code
+of the command, as returned by **SYSTEM**. **CMDSTAT** is set to zero if
+the command line was executed (whatever its exit status was). **CMDMSG**
+is assigned an error message if an error has occurred.
 
 Note that the system call need not be thread-safe. It is the
 responsibility of the user to ensure that the system is not called

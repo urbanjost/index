@@ -1,0 +1,117 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<p><strong>Q</strong>:  How do I create numbered file names such as out<em>1.txt, out</em>2.txt, etc.?</p>
+
+<p><strong>A</strong>:  Use an "internal write" to create the file names, which is when you
+        write into CHARACTER variables instead of files. for example</p>
+
+<pre><code>        character(len=4096) :: filename
+        write (file_name,"('out_',i0,'.txt')") i
+</code></pre>
+
+<p>The string prefix and suffix may be variables as well:</p>
+
+<pre><code>    write (file_name,"(a,i0,a)") 'out_',i,'.txt'
+</code></pre>
+
+<p>A format descriptor such as "I0.4" could be used instead of "I0" to
+   add leading zeros to the numeric labels up to the specified number
+   of digits.</p>
+
+<p>An extended working example that generates sequentially numbered
+   files and then deletes them :
+```fortran
+program showit
+implicit none
+integer :: num, iostat, lun
+character(len=:), allocatable :: prefix, suffix
+character(len=4096) :: filename, iomsg
+   prefix='out_'
+   suffix='.txt'
+   do lun=10, 12
+      !
+      ! create a filename for the specified logical unit number
+      write(filename, fmt = '(a, i0, a)')prefix, lun, suffix
+      !
+      ! open a new formatted file for writing
+      open(unit=lun, file=filename, form='formatted', &amp;
+      &amp; action='write', status='new', access='sequential', &amp;
+      &amp; iostat=iostat, iomsg=iomsg)
+      !
+      ! check the open for errors
+      if(iostat /= 0)then
+         write(<em>, *)'<error>cannot open file ', trim(filename), &amp;
+         &amp; ':', trim(iomsg)
+         stop 1
+      else
+         write(</em>, <em>)'opened file ', trim(filename), ': unit=', lun
+      endif
+   enddo
+   !
+   ! clean up the debris from the example program
+   !
+   do lun=10, 12
+      close(unit=lun, status='delete', iostat=iostat, iomsg=iomsg)
+      if(iostat /= 0)then
+         write(</em>, <em>)'<error>did not clean up ', trim(filename), &amp;
+         &amp; ':', trim(iomsg)
+      else
+         write(</em>, *)'closed file ', trim(filename), ': unit=', lun
+      endif
+   enddo</p>
+
+<p>end program showit
+<code>
+output :
+</code>text
+ opened file out<em>10.txt: unit=          10
+ opened file out</em>11.txt: unit=          11
+ opened file out<em>12.txt: unit=          12
+ closed file out</em>12.txt: unit=          10
+ closed file out<em>12.txt: unit=          11
+ closed file out</em>12.txt: unit=          12
+```</p>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 18 Mar 2023 05:51:55 AM EDT
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

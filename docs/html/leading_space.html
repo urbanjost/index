@@ -44,9 +44,9 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
 <li>add "1x" to the beginning of all your format
  statements so they line up with the list-directed output</li>
 <li><p>come very close to list-directed output format
- by using the G descriptor. For example:</p>
-
-<p>character(len=<em>),parameter :: any = '(</em>(g0,1x))' ! a space between entries
+ by using the G descriptor. For example:
+```fortran
+  character(len=<em>),parameter :: any = '(</em>(g0,1x))' ! a space between entries
   character(len=<em>),parameter :: g =   "(</em>(g0))"    ! no spaces between items
   i=10
   print g, "i = ", i <br />
@@ -54,11 +54,12 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
   end</p>
 
 <p>i = 10
-  10 1234.56702 9876543210.1234570 T 123.456001 789.012024 Gee!</p></li>
+  10 1234.56702 9876543210.1234570 T 123.456001 789.012024 Gee!
+```</p></li>
 </ol>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:33 PM EST
+  Revised on Sat 18 Mar 2023 05:51:53 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>

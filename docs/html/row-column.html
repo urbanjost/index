@@ -39,36 +39,35 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
 <h2>Initializing small 2D numeric arrays with array constructors</h2>
 
 <p>Intuitively, one might assume that if one wants to initialize a
-small array by rows that something like the following will work:</p>
-
-<pre><code> ! DOES NOT WORK
- integer :: xx(3,5)= [ 1, 2, 3, 4, 5], &amp;
-                   [10,20,30,40,50], &amp;
-           [11,22,33,44,55]
-</code></pre>
-
-<p>or perhaps</p>
-
-<pre><code> ! DOES NOT WORK
- integer :: xx(3,5)= [ [ 1, 2, 3, 4, 5], &amp;
-                     [10,20,30,40,50], &amp;
-                     [11,22,33,44,55]  ]
-</code></pre>
-
-<p>Someday something simpler might work, but currently the following syntax
+small array by rows that something like the following will work:
+<code>fortran
+     ! DOES NOT WORK
+     integer :: xx(3,5)= [ 1, 2, 3, 4, 5], &amp;
+                       [10,20,30,40,50], &amp;
+               [11,22,33,44,55]
+</code>
+or perhaps
+<code>fortran
+     ! DOES NOT WORK
+     integer :: xx(3,5)= [ [ 1, 2, 3, 4, 5], &amp;
+                         [10,20,30,40,50], &amp;
+                         [11,22,33,44,55]  ]
+</code>
+Someday something simpler might work, but currently the following syntax
 is required to specify the values in an intuitive row-column sequence
-using an array constructor:</p>
+using an array constructor:
+```fortran
+      integer,save :: xx(3,5)= reshape([&amp;</p>
 
-<pre><code>  integer,save :: xx(3,5)= reshape([&amp;
-
-   1, 2, 3, 4, 5, &amp;
+<pre><code>   1, 2, 3, 4, 5, &amp;
   10,20,30,40,50, &amp;
   11,22,33,44,55  &amp;
 
   ],shape(xx),order[2,1])
 </code></pre>
 
-<p>This is because <strong>an array constructor can be used to create and assign
+<p>```
+This is because <strong>an array constructor can be used to create and assign
 values only to rank-one arrays</strong>.  To define arrays of more than one
 dimension with an array constructor, you must use the <strong>RESHAPE(3f)</strong> intrinsic
 function.</p>
@@ -86,13 +85,13 @@ longest value specified, but depending on it reduces portability).</p>
 
 <p>When working with small arrays the issue that there is no default Fortran
 routine for printing an array in row-column order becomes apparent. So
-lets create a simple solution for integer arrays <strong>(PRINT<em>MATRIX</em>INT(3f))</strong>:</p>
+lets create a simple solution for integer arrays <strong>(PRINT<em>MATRIX</em>INT(3f))</strong>:
+```fortran
+     program demo<em>array</em>constructor ! initializing small arrays
+     implicit none
+     integer,save :: xx(3,5)= reshape([&amp;</p>
 
-<pre><code> program demo_array_constructor ! initializing small arrays
- implicit none
- integer,save :: xx(3,5)= reshape([&amp;
-
-     1, 2, 3, 4, 5, &amp;
+<pre><code>     1, 2, 3, 4, 5, &amp;
     10,20,30,40,50, &amp;
     11,22,33,44,-1055  &amp;
 
@@ -126,17 +125,20 @@ lets create a simple solution for integer arrays <strong>(PRINT<em>MATRIX</em>IN
  end program demo_array_constructor
 </code></pre>
 
-<p>Results:</p>
+<p><code>
+Results:
+</code>text
+     xx array:</p>
 
-<pre><code> xx array:
- &gt; [  1,  2,  3,  4,  5 ]
- &gt; [ 10, 20, 30, 40, 50 ]
- &gt; [ 11, 22, 33, 44, 55 ]
-</code></pre>
-
-<p>We could do a more robust version that handles REAL and COMPLEX values
+<blockquote>
+  <p>[  1,  2,  3,  4,  5 ]
+[ 10, 20, 30, 40, 50 ]
+[ 11, 22, 33, 44, 55 ]
+```
+We could do a more robust version that handles REAL and COMPLEX values
 as well as NaN values, but it has already been done.  If you need to
 print a variety of small matrices see:</p>
+</blockquote>
 
 <pre><code> dispmodule(3f), "A Fortran 95 module for pretty-printing matrices".
  Kristjan Jonasson, Department of Computer Science,
@@ -206,7 +208,7 @@ careful when using DATA statements that you initialized everything you
 wanted to.</p>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:35 PM EST
+  Revised on Sat 18 Mar 2023 05:51:54 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>

@@ -51,11 +51,12 @@ and use them carefully.</p>
 
 <h1>INFINITY</h1>
 
-<pre><code>program demo_inf
-use ieee_arithmetic ! If your compiler supports ISO TR 15580 IEEE Arithmetic !use procedures from ieee_* modules.
-implicit none
+<p>```fortran
+    program demo<em>inf
+    use ieee</em>arithmetic ! If your compiler supports ISO TR 15580 IEEE Arithmetic !use procedures from ieee_* modules.
+    implicit none</p>
 
-block IEEE
+<pre><code>block IEEE
 real :: ieee_support_inf
 if (ieee_support_inf(0.0)) then
    inf_ieee = ieee_value(0.0,ieee_negative_inf)
@@ -126,10 +127,12 @@ end program demo_inf
 !===============================================================================
 </code></pre>
 
+<p>```</p>
+
 <h1>How to tell if a value is a NaN?</h1>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:36 PM EST
+  Revised on Sat 18 Mar 2023 05:51:55 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>

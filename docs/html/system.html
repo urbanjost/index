@@ -45,17 +45,17 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
 
 <h2>DESCRIPTION</h2>
 
-<p>The COMMAND argument is passed to the shell and executed.  (The shell
-is generally sh(1) on Unix systems, and cmd.exe on Windows.) If <strong>WAIT</strong>
+<p>The COMMAND argument is passed to the shell and executed.  (The shell is
+generally sh(1) on Unix systems, and cmd.exe on Windows.) If <strong>WAIT</strong>
 is present and has the value false, the execution of the command is
 asynchronous if the system supports it; otherwise, the command is
 executed synchronously.</p>
 
 <p>The three last arguments allow the user to get status information.
-After synchronous execution, <strong>EXITSTAT</strong> contains the integer exit code of
-the command, as returned by <strong>SYSTEM</strong>. <strong>CMDSTAT</strong> is set to zero if the command
-line was executed (whatever its exit status was). <strong>CMDMSG</strong> is assigned an
-error message if an error has occurred.</p>
+After synchronous execution, <strong>EXITSTAT</strong> contains the integer exit code
+of the command, as returned by <strong>SYSTEM</strong>. <strong>CMDSTAT</strong> is set to zero if
+the command line was executed (whatever its exit status was). <strong>CMDMSG</strong>
+is assigned an error message if an error has occurred.</p>
 
 <p>Note that the system call need not be thread-safe. It is the
 responsibility of the user to ensure that the system is not called
@@ -212,7 +212,7 @@ continue on in the program.</p>
 </code></pre>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:33 PM EST
+  Revised on Sat 18 Mar 2023 05:51:53 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>

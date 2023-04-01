@@ -39,16 +39,17 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
 <p>Since f2003, you can use the variable ERROR<em>UNIT from the intrinsic
 module ISO</em>FORTRAN_ENV to get the unit to use to write to stderr.</p>
 
-<pre><code>program demo_stderr
-USE ISO_FORTRAN_ENV, ONLY : ERROR_UNIT ! access computing environment ; Standard: Fortran 2003
-implicit none
-write(ERROR_UNIT,*)'Error: program will now stop'
-stop 4
-end program demo_stderr
-</code></pre>
+<p><code>fortran
+    program demo_stderr
+    USE ISO_FORTRAN_ENV, ONLY : ERROR_UNIT ! access computing environment ; Standard: Fortran 2003
+    implicit none
+    write(ERROR_UNIT,*)'Error: program will now stop'
+    stop 4
+    end program demo_stderr
+</code></p>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:36 PM EST
+  Revised on Sat 18 Mar 2023 05:51:55 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>

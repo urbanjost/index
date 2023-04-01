@@ -1,0 +1,251 @@
+<html>
+<head>
+<title></title>
+<style>
+body {xfont-style: italic}
+body {
+background-color:#FFF; color:#333; font-family:Verdana, Arial, Helvetica, sans-serif; font-size:1em; line-height:1.3em; }
+a:visited { color:#666; }
+h1,h2,h3,h4,h5,h6 { color:#333; font-family:georgia, verdana, sans-serif; }
+h1 { font-size:200%; }
+h2 { font-size:173%; }
+h3 { font-size:144%; }
+h4 { font-size:120%; }
+h5,h6 { font-size:100% }
+a.nav,a:link.nav, a:visited.nav { background-color:#FFF; color:#000; }
+table { border:double #000; border-collapse:collapse; }
+td { border:thin solid #888; }
+li { margin-bottom:0.5em; }
+blockquote { display:block; font-size:90%; font-style:italic; line-height:1.5em; margin:0 0 1.5em; padding:0 2.5em; }
+pre { background-color:#DDD; font-size:90%; overflow:auto; padding:1em; }
+a,li span { color:#000; }
+a:hover, a.nav:hover, a:hover math { background-color:#000; color:#FFF; }
+#Container { margin:0 10px; text-align:center; }
+#Content { border-top:none; margin:auto; padding:0.3em; text-align:left; width:100%; max-width:55em; }
+span.webName { font-size:.5em; }
+textarea#content { font-size: 1em; line-height: 1.125em; }
+h1#pageName { line-height:1.4em; margin:0.2em 0 0.2em 0; padding:0; }
+h2{ line-height:1.2em; margin:0.2em 0 0.2em 0; padding:0; color:blue;}
+.property { color:#666; font-size:80%; }
+a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
+.byline { color:#666; font-size:.8em; font-style:italic; margin-bottom:1em; padding-top:1px; }
+</style>
+</head>
+<body>
+<div id="Container">
+<div id="Content">
+<h2>Fortran initialization</h2>
+
+<h3>Fortran initialization on declaration and the implied SAVE attribute</h3>
+
+<p>In Fortran a declaration statement cannot be an assignment statement;
+only a variable initialization. The declaration of CALL_COUNT in the
+following program can be used to illustrate the difference:</p>
+
+<pre><code>program called
+implicit none
+integer :: i
+do i=1,10
+   call subinit() ! this has an initialization 
+enddo
+do i=1,10
+   call subdeclare() ! this has an assignment instead
+enddo
+
+contains
+
+subroutine subinit()
+integer :: call_count=0  ! &lt;= This is an initialization,
+                         !    not as assignment
+   call_count=call_count+1
+   write(*,*) 'CALL_COUNT=',call_count
+end subroutine subinit
+
+subroutine subdeclare()
+integer :: assigned ! &lt;= the type is declared, 
+                    !    but the value is undefined at this point
+   assigned=0       ! &lt;= This really is an assignment used on each 
+                    !    call to this procedure, not just an 
+           !    initialization
+   assigned=assigned+1
+   write(*,*) 'ASSIGNED=',assigned
+end subroutine subdeclare
+
+program called
+</code></pre>
+
+<p>Execution of SUBINIT() does not print "1" ten times; it prints from "1"
+to "10". On the other hand the calls to the almost identical SUBDECLARE()
+prints "1" ten times.</p>
+
+<p>This is because initialization takes place only once during program
+execution.</p>
+
+<p>Of course on the other hand a regular assignment statement occurs each
+time it is encountered and clearly takes care of the reinitialization.</p>
+
+<p>The CALL_COUNT variable therefore only has the value zero at the beginning
+of the first call and does not get reinitialized when called again; and
+any subsequent changes to its value such as the increment in SUBINIT()
+are preserved throughout program execution even though it is not a global
+variable.</p>
+
+<p>This is particularly important to note as Today such syntax is different
+than in many other widely used languages which use similar-looking
+statements for assignment, not initialization.</p>
+
+<p>So to reiterate if you initialize a variable at declaration</p>
+
+<pre><code>integer :: a = 5  ! initialization with implied SAVE
+</code></pre>
+
+<p>it is the same as:</p>
+
+<pre><code>integer, save :: a = 5  ! type declaration and initialization
+</code></pre>
+
+<p>or the old FORTRAN 77 equivalent</p>
+
+<pre><code>integer :: a
+save a
+data /a/ 5
+</code></pre>
+
+<p>and not to:</p>
+
+<p>integer :: a   ! type declaration
+   a = 5          ! assignment</p>
+
+<p>as the functions of an initialization expression are inherited 
+from old DATA statements.</p>
+
+<h3>Related notes about porting legacy "FORTRAN 77" code</h3>
+
+<p>The above behavior is now all clearly specified by the Fortran standard.
+It was not in early Fortran versions. There are therefore a few related
+issues to watch for when porting legacy FORTRAN (ie. pre-Fortran 90)
+code to a modern Fortran compiler.</p>
+
+<p>Many pre-Fortran90 compilers statically allocated all variables, to the
+point programmers often relied upon this behavior (ie. that all variables
+were implicitly saved).</p>
+
+<p>Depending on this behavior is technically a bug, as it is now specifically
+standard that an unsaved value is assumed undefined upon reentry to
+a procedure.</p>
+
+<p>This history is why most compilers provide compile-time switches
+to restore this old behavior, essentially acting as if a plain SAVE
+statement occurs in all procedures.</p>
+
+<p>The -fno-automatic option of gfortran, and commonly the -static or -save
+option of other Fortran compilers (check the manual!) provide this option.</p>
+
+<p>It is strongly recommended to not depend on the switch, but to explicitly
+use the SAVE attribute or SAVE declaration to identify variables that
+require being saved between calls. Even though a DATA statement or
+initialization on a declaration imply the SAVE attribute it is much
+clearer to specify the attribute anyway.</p>
+
+<h3>Initializing Floating Point Numbers with constants</h3>
+
+<p>The most common mistake when initializing floating-point values is to
+not make sure the RHS is generating a result with the same precision
+as the LHS. This often is because the kind of a constant is not
+declared. Without a declared kind a constant assumes the default kind of
+the type, not the kind on the LHS (Left Hand Side) of the initialization
+or assignment.</p>
+
+<p>For example, assuming the definitions:</p>
+
+<pre><code>integer,parameter :: dp=kind(0.d0) ! double precision
+integer,parameter :: sp=kind(0.0 ) ! single precision
+</code></pre>
+
+<p>Then the following code:</p>
+
+<pre><code>real(dp) :: a
+a = 1.0  ! constant is missing a kind
+</code></pre>
+
+<p>is equivalent to:</p>
+
+<pre><code>real(dp) :: a
+a = 1.0_sp  ! Oops! a single-precision value for a doubleprecision
+</code></pre>
+
+<p>and not to:</p>
+
+<pre><code>real(dp) :: a
+a = 1.0_dp  ! correctly matches the constants' precision to the variable
+</code></pre>
+
+<p>However, the following code:</p>
+
+<pre><code>real(dp) :: a
+a = 1
+</code></pre>
+
+<p><strong>is</strong> equivalent to:</p>
+
+<pre><code>real(dp) :: a
+a = 1.0_dp
+</code></pre>
+
+<p>Somewhat surprisingly because of the built-in type conversion rules
+specified for an assignment assigning an integer to a double does not
+loose any accuracy!</p>
+
+<p>Another common case is assuming that because a lot of digits were declared
+the compiler will treat a value with more precision. Try this:</p>
+
+<pre><code>  program trunc
+  integer,parameter :: dp=kind(0.d0) ! double precision
+  real(dp),parameter :: wrong=3.14159265358979323846264338327950
+  real(dp),parameter :: better=3.14159265358979323846264338327950_dp
+     write(*,*)'  3.14159265358979323846264338327950'
+     write(*,*)wrong
+     write(*,*)better 
+  end program trunc
+</code></pre>
+
+<p>You will likely get something like this, without any warning about
+an excessive number of digits or truncation of the value given.</p>
+
+<pre><code>  &gt;   3.14159265358979323846264338327950
+  &gt;   3.14159274101257     
+  &gt;   3.14159265358979
+</code></pre>
+
+<p>A general principle of Fortran is that the type of the RHS (Right
+Hand Side) of an assignment does <strong>not</strong> depend on the LHS (Left Hand
+Side). Once you understand this rule, a lot of things fall into place.</p>
+
+<h2>Applying a floating point kind</h2>
+
+<p>Another common error is to forget the decimal when creating what is
+intended to be a floating point constant. In this example the declaration
+of integer variables with a <em>dp suffix does not promote them automatically
+to double precision variables. The literal "111</em>dp" is an INTEGER!:</p>
+
+<pre><code>integer,parameter :: dp=kind(0.d0) ! double precision
+a = 111_dp
+</code></pre>
+
+<p>Kinds are just constant names for an integer and not their own type so
+the compiler will likely not catch this error if the integer DP happens
+to also represent a valid integer kind, which is commonly true.  (Some)
+compilers can give unique values to each default kind and type pair and
+so will catch this, but many will not. As noted above, because of the
+conversion rules for expressions and assignments you might get lucky
+and get the right value anyway, but obviously do not depend on it.</p>
+<p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
+  <div class="byline">
+  Revised on Sat 18 Mar 2023 05:51:54 AM EDT
+  by
+  <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
+  </div>
+  </div>
+ </div>
+</body>
+</html>

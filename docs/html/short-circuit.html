@@ -39,7 +39,7 @@ a.existingWikiWord[title]{ //border: 1px dashed #BBB; }
 <p>Short-circuit evaluation (aka. minimal evaluation or McCarthy evaluation)
 is when the remaining arguments in a Boolean operation are executed or
 evaluated only if the previous operations are true. Fortran does not
-provide short-circuit evalutations. This allows for optimizations such as
+provide short-circuit evaluations. This allows for optimizations such as
 parallel evaluation. Some compilers do provide an extension to provide
 short-circuit evaluation but to keep your code standard-conforming you
 should assume all sections of an expression may or may not be evaluated
@@ -72,23 +72,24 @@ or change the expression to conditionally executed sections.</p>
 <pre><code>IF ( INDX .GT.0 .AND. ARRAY(INDX) .EQ. 'xxx' ) THEN ...
 </code></pre>
 
-<p>If II can be out of range for array A this could cause such
-problems as getting a run-time out-of-bounds error (for just
-one example) ...</p>
-
-<pre><code>MERGE (A(ii), 0, ii .GE. 1)
-</code></pre>
+<p>If INDX can be out of range for array ARRAY this could cause such
+problems as getting a run-time out-of-bounds error. This is true
+not just in IF statements but anywhere a compound Boolean expression
+is used ...
+<code>fortran
+    MERGE (A(ii), 0, ii .GE. 1)
+</code></p>
 
 <h1>By the way ...</h1>
 
 <p>I have seen several proposals to add lazy or short-circuit syntax for
-expressions. My favorite was one that looked like this ...</p>
-
-<pre><code>IF (i&gt;0) AND (arr(i) &gt; 20) OR (( X&gt;0 ) AND (SQRT(X) &gt; 3)) THEN ...
-</code></pre>
+expressions. My favorite was one that looked like this ...
+<code>fortran
+    IF (i&gt;0) AND (arr(i) &gt; 20) OR (( X&gt;0 ) AND (SQRT(X) &gt; 3)) THEN ...
+</code></p>
 <p><div class='property'> category: <a class='category_link' href='/fortran/list/code'>code</a></div></p>
   <div class="byline">
-  Revised on Sat 14 Jan 2023 01:45:34 PM EST
+  Revised on Sat 18 Mar 2023 05:51:54 AM EDT
   by
   <a class="existingWikiWord" href="urbanjs.xhtml">urbanjs</a>
   </div>
