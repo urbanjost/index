@@ -50,12 +50,18 @@ public :: string_array_contains, string_cat, len_trim, operator(.in.), fnv_1a
 public :: replace, resize, str, join, glob
 public :: notabs
 
+!> Module naming
+public :: is_valid_module_name, is_valid_module_prefix, &
+          has_valid_custom_prefix, has_valid_standard_prefix, &
+          module_prefix_template, module_prefix_type
+
 type string_t
     character(len=:), allocatable :: s
 end type
 
 interface len_trim
     module procedure :: string_len_trim
+    module procedure :: strings_len_trim
 end interface len_trim
 
 interface resize
@@ -121,13 +127,25 @@ pure logical function str_ends_with_any(s, e) result(r)
 end function str_ends_with_any
 
 !> test if a CHARACTER string begins with a specified prefix
-pure logical function str_begins_with_str(s, e) result(r)
+pure logical function str_begins_with_str(s, e, case_sensitive) result(r)
     character(*), intent(in) :: s, e
+    logical, optional, intent(in) :: case_sensitive ! Default option: case sensitive
     integer :: n1, n2
+    logical :: lower_case
+
+    ! Check if case sensitive
+    if (present(case_sensitive)) then
+        lower_case = .not.case_sensitive
+    else
+        lower_case = .false.
+    end if
+
     n1 = 1
     n2 = 1 + len(e)-1
     if (n2 > len(s)) then
         r = .false.
+    elseif (lower_case) then
+        r = lower(s(n1:n2)) == lower(e)
     else
         r = (s(n1:n2) == e)
     end if
@@ -309,7 +327,7 @@ function string_cat(strings,delim) result(cat)
 end function string_cat
 
 !> Determine total trimmed length of `string_t` array
-pure function string_len_trim(strings) result(n)
+pure function strings_len_trim(strings) result(n)
     type(string_t), intent(in) :: strings(:)
     integer :: i, n
 
@@ -317,6 +335,18 @@ pure function string_len_trim(strings) result(n)
     do i=1,size(strings)
         n = n + len_trim(strings(i)%s)
     end do
+
+end function strings_len_trim
+
+!> Determine total trimmed length of `string_t` array
+elemental integer function string_len_trim(string) result(n)
+    type(string_t), intent(in) :: string
+
+    if (allocated(string%s)) then
+        n = len_trim(string%s)
+    else
+        n = 0
+    end if
 
 end function string_len_trim
 
@@ -1008,7 +1038,192 @@ function is_fortran_name(line) result (lout)
         else
             lout = .false.
         endif
-    end function is_fortran_name
+end function is_fortran_name
+
+!> Check that a module name fits the current naming rules:
+!> 1) It must be a valid FORTRAN name (<=63 chars, begin with letter, "_" is only allowed non-alphanumeric)
+!> 2) It must begin with the package name
+!> 3) If longer, package name must be followed by default separator plus at least one char
+logical function is_valid_module_name(module_name,package_name,custom_prefix,enforce_module_names) result(valid)
+
+    type(string_t), intent(in) :: module_name
+    type(string_t), intent(in) :: package_name
+    type(string_t), intent(in) :: custom_prefix
+    logical       , intent(in) :: enforce_module_names
+
+
+    !> Basic check: check the name is Fortran-compliant
+    valid = is_fortran_name(module_name%s); if (.not.valid) return
+
+    !> FPM package enforcing: check that the module name begins with the package name
+    if (enforce_module_names) then
+
+        ! Default prefixing is always valid
+        valid = has_valid_standard_prefix(module_name,package_name)
+
+        ! If a custom prefix was validated, it provides additional naming options
+        ! Because they never overlap with the default prefix, the former is always an option
+        if (len_trim(custom_prefix)>0 .and. .not.valid) &
+            valid = has_valid_custom_prefix(module_name,custom_prefix)
+
+    end if
+
+end function is_valid_module_name
+
+!> Check that a custom module prefix fits the current naming rules:
+!> 1) Only alphanumeric characters (no spaces, dashes, underscores or other characters)
+!> 2) Does not begin with a number (Fortran-compatible syntax)
+logical function is_valid_module_prefix(module_prefix) result(valid)
+
+    type(string_t), intent(in) :: module_prefix
+
+    character(len=*),parameter :: num='0123456789'
+    character(len=*),parameter :: lower='abcdefghijklmnopqrstuvwxyz'
+    character(len=*),parameter :: upper='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    character(len=*),parameter :: alpha  =upper//lower
+    character(len=*),parameter :: allowed=alpha//num
+
+    character(len=:),allocatable :: name
+
+    name = trim(module_prefix%s)
+
+    if (len(name)>0 .and. len(name)<=63) then
+        valid = verify(name(1:1), alpha) == 0 .and. &
+                verify(name,allowed)     == 0
+    else
+        valid = .false.
+    endif
+
+end function is_valid_module_prefix
+
+
+type(string_t) function module_prefix_template(project_name,custom_prefix) result(prefix)
+    type(string_t), intent(in) :: project_name
+    type(string_t), intent(in) :: custom_prefix
+
+    if (is_valid_module_prefix(custom_prefix)) then
+
+        prefix = string_t(trim(custom_prefix%s)//"_")
+
+    else
+
+        prefix = string_t(to_fortran_name(project_name%s)//"__")
+
+    end if
+
+end function module_prefix_template
+
+type(string_t) function module_prefix_type(project_name,custom_prefix) result(ptype)
+    type(string_t), intent(in) :: project_name
+    type(string_t), intent(in) :: custom_prefix
+
+    if (is_valid_module_prefix(custom_prefix)) then
+        ptype = string_t("custom")
+    else
+        ptype = string_t("default")
+    end if
+
+end function module_prefix_type
+
+!> Check that a module name is prefixed with a custom prefix:
+!> 1) It must be a valid FORTRAN name subset (<=63 chars, begin with letter, only alphanumeric allowed)
+!> 2) It must begin with the prefix
+!> 3) If longer, package name must be followed by default separator ("_") plus at least one char
+logical function has_valid_custom_prefix(module_name,custom_prefix) result(valid)
+
+    type(string_t), intent(in) :: module_name
+    type(string_t), intent(in) :: custom_prefix
+
+    !> custom_module separator: single underscore
+    character(*), parameter :: SEP = "_"
+
+    logical :: is_same,has_separator,same_beginning
+    integer :: lpkg,lmod,lsep
+
+    !> Basic check: check that both names are individually valid
+    valid = is_fortran_name(module_name%s) .and. &
+            is_valid_module_prefix(custom_prefix)
+
+    !> FPM package enforcing: check that the module name begins with the custom prefix
+    if (valid) then
+
+        !> Query string lengths
+        lpkg  = len_trim(custom_prefix)
+        lmod  = len_trim(module_name)
+        lsep  = len_trim(SEP)
+
+        same_beginning = str_begins_with_str(module_name%s,custom_prefix%s,case_sensitive=.false.)
+
+        is_same = lpkg==lmod .and. same_beginning
+
+        if (lmod>=lpkg+lsep) then
+           has_separator = str_begins_with_str(module_name%s(lpkg+1:lpkg+lsep),SEP)
+        else
+           has_separator = .false.
+        endif
+
+        !> 2) It must begin with the package name.
+        !> 3) It can be equal to the package name, or, if longer, must be followed by the
+        !     default separator plus at least one character
+        !> 4) Package name must not end with an underscore
+        valid = same_beginning .and. (is_same .or. (lmod>lpkg+lsep .and. has_separator))
+
+    end if
+
+end function has_valid_custom_prefix
+
+
+!> Check that a module name is prefixed with the default package prefix:
+!> 1) It must be a valid FORTRAN name (<=63 chars, begin with letter, "_" is only allowed non-alphanumeric)
+!> 2) It must begin with the package name
+!> 3) If longer, package name must be followed by default separator plus at least one char
+logical function has_valid_standard_prefix(module_name,package_name) result(valid)
+
+    type(string_t), intent(in) :: module_name
+    type(string_t), intent(in) :: package_name
+
+    !> Default package__module separator: two underscores
+    character(*), parameter :: SEP = "__"
+
+    character(len=:), allocatable :: fortranized_pkg
+    logical :: is_same,has_separator,same_beginning
+    integer :: lpkg,lmod,lsep
+
+    !> Basic check: check the name is Fortran-compliant
+    valid = is_fortran_name(module_name%s)
+
+    !> FPM package enforcing: check that the module name begins with the package name
+    if (valid) then
+
+        fortranized_pkg = to_fortran_name(package_name%s)
+
+        !> Query string lengths
+        lpkg  = len_trim(fortranized_pkg)
+        lmod  = len_trim(module_name)
+        lsep  = len_trim(SEP)
+
+        same_beginning = str_begins_with_str(module_name%s,fortranized_pkg,case_sensitive=.false.)
+
+        is_same = lpkg==lmod .and. same_beginning
+
+        if (lmod>=lpkg+lsep) then
+           has_separator = str_begins_with_str(module_name%s(lpkg+1:lpkg+lsep),SEP)
+        else
+           has_separator = .false.
+        endif
+
+        !> 2) It must begin with the package name.
+        !> 3) It can be equal to the package name, or, if longer, must be followed by the
+        !     default separator plus at least one character
+        !> 4) Package name must not end with an underscore
+        valid = is_fortran_name(fortranized_pkg) .and. &
+                fortranized_pkg(lpkg:lpkg)/='_' .and. &
+                (same_beginning .and. (is_same .or. (lmod>lpkg+lsep .and. has_separator)))
+
+    end if
+
+end function has_valid_standard_prefix
+
 !>
 !!### NAME
 !!   notabs(3f) - [fpm_strings:NONALPHA] expand tab characters
@@ -1118,8 +1333,8 @@ integer                       :: iade         ! ADE (ASCII Decimal Equivalent) o
 end subroutine notabs
 
 end module fpm_strings
-
-
+ 
+ 
 !>>>>> ././src/fpm_backend_console.f90
 !># Build Backend Console
 !> This module provides a lightweight implementation for printing to the console
@@ -1195,7 +1410,7 @@ subroutine console_write_line(console,str,line,advance)
     if (present(line)) then
         line = console%n_line
     end if
-
+    
     write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
 
     if (adv=="yes") then
@@ -1233,8 +1448,8 @@ subroutine console_update_line(console,line_no,str)
 
 end subroutine console_update_line
 
-end module fpm_backend_console
-
+end module fpm_backend_console 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/constants.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -1380,8 +1595,8 @@ module tomlf_constants
       & TOML_LETTERS//TOML_DIGITS//'_-+.'
 
 end module tomlf_constants
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/version.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -1406,13 +1621,13 @@ module tomlf_version
 
 
    !> String representation of the TOML-Fortran version
-   character(len=*), parameter :: tomlf_version_string = "0.3.0"
+   character(len=*), parameter :: tomlf_version_string = "0.4.0"
 
    !> Major version number of the above TOML-Fortran version
    integer, parameter :: tomlf_major = 0
 
    !> Minor version number of the above TOML-Fortran version
-   integer, parameter :: tomlf_minor = 3
+   integer, parameter :: tomlf_minor = 4
 
    !> Patch version number of the above TOML-Fortran version
    integer, parameter :: tomlf_patch = 0
@@ -1457,8 +1672,8 @@ end subroutine get_tomlf_version
 
 
 end module tomlf_version
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/token.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -1527,6 +1742,8 @@ module tomlf_de_token
       integer :: bool = 17
       !> Datetime value
       integer :: datetime = 18
+      !> Absence of value
+      integer :: nil = 19
    end type enum_token
 
    !> Actual enumerator for token kinds
@@ -1620,8 +1837,8 @@ pure function stringify(token) result(str)
 end function stringify
 
 end module tomlf_de_token
-
-
+ 
+ 
 !>>>>> build/dependencies/M_CLI2/src/M_CLI2.F90
 !VERSION 1.0 20200115
 !VERSION 2.0 20200802
@@ -3487,7 +3704,7 @@ integer                      :: ios
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:FILENAME=',filename
 
    ! look for name.rsp in directories from environment variable assumed to be a colon-separated list of directories
-   call split(get_env('CLI_RESPONSE_PATH','~/.local/share/rsp'),paths)
+   call split(get_env('CLI_RESPONSE_PATH'),paths)
    paths=[character(len=len(paths)) :: ' ',paths]
    if(debug_m_cli2)write(*,gen)'<DEBUG>FIND_AND_READ_RESPONSE_FILE:PATHS=',paths
 
@@ -7870,8 +8087,8 @@ end module M_CLI2
 ! to
 !       strings=[character(len=len(strings)) ::]
 !===================================================================================================================================
-
-
+ 
+ 
 !>>>>> ././src/fpm/error.f90
 !> Implementation of basic error handling.
 module fpm_error
@@ -8041,19 +8258,23 @@ contains
         integer, intent(in) :: value
         !> Error message
         character(len=*), intent(in) :: message
+        integer :: iostat
         if(message/='')then
+           flush(unit=stderr,iostat=iostat)
+           flush(unit=stdout,iostat=iostat)
            if(value>0)then
               write(stderr,'("<ERROR>",a)')trim(message)
            else
               write(stderr,'("<INFO> ",a)')trim(message)
            endif
+           flush(unit=stderr,iostat=iostat)
         endif
         stop value
     end subroutine fpm_stop
 
 end module fpm_error
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/datetime.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -8380,8 +8601,8 @@ end function compare_time
 
 
 end module tomlf_datetime
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/error.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -8425,6 +8646,9 @@ module tomlf_error
       !> Conversion error when downcasting a value
       integer :: conversion_error = -4
 
+      !> Key not present in table
+      integer :: missing_key = -5
+
    end type enum_stat
 
    !> Actual enumerator for return states
@@ -8464,8 +8688,8 @@ subroutine make_error(error, message, stat)
 end subroutine make_error
 
 end module tomlf_error
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/io.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -8504,7 +8728,7 @@ subroutine read_whole_file(filename, string, stat)
 
    open(file=filename, &
       & status="old", &
-      & access="stream", &
+      & access="stream", & 
       & position="append", &
       & newunit=io, &
       & iostat=stat)
@@ -8557,8 +8781,8 @@ subroutine read_whole_line(io, string, stat)
 end subroutine read_whole_line
 
 end module tomlf_utils_io
-
-
+ 
+ 
 !>>>>> ././src/fpm_environment.f90
 !> This module contains procedures that interact with the programming environment.
 !!
@@ -8603,7 +8827,7 @@ contains
         logical           :: file_exists
         logical, save     :: first_run = .true.
         integer, save     :: ret = OS_UNKNOWN
-        !omp threadprivate(ret, first_run)
+        !$omp threadprivate(ret, first_run)
 
         if (.not. first_run) then
             r = ret
@@ -8881,8 +9105,8 @@ character(len=:),allocatable :: fname
    !*ifort_bug*!sep_cache=sep
 end function separator
 end module fpm_environment
-
-
+ 
+ 
 !>>>>> ././src/fpm_os.F90
 module fpm_os
     use, intrinsic :: iso_c_binding, only : c_char, c_int, c_null_char, c_ptr, c_associated
@@ -8989,8 +9213,8 @@ contains
     end subroutine c_f_character
 
 end module fpm_os
-
-
+ 
+ 
 !>>>>> ././src/fpm/versioning.f90
 !> Implementation of versioning data for comparing packages
 module fpm_versioning
@@ -9403,8 +9627,8 @@ contains
 
 
 end module fpm_versioning
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -9666,8 +9890,8 @@ pure function to_string_r8(val) result(string)
 end function to_string_r8
 
 end module tomlf_utils
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/abc.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -9795,8 +10019,8 @@ module tomlf_de_abc
    end interface
 
 end module tomlf_de_abc
-
-
+ 
+ 
 !>>>>> ././src/fpm_filesystem.F90
 !> This module contains general routines for interacting with the file system
 !!
@@ -10040,10 +10264,12 @@ logical function is_dir(dir)
     select case (get_os_type())
 
     case (OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD)
-        call execute_command_line("test -d " // dir , exitstat=stat)
+        call run( "test -d " // dir , &
+                & exitstat=stat,echo=.false.,verbose=.false.)
 
     case (OS_WINDOWS)
-        call execute_command_line('cmd /c "if not exist ' // windows_path(dir) // '\ exit /B 1"', exitstat=stat)
+        call run('cmd /c "if not exist ' // windows_path(dir) // '\ exit /B 1"', &
+                & exitstat=stat,echo=.false.,verbose=.false.)
 
     end select
 
@@ -10167,30 +10393,16 @@ subroutine mkdir(dir, echo)
     logical, intent(in), optional :: echo
 
     integer :: stat
-    logical :: echo_local
-
-    if(present(echo))then
-        echo_local=echo
-      else
-        echo_local=.true.
-    end if
 
     if (is_dir(dir)) return
 
     select case (get_os_type())
         case (OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD)
-            call execute_command_line('mkdir -p ' // dir, exitstat=stat)
-
-            if (echo_local) then
-                write (*, *) '+ mkdir -p ' // dir
-            end if
+            call run('mkdir -p ' // dir, exitstat=stat,echo=echo,verbose=.false.)
 
         case (OS_WINDOWS)
-            call execute_command_line("mkdir " // windows_path(dir), exitstat=stat)
-
-            if (echo_local) then
-                write (*, *) '+ mkdir ' // windows_path(dir)
-            end if
+            call run("mkdir " // windows_path(dir), &
+                    & echo=echo, exitstat=stat,verbose=.false.)
 
     end select
 
@@ -10311,11 +10523,11 @@ recursive subroutine list_files(dir, files, recurse)
 
     select case (get_os_type())
         case (OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD)
-            call execute_command_line('ls -A ' // dir // ' > ' // temp_file, &
-                                      exitstat=stat)
+            call run('ls -A ' // dir , &
+                    & redirect=temp_file, exitstat=stat,echo=.false.,verbose=.false.)
         case (OS_WINDOWS)
-            call execute_command_line('dir /b ' // windows_path(dir) // ' > ' // temp_file, &
-                                      exitstat=stat)
+            call run('dir /b ' // windows_path(dir), &
+                    & redirect=temp_file, exitstat=stat,echo=.false.,verbose=.false.)
     end select
 
     if (stat /= 0) then
@@ -10664,6 +10876,7 @@ integer                         :: i, j
 end function which
 
 !> echo command string and pass it to the system for execution
+!call run(cmd,echo=.false.,exitstat=exitstat,verbose=.false.,redirect='')
 subroutine run(cmd,echo,exitstat,verbose,redirect)
     character(len=*), intent(in) :: cmd
     logical,intent(in),optional  :: echo
@@ -10672,12 +10885,11 @@ subroutine run(cmd,echo,exitstat,verbose,redirect)
     character(*), intent(in), optional :: redirect
 
     integer            :: cmdstat
-    character(len=256) :: cmdmsg
+    character(len=256) :: cmdmsg, iomsg
     logical :: echo_local, verbose_local
     character(:), allocatable :: redirect_str
     character(:), allocatable :: line
-    integer :: stat, fh, ios
-
+    integer :: stat, fh, iostat
 
     if(present(echo))then
        echo_local=echo
@@ -10692,7 +10904,9 @@ subroutine run(cmd,echo,exitstat,verbose,redirect)
     end if
 
     if (present(redirect)) then
-        redirect_str =  ">"//redirect//" 2>&1"
+        if(redirect /= '')then
+           redirect_str =  ">"//redirect//" 2>&1"
+        endif
     else
         if(verbose_local)then
             ! No redirection but verbose output
@@ -10700,38 +10914,42 @@ subroutine run(cmd,echo,exitstat,verbose,redirect)
         else
             ! No redirection and non-verbose output
             if (os_is_unix()) then
-                redirect_str = ">/dev/null 2>&1"
+                redirect_str = " >/dev/null 2>&1"
             else
-                redirect_str = ">NUL 2>&1"
+                redirect_str = " >NUL 2>&1"
             end if
         end if
     end if
 
-    if(echo_local) print *, '+ ', cmd
+    if(echo_local) print *, '+ ', cmd !//redirect_str
 
     call execute_command_line(cmd//redirect_str, exitstat=stat,cmdstat=cmdstat,cmdmsg=cmdmsg)
     if(cmdstat /= 0)then
-        write(stderr,'(*(g0,1x))')'<ERROR>',trim(cmdmsg)
+        write(*,'(a)')'<ERROR>:failed command '//cmd//redirect_str
+        call fpm_stop(1,'*run*:'//trim(cmdmsg))
     endif
 
     if (verbose_local.and.present(redirect)) then
 
-        open(newunit=fh,file=redirect,status='old')
-        do
-            call getline(fh, line, ios)
-            if (ios /= 0) exit
-            write(*,'(A)') trim(line)
-        end do
+        open(newunit=fh,file=redirect,status='old',iostat=iostat,iomsg=iomsg)
+        if(iostat == 0)then
+           do
+               call getline(fh, line, iostat)
+               if (iostat /= 0) exit
+               write(*,'(A)') trim(line)
+           end do
+        else
+           write(*,'(A)') trim(iomsg)
+        endif
+
         close(fh)
 
     end if
 
     if (present(exitstat)) then
         exitstat = stat
-    else
-        if (stat /= 0) then
-            call fpm_stop(1,'*run*:Command failed')
-        end if
+    elseif (stat /= 0) then
+        call fpm_stop(stat,'*run*: Command '//cmd//redirect_str//' returned a non-zero status code')
     end if
 
 end subroutine run
@@ -10742,35 +10960,17 @@ subroutine os_delete_dir(unix, dir, echo)
     character(len=*), intent(in) :: dir
     logical, intent(in), optional :: echo
 
-    logical :: echo_local
-
-    if(present(echo))then
-        echo_local=echo
-      else
-        echo_local=.true.
-    end if
-
     if (unix) then
-        call run('rm -rf ' // dir, .false.)
-
-        if (echo_local) then
-          write (*, *) '+ rm -rf ' // dir
-        end if
-
+        call run('rm -rf ' // dir, echo=echo,verbose=.false.)
     else
-        call run('rmdir /s/q ' // dir, .false.)
-
-        if (echo_local) then
-          write (*, *) '+ rmdir /s/q ' // dir
-        end if
-
+        call run('rmdir /s/q ' // dir, echo=echo,verbose=.false.)
     end if
 
 end subroutine os_delete_dir
 
 end module fpm_filesystem
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/terminal.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -11098,8 +11298,8 @@ pure function anycolor(code)
 end function anycolor
 
 end module tomlf_terminal
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -11254,8 +11454,8 @@ end function match_key
 
 
 end module tomlf_type_value
-
-
+ 
+ 
 !>>>>> ././src/fpm_command_line.f90
 !># Definition of the command line interface
 !>
@@ -11493,7 +11693,7 @@ contains
         end select
         unix = os_is_unix(os)
         version_text = [character(len=80) :: &
-         &  'Version:     0.7.0, alpha-20230120',                      &
+         &  'Version:     0.7.0, alpha',                               &
          &  'Program:     fpm(1)',                                     &
          &  'Description: A Fortran package manager and build system', &
          &  'Home Page:   https://github.com/fortran-lang/fpm',        &
@@ -12582,8 +12782,8 @@ contains
     end function get_fpm_env
 
 end module fpm_command_line
-
-
+ 
+ 
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
 !>
@@ -12895,8 +13095,8 @@ contains
   end subroutine run
 
 end module fpm_installer
-
-
+ 
+ 
 !>>>>> ././src/fpm/git.f90
 !> Implementation for interacting with git repositories.
 module fpm_git
@@ -12908,6 +13108,7 @@ module fpm_git
     public :: git_target_default, git_target_branch, git_target_tag, &
         & git_target_revision
     public :: git_revision
+    public :: operator(==)
 
 
     !> Possible git target
@@ -12953,6 +13154,10 @@ module fpm_git
 
     end type git_target_t
 
+
+    interface operator(==)
+        module procedure git_target_eq
+    end interface
 
 contains
 
@@ -13027,6 +13232,18 @@ contains
         self%object = tag
 
     end function git_target_tag
+
+    !> Check that two git targets are equal
+    logical function git_target_eq(this,that) result(is_equal)
+
+        !> Two input git targets
+        type(git_target_t), intent(in) :: this,that
+
+        is_equal = this%descriptor == that%descriptor .and. &
+                   this%url        == that%url        .and. &
+                   this%object     == that%object
+
+    end function git_target_eq
 
 
     subroutine checkout(self, local_path, error)
@@ -13163,8 +13380,8 @@ contains
 
 
 end module fpm_git
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/diagnostic.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -13630,8 +13847,8 @@ end function to_string
 
 
 end module tomlf_diagnostic
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -13685,7 +13902,7 @@ module tomlf_type_keyval
    type, extends(generic_value) :: string_value
       character(:, tfc), allocatable :: raw
    end type string_value
-
+      
 
 
    !> TOML key-value pair
@@ -13993,8 +14210,8 @@ function cast_string(val) result(ptr)
 end function cast_string
 
 end module tomlf_type_keyval
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/node.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14075,8 +14292,8 @@ subroutine resize(list, n)
 end subroutine resize
 
 end module tomlf_structure_node
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/list.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14219,8 +14436,8 @@ module tomlf_structure_list
 
 
 end module tomlf_structure_list
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/map.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14354,8 +14571,8 @@ module tomlf_structure_map
 
 
 end module tomlf_structure_map
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/sort.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14498,8 +14715,8 @@ contains
 
 
 end module tomlf_utils_sort
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/ordered_map.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14741,8 +14958,8 @@ end subroutine destroy
 
 
 end module tomlf_structure_ordered_map
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/array_list.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14953,8 +15170,8 @@ end subroutine destroy
 
 
 end module tomlf_structure_array_list
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/context.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -15110,8 +15327,8 @@ pure function report2(self, message, origin1, origin2, label1, label2, level1, l
 end function report2
 
 end module tomlf_de_context
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -15188,8 +15405,8 @@ end subroutine new_map_structure
 
 
 end module tomlf_structure
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/lexer.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -15381,7 +15598,7 @@ subroutine new_lexer_from_unit(lexer, io, error)
 
    case("sequential", "SEQUENTIAL")
       allocate(character(0) :: source)
-      do
+      do 
          call read_whole_line(io, line, stat)
          if (stat > 0) exit
          source = source // line // TOML_NEWLINE
@@ -16743,8 +16960,8 @@ end function convert_ucs
 
 
 end module tomlf_de_lexer
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/array.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -16944,8 +17161,8 @@ end subroutine destroy
 
 
 end module tomlf_type_array
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/table.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -17189,8 +17406,8 @@ end subroutine destroy
 
 
 end module tomlf_type_table
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/type.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -17733,8 +17950,8 @@ end function cast_to_keyval
 
 
 end module tomlf_type
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/ser.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -17753,6 +17970,7 @@ end module tomlf_type
 module tomlf_ser
    use tomlf_constants, only : tfc, tfi, tfr, tfout, toml_type
    use tomlf_datetime, only : toml_datetime, to_string
+   use tomlf_error, only : toml_error, toml_stat, make_error
    use tomlf_type, only : toml_value, toml_visitor, toml_key, toml_table, &
       & toml_array, toml_keyval, is_array_of_tables, len
    use tomlf_utils, only : to_string, toml_escape_string
@@ -17760,13 +17978,37 @@ module tomlf_ser
    private
 
    public :: toml_serializer, new_serializer, new
+   public :: toml_dump, toml_dumps, toml_serialize
+
+
+   interface toml_dumps
+      module procedure :: toml_dump_to_string
+   end interface toml_dumps
+
+   interface toml_dump
+      module procedure :: toml_dump_to_file
+      module procedure :: toml_dump_to_unit
+   end interface toml_dump
+
+
+   !> Configuration for JSON serializer
+   type :: toml_ser_config
+
+      !> Indentation
+      character(len=:), allocatable :: indent
+
+   end type toml_ser_config
 
 
    !> TOML serializer to produduce a TOML document from a datastructure
    type, extends(toml_visitor) :: toml_serializer
+      private
 
-      !> Unit for output
-      integer :: unit = tfout
+      !> Output string
+      character(:), allocatable :: output
+
+      !> Configuration for serializer
+      type(toml_ser_config) :: config = toml_ser_config()
 
       !> Special mode for printing array of tables
       logical, private :: array_of_tables = .false.
@@ -17807,33 +18049,136 @@ module tomlf_ser
 contains
 
 
+!> Serialize a JSON value to a string and return it.
+!>
+!> In case of an error this function will invoke an error stop.
+function toml_serialize(val, config) result(string)
+   !> TOML value to visit
+   class(toml_value), intent(inout) :: val
+
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
+
+   !> Serialized JSON value
+   character(len=:), allocatable :: string
+
+   type(toml_error), allocatable :: error
+
+   call toml_dumps(val, string, error, config=config)
+   if (allocated(error)) then
+      error stop error%message
+   end if
+end function toml_serialize
+
+
+!> Create a string representing the JSON value
+subroutine toml_dump_to_string(val, string, error, config)
+
+   !> TOML value to visit
+   class(toml_value), intent(inout) :: val
+
+   !> Formatted unit to write to
+   character(:), allocatable, intent(out) :: string
+
+   !> Error handling
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
+
+   type(toml_serializer) :: ser
+
+   ser = toml_serializer(config=config)
+   call val%accept(ser)
+   string = ser%output
+end subroutine toml_dump_to_string
+
+
+!> Write string representation of JSON value to a connected formatted unit
+subroutine toml_dump_to_unit(val, io, error, config)
+
+   !> TOML value to visit
+   class(toml_value), intent(inout) :: val
+
+   !> Formatted unit to write to
+   integer, intent(in) :: io
+
+   !> Error handling
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
+
+   character(len=:), allocatable :: string
+   character(512) :: msg
+   integer :: stat
+
+   call toml_dumps(val, string, error, config=config)
+   if (allocated(error)) return
+   write(io, '(a)', iostat=stat, iomsg=msg) string
+   if (stat /= 0) then
+      call make_error(error, trim(msg))
+      return
+   end if
+end subroutine toml_dump_to_unit
+
+
+!> Write string representation of JSON value to a file
+subroutine toml_dump_to_file(val, filename, error, config)
+
+   !> TOML value to visit
+   class(toml_value), intent(inout) :: val
+
+   !> File name to write to
+   character(*), intent(in) :: filename
+
+   !> Error handling
+   type(toml_error), allocatable, intent(out) :: error
+
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
+
+   integer :: io
+   integer :: stat
+   character(512) :: msg
+
+   open(file=filename, newunit=io, iostat=stat, iomsg=msg)
+   if (stat /= 0) then
+      call make_error(error, trim(msg))
+      return
+   end if
+   call toml_dump(val, io, error, config=config)
+   close(unit=io, iostat=stat, iomsg=msg)
+   if (.not.allocated(error) .and. stat /= 0) then
+      call make_error(error, trim(msg))
+   end if
+end subroutine toml_dump_to_file
+
+
 !> Constructor to create new serializer instance
-subroutine new_serializer(self, unit)
+subroutine new_serializer(self, config)
 
    !> Instance of the TOML serializer
    type(toml_serializer), intent(out) :: self
 
-   !> Unit for IO
-   integer, intent(in), optional :: unit
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
 
-   if (present(unit)) then
-      self%unit = unit
-   end if
-
+   self%output = ""
+   if (present(config)) self%config = config
 end subroutine new_serializer
 
 
 !> Default constructor for TOML serializer
-function new_serializer_func(unit) result(self)
+function new_serializer_func(config) result(self)
 
-   !> Unit for IO
-   integer, intent(in), optional :: unit
+   !> Configuration for serializer
+   type(toml_ser_config), intent(in), optional :: config
 
    !> Instance of the TOML serializer
    type(toml_serializer) :: self
 
-   call new_serializer(self, unit)
-
+   call new_serializer(self, config)
 end function new_serializer_func
 
 
@@ -17899,10 +18244,11 @@ subroutine visit_keyval(visitor, keyval)
    end select
 
    if (visitor%inline_array) then
-      write(visitor%unit, '(1x,a,1x,"=",1x,a)', advance='no') &
-         &  key, str
-   else
-      write(visitor%unit, '(a,1x,"=",1x,a)') key, str
+      visitor%output = visitor%output // " "
+   end if
+   visitor%output = visitor%output // key // " = " // str
+   if (.not.visitor%inline_array) then
+      visitor%output = visitor%output // new_line('a')
    end if
 
 end subroutine visit_keyval
@@ -17926,7 +18272,7 @@ recursive subroutine visit_array(visitor, array)
    logical, pointer :: lval
    integer :: i, n
 
-   if (visitor%inline_array) write(visitor%unit, '(1x,"[")', advance='no')
+   if (visitor%inline_array) visitor%output = visitor%output // " ["
    n = len(array)
    do i = 1, n
       call array%get(i, ptr)
@@ -17955,17 +18301,17 @@ recursive subroutine visit_array(visitor, array)
             str = to_string(dval)
          end select
 
-         write(visitor%unit, '(1x,a)', advance='no') str
-         if (i /= n) write(visitor%unit, '(",")', advance='no')
+         visitor%output = visitor%output // " " // str
+         if (i /= n) visitor%output = visitor%output // ","
       class is(toml_array)
          call ptr%accept(visitor)
-         if (i /= n) write(visitor%unit, '(",")', advance='no')
+         if (i /= n) visitor%output = visitor%output // ","
       class is(toml_table)
          if (visitor%inline_array) then
-            write(visitor%unit, '(1x,"{")', advance='no')
+            visitor%output = visitor%output // " {"
             call ptr%accept(visitor)
-            write(visitor%unit, '(1x,"}")', advance='no')
-            if (i /= n) write(visitor%unit, '(",")', advance='no')
+            visitor%output = visitor%output // " }"
+            if (i /= n) visitor%output = visitor%output // ","
          else
             visitor%array_of_tables = .true.
             if (size(visitor%stack, 1) <= visitor%top) call resize(visitor%stack)
@@ -17978,7 +18324,7 @@ recursive subroutine visit_array(visitor, array)
          end if
       end select
    end do
-   if (visitor%inline_array) write(visitor%unit, '(1x,"]")', advance='no')
+   if (visitor%inline_array) visitor%output = visitor%output // " ]"
 
 end subroutine visit_array
 
@@ -18007,15 +18353,15 @@ recursive subroutine visit_table(visitor, table)
       call resize(visitor%stack)
    else
       if (.not.(visitor%inline_array .or. table%implicit)) then
-         write(visitor%unit, '("[")', advance='no')
-         if (visitor%array_of_tables) write(visitor%unit, '("[")', advance='no')
+         visitor%output = visitor%output // "["
+         if (visitor%array_of_tables) visitor%output = visitor%output // "["
          do i = 1, visitor%top-1
-            write(visitor%unit, '(a,".")', advance='no') visitor%stack(i)%key
+            visitor%output = visitor%output // visitor%stack(i)%key // "."
          end do
-         write(visitor%unit, '(a)', advance='no') visitor%stack(visitor%top)%key
-         write(visitor%unit, '("]")', advance='no')
-         if (visitor%array_of_tables) write(visitor%unit, '("]")', advance='no')
-         write(visitor%unit, '(a)')
+         visitor%output = visitor%output // visitor%stack(visitor%top)%key
+         visitor%output = visitor%output // "]"
+         if (visitor%array_of_tables) visitor%output = visitor%output // "]"
+         visitor%output = visitor%output // new_line('a')
          visitor%array_of_tables = .false.
       end if
    end if
@@ -18027,14 +18373,14 @@ recursive subroutine visit_table(visitor, table)
       class is(toml_keyval)
          call ptr%accept(visitor)
          if (visitor%inline_array) then
-            if (i /= n) write(visitor%unit, '(",")', advance='no')
+            if (i /= n) visitor%output = visitor%output // ","
          end if
       class is(toml_array)
          if (visitor%inline_array) then
             call ptr%get_key(key)
-            write(visitor%unit, '(1x,a,1x,"=")', advance='no') key
+            visitor%output = visitor%output // " " // key // " ="
             call ptr%accept(visitor)
-            if (i /= n) write(visitor%unit, '(",")', advance='no')
+            if (i /= n) visitor%output = visitor%output // ","
          else
             if (is_array_of_tables(ptr)) then
                ! Array of tables open a new section
@@ -18043,10 +18389,10 @@ recursive subroutine visit_table(visitor, table)
             else
                visitor%inline_array = .true.
                call ptr%get_key(key)
-               write(visitor%unit, '(a,1x,"=")', advance='no') key
+               visitor%output = visitor%output // key // " ="
                call ptr%accept(visitor)
                visitor%inline_array = .false.
-               write(visitor%unit, '(a)')
+               visitor%output = visitor%output // new_line('a')
             end if
          end if
       class is(toml_table)
@@ -18063,24 +18409,24 @@ recursive subroutine visit_table(visitor, table)
          class is(toml_keyval)
             call ptr%accept(visitor)
             if (visitor%inline_array) then
-               if (i /= n) write(visitor%unit, '(",")', advance='no')
+               if (i /= n) visitor%output = visitor%output // ","
             end if
          class is(toml_array)
             if (visitor%inline_array) then
                call ptr%get_key(key)
-               write(visitor%unit, '(1x,a,1x,"=")', advance='no') key
+               visitor%output = visitor%output // " " // key // " ="
                call ptr%accept(visitor)
-               if (i /= n) write(visitor%unit, '(",")', advance='no')
+               if (i /= n) visitor%output = visitor%output // ","
             else
                if (is_array_of_tables(ptr)) then
                   call ptr%accept(visitor)
                else
                   visitor%inline_array = .true.
                   call ptr%get_key(key)
-                  write(visitor%unit, '(a,1x,"=")', advance='no') key
+                  visitor%output = visitor%output // key // " ="
                   call ptr%accept(visitor)
                   visitor%inline_array = .false.
-                  write(visitor%unit, '(a)')
+                  visitor%output = visitor%output // new_line('a')
                end if
             end if
          class is(toml_table)
@@ -18141,8 +18487,8 @@ end subroutine resize
 
 
 end module tomlf_ser
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/parser.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -18628,6 +18974,9 @@ recursive subroutine parse_keyval(parser, lexer, table)
       call add_keyval(table, key, vptr)
       call parse_value(parser, lexer, vptr)
 
+   case(token_kind%nil)
+      call next_token(parser, lexer)
+
    case(token_kind%lbracket)
       call add_array(table, key, aptr)
       call parse_inline_array(parser, lexer, aptr)
@@ -18675,6 +19024,9 @@ recursive subroutine parse_inline_array(parser, lexer, array)
       case default
          call add_keyval(array, vptr)
          call parse_value(parser, lexer, vptr)
+
+      case(token_kind%nil)
+         call next_token(parser, lexer)
 
       case(token_kind%lbracket)
          call add_array(array, aptr)
@@ -18997,8 +19349,8 @@ subroutine get_table(table, key, ptr, stat)
 end subroutine get_table
 
 end module tomlf_de_parser
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -19214,8 +19566,8 @@ end subroutine merge_array
 
 
 end module tomlf_build_merge
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -19806,8 +20158,8 @@ end subroutine set_value_string
 
 
 end module tomlf_build_keyval
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/de.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -19958,8 +20310,8 @@ subroutine toml_load_string(table, string, config, context, error)
 end subroutine toml_load_string
 
 end module tomlf_de
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -21278,8 +21630,8 @@ end subroutine set_array_value_datetime
 
 
 end module tomlf_build_array
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/table.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -22099,6 +22451,8 @@ subroutine get_child_value_float_sp(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_float_sp
@@ -22140,6 +22494,8 @@ subroutine get_child_value_float_dp(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_float_dp
@@ -22181,6 +22537,8 @@ subroutine get_child_value_integer_i1(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_integer_i1
@@ -22222,6 +22580,8 @@ subroutine get_child_value_integer_i2(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_integer_i2
@@ -22263,6 +22623,8 @@ subroutine get_child_value_integer_i4(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_integer_i4
@@ -22304,6 +22666,8 @@ subroutine get_child_value_integer_i8(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_integer_i8
@@ -22345,6 +22709,8 @@ subroutine get_child_value_bool(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_bool
@@ -22386,6 +22752,8 @@ subroutine get_child_value_datetime(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_datetime
@@ -22427,6 +22795,8 @@ subroutine get_child_value_string(table, key, val, default, stat, origin)
             if (present(stat)) stat = toml_stat%fatal
          end if
       end if
+   else if (.not.present(default)) then
+      if (present(stat)) stat = merge(toml_stat%missing_key, stat, stat == toml_stat%success)
    end if
 
 end subroutine get_child_value_string
@@ -22730,8 +23100,8 @@ end subroutine set_child_value_string
 
 
 end module tomlf_build_table
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/path.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -23535,8 +23905,8 @@ end subroutine walk_path
 
 
 end module tomlf_build_path
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -23569,8 +23939,8 @@ module tomlf_build
    public :: toml_path
 
 end module tomlf_build
-
-
+ 
+ 
 !>>>>> build/dependencies/toml-f/src/tomlf.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -23592,7 +23962,7 @@ module tomlf
    use tomlf_de, only : toml_parse, toml_load, toml_loads, &
       & toml_context, toml_parser_config, toml_level
    use tomlf_error, only : toml_error, toml_stat
-   use tomlf_ser, only : toml_serializer
+   use tomlf_ser, only : toml_serializer, toml_serialize, toml_dump, toml_dumps
    use tomlf_terminal, only : toml_terminal
    use tomlf_type, only : toml_table, toml_array, toml_keyval, toml_key, toml_value, &
       & is_array_of_tables, new_table, add_table, add_array, add_keyval, len
@@ -23603,8 +23973,8 @@ module tomlf
    public
 
 end module tomlf
-
-
+ 
+ 
 !>>>>> ././src/fpm/toml.f90
 !># Interface to TOML processing library
 !>
@@ -23624,15 +23994,15 @@ module fpm_toml
     use fpm_error, only : error_t, fatal_error, file_not_found_error
     use fpm_strings, only : string_t
     use tomlf, only : toml_table, toml_array, toml_key, toml_stat, get_value, &
-        & set_value, toml_parse, toml_error, new_table, add_table, add_array, &
-        & toml_serializer, len
+        & set_value, toml_load, toml_error, new_table, add_table, add_array, &
+        & toml_serialize, len
     implicit none
     private
 
     public :: read_package_file
     public :: toml_table, toml_array, toml_key, toml_stat, get_value, set_value, get_list
     public :: new_table, add_table, add_array, len
-    public :: toml_error, toml_serializer, toml_parse
+    public :: toml_error, toml_serialize, toml_load
 
 
 contains
@@ -23662,7 +24032,7 @@ contains
         end if
 
         open(file=manifest, newunit=unit)
-        call toml_parse(table, unit, parse_error)
+        call toml_load(table, unit, error=parse_error)
         close(unit)
 
         if (allocated(parse_error)) then
@@ -23691,6 +24061,8 @@ contains
         integer :: stat, ilist, nlist
         type(toml_array), pointer :: children
         character(len=:), allocatable :: str
+
+        if (.not.table%has_key(key)) return
 
         call get_value(table, key, children, requested=.false.)
         if (associated(children)) then
@@ -23721,8 +24093,8 @@ contains
 
 
 end module fpm_toml
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/build.f90
 !> Implementation of the build configuration data.
 !>
@@ -23737,13 +24109,12 @@ end module fpm_toml
 !>```
 module fpm_manifest_build
     use fpm_error, only : error_t, syntax_error, fatal_error
-    use fpm_strings, only : string_t
+    use fpm_strings, only : string_t, len_trim, is_valid_module_prefix
     use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
     implicit none
     private
 
     public :: build_config_t, new_build_config
-
 
     !> Configuration data for build
     type :: build_config_t
@@ -23756,6 +24127,10 @@ module fpm_manifest_build
 
         !> Automatic discovery of tests
         logical :: auto_tests
+
+        !> Enforcing of package module names
+        logical :: module_naming = .false.
+        type(string_t) :: module_prefix
 
         !> Libraries to link against
         type(string_t), allocatable :: link(:)
@@ -23812,6 +24187,35 @@ contains
             return
         end if
 
+        !> Module naming: fist, attempt boolean value first
+        call get_value(table, "module-naming", self%module_naming, .false., stat=stat)
+
+        if (stat == toml_stat%success) then
+
+            ! Boolean value found. Set no custom prefix. This also falls back to
+            ! key not provided
+            self%module_prefix = string_t("")
+
+        else
+
+            !> Value found, but not a boolean. Attempt to read a prefix string
+            call get_value(table, "module-naming", self%module_prefix%s)
+
+            if (.not.allocated(self%module_prefix%s)) then
+               call syntax_error(error,"Could not read value for 'module-naming' in fpm.toml, expecting logical or a string")
+               return
+            end if
+
+            if (.not.is_valid_module_prefix(self%module_prefix)) then
+               call syntax_error(error,"Invalid custom module name prefix for in fpm.toml: <"//self%module_prefix%s// &
+                            ">, expecting a valid alphanumeric string")
+               return
+            end if
+
+            ! Set module naming to ON
+            self%module_naming = .true.
+
+        end if
 
         call get_list(table, "link", self%link, error)
         if (allocated(error)) return
@@ -23820,7 +24224,6 @@ contains
         if (allocated(error)) return
 
     end subroutine new_build_config
-
 
     !> Check local schema for allowed entries
     subroutine check(table, error)
@@ -23843,6 +24246,9 @@ contains
             select case(list(ikey)%key)
 
             case("auto-executables", "auto-examples", "auto-tests", "link", "external-modules")
+                continue
+
+            case ("module-naming")
                 continue
 
             case default
@@ -23882,6 +24288,7 @@ contains
         write(unit, fmt) " - auto-discovery (apps) ", merge("enabled ", "disabled", self%auto_executables)
         write(unit, fmt) " - auto-discovery (examples) ", merge("enabled ", "disabled", self%auto_examples)
         write(unit, fmt) " - auto-discovery (tests) ", merge("enabled ", "disabled", self%auto_tests)
+        write(unit, fmt) " - enforce module naming ", merge("enabled ", "disabled", self%module_naming)
         if (allocated(self%link)) then
             write(unit, fmt) " - link against"
             do ilink = 1, size(self%link)
@@ -23898,8 +24305,8 @@ contains
     end subroutine info
 
 end module fpm_manifest_build
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
 !>
@@ -24009,8 +24416,8 @@ contains
   end subroutine info
 
 end module fpm_manifest_install
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/profiles.f90
 !> Implementation of the meta data for compiler flag profiles.
 !>
@@ -24067,7 +24474,7 @@ module fpm_manifest_profile
             & info_profile, find_profile, DEFAULT_COMPILER
 
     !> Name of the default compiler
-    character(len=*), parameter :: DEFAULT_COMPILER = 'gfortran'
+    character(len=*), parameter :: DEFAULT_COMPILER = 'gfortran' 
     integer, parameter :: OS_ALL = -1
     character(len=:), allocatable :: path
 
@@ -24092,7 +24499,7 @@ module fpm_manifest_profile
 
       !> Value repesenting OS
       integer :: os_type
-
+      
       !> Fortran compiler flags
       character(len=:), allocatable :: flags
 
@@ -24124,16 +24531,16 @@ module fpm_manifest_profile
       function new_profile(profile_name, compiler, os_type, flags, c_flags, cxx_flags, &
                            link_time_flags, file_scope_flags, is_built_in) &
                       & result(profile)
-
+        
         !> Name of the profile
         character(len=*), intent(in) :: profile_name
-
+        
         !> Name of the compiler
         character(len=*), intent(in) :: compiler
-
+        
         !> Type of the OS
         integer, intent(in) :: os_type
-
+        
         !> Fortran compiler flags
         character(len=*), optional, intent(in) :: flags
 
@@ -24204,7 +24611,7 @@ module fpm_manifest_profile
             is_valid = .false.
         end select
       end subroutine validate_compiler_name
-
+        
       !> Check if os_name is a valid name of a supported OS
       subroutine validate_os_name(os_name, is_valid)
 
@@ -24387,10 +24794,10 @@ module fpm_manifest_profile
                  & flags, c_flags, cxx_flags, link_time_flags, file_scope_flags)
         profindex = profindex + 1
       end subroutine get_flags
-
+      
       !> Traverse operating system tables to obtain number of profiles
       subroutine traverse_oss_for_size(profile_name, compiler_name, os_list, table, profiles_size, error)
-
+        
         !> Name of profile
         character(len=:), allocatable, intent(in) :: profile_name
 
@@ -24461,7 +24868,7 @@ module fpm_manifest_profile
 
       !> Traverse operating system tables to obtain profiles
       subroutine traverse_oss(profile_name, compiler_name, os_list, table, profiles, profindex, error)
-
+        
         !> Name of profile
         character(len=:), allocatable, intent(in) :: profile_name
 
@@ -24482,7 +24889,7 @@ module fpm_manifest_profile
 
         !> Index in the list of profiles
         integer, intent(inout) :: profindex
-
+        
         type(toml_key), allocatable :: key_list(:)
         character(len=:), allocatable :: os_name, l_os_name
         type(toml_table), pointer :: os_node
@@ -24527,7 +24934,7 @@ module fpm_manifest_profile
 
       !> Traverse compiler tables
       subroutine traverse_compilers(profile_name, comp_list, table, error, profiles_size, profiles, profindex)
-
+        
         !> Name of profile
         character(len=:), allocatable, intent(in) :: profile_name
 
@@ -24536,10 +24943,10 @@ module fpm_manifest_profile
 
         !> Table containing compiler tables
         type(toml_table), pointer, intent(in) :: table
-
+        
         !> Error handling
         type(error_t), allocatable, intent(out) :: error
-
+        
         !> Number of profiles in list of profiles
         integer, intent(inout), optional :: profiles_size
 
@@ -24548,8 +24955,8 @@ module fpm_manifest_profile
 
         !> Index in the list of profiles
         integer, intent(inout), optional :: profindex
-
-        character(len=:), allocatable :: compiler_name
+        
+        character(len=:), allocatable :: compiler_name        
         type(toml_table), pointer :: comp_node
         type(toml_key), allocatable :: os_list(:)
         integer :: icomp, stat
@@ -24558,7 +24965,7 @@ module fpm_manifest_profile
         if (size(comp_list)<1) return
         do icomp = 1, size(comp_list)
           call validate_compiler_name(comp_list(icomp)%key, is_valid)
-          if (is_valid) then
+          if (is_valid) then  
             compiler_name = comp_list(icomp)%key
             call get_value(table, compiler_name, comp_node, stat=stat)
             if (stat /= toml_stat%success) then
@@ -24581,7 +24988,7 @@ module fpm_manifest_profile
           else
             call fatal_error(error,'*traverse_compilers*:Error: Compiler name not specified or invalid.')
           end if
-        end do
+        end do        
       end subroutine traverse_compilers
 
       !> Construct new profiles array from a TOML data structure
@@ -24610,9 +25017,9 @@ module fpm_manifest_profile
         default_profiles = get_default_profiles(error)
         if (allocated(error)) return
         call table%get_keys(prof_list)
-
+        
         if (size(prof_list) < 1) return
-
+        
         profiles_size = 0
 
         do iprof = 1, size(prof_list)
@@ -24647,7 +25054,7 @@ module fpm_manifest_profile
 
         profiles_size = profiles_size + size(default_profiles)
         allocate(profiles(profiles_size))
-
+        
         do profindex=1, size(default_profiles)
           profiles(profindex) = default_profiles(profindex)
         end do
@@ -24766,20 +25173,20 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'caf', &
                 & OS_ALL, &
-                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
-                          & -fcheck=array-temps -fbacktrace', &
+                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=all &
+                          & -fbacktrace', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'gfortran', &
                 & OS_ALL, &
-                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
-                          & -fcheck=array-temps -fbacktrace -fcoarray=single', &
+                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=all &
+                          & -fbacktrace -fcoarray=single', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'f95', &
                 & OS_ALL, &
-                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
-                          & -fcheck=array-temps -Wno-maybe-uninitialized -Wno-uninitialized -fbacktrace', &
+                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=all &
+                          & -Wno-maybe-uninitialized -Wno-uninitialized -fbacktrace', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'nvfortran', &
@@ -24789,7 +25196,7 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'ifort', &
                 & OS_ALL, &
-                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
+                & flags = ' -warn all -flto -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifort', &
@@ -24800,7 +25207,7 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_ALL, &
-                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
+                & flags = ' -warn all -flto -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifx', &
@@ -24969,8 +25376,8 @@ module fpm_manifest_profile
         end if
       end subroutine find_profile
 end module fpm_manifest_profile
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/library.f90
 !> Implementation of the meta data for libraries.
 !>
@@ -25114,8 +25521,8 @@ contains
 
 
 end module fpm_manifest_library
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/preprocess.f90
 !> Implementation of the meta data for preprocessing.
 !>
@@ -25283,7 +25690,7 @@ contains
          pr = 1
       end if
 
-      if (pr < 1) return
+      if (pr < 1) return 
 
       write(unit, fmt) "Preprocessor"
       if (allocated(self%name)) then
@@ -25311,8 +25718,8 @@ contains
    end subroutine info
 
 end module fpm_mainfest_preprocess
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/dependency.f90
 !> Implementation of the meta data for dependencies.
 !>
@@ -25341,14 +25748,14 @@ end module fpm_mainfest_preprocess
 module fpm_manifest_dependency
     use fpm_error, only : error_t, syntax_error
     use fpm_git, only : git_target_t, git_target_tag, git_target_branch, &
-        & git_target_revision, git_target_default
+        & git_target_revision, git_target_default, operator(==)
     use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
     use fpm_filesystem, only: windows_path
     use fpm_environment, only: get_os_type, OS_WINDOWS
     implicit none
     private
 
-    public :: dependency_config_t, new_dependency, new_dependencies
+    public :: dependency_config_t, new_dependency, new_dependencies, manifest_has_changed
 
 
     !> Configuration meta data for a dependency
@@ -25399,7 +25806,7 @@ contains
         call get_value(table, "path", url)
         if (allocated(url)) then
             if (get_os_type() == OS_WINDOWS) url = windows_path(url)
-            if (present(root)) url = root//url  ! Relative to the fpm.toml it   s written in
+            if (present(root)) url = root//url  ! Relative to the fpm.toml it’s written in
             call move_alloc(url, self%path)
         else
             call get_value(table, "git", url)
@@ -25582,10 +25989,31 @@ contains
 
     end subroutine info
 
+    !> Check if two dependency configurations are different
+    logical function manifest_has_changed(this, that) result(has_changed)
+
+        !> Two instances of the dependency configuration
+        class(dependency_config_t), intent(in) :: this, that
+
+        has_changed = .true.
+
+        !> Perform all checks
+        if (this%name/=that%name) return
+        if (this%path/=that%path) return
+        if (allocated(this%git).neqv.allocated(that%git)) return
+        if (allocated(this%git)) then
+            if (.not.(this%git==that%git)) return
+        end if
+
+        !> All checks passed! The two instances are equal
+        has_changed = .false.
+
+    end function manifest_has_changed
+
 
 end module fpm_manifest_dependency
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/executable.f90
 !> Implementation of the meta data for an executables.
 !>
@@ -25776,8 +26204,8 @@ contains
 
 
 end module fpm_manifest_executable
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
 !>
@@ -25957,8 +26385,8 @@ contains
 
 
 end module fpm_manifest_test
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/example.f90
 !> Implementation of the meta data for an example.
 !>
@@ -26138,8 +26566,8 @@ contains
 
 
 end module fpm_manifest_example
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest/package.f90
 !> Define the package data containing the meta data from the configuration file.
 !>
@@ -26357,7 +26785,7 @@ contains
             call new_library(self%library, child, error)
             if (allocated(error)) return
         end if
-
+        
         call get_value(table, "profiles", child, requested=.false.)
         if (associated(child)) then
             call new_profiles(self%profiles, child, error)
@@ -26567,7 +26995,7 @@ contains
                 call self%dev_dependency(ii)%info(unit, pr - 1)
             end do
         end if
-
+        
         if (allocated(self%profiles)) then
             if (size(self%profiles) > 1 .or. pr > 2) then
                 write(unit, fmti) "- profiles", size(self%profiles)
@@ -26636,8 +27064,8 @@ contains
 
 
 end module fpm_manifest_package
-
-
+ 
+ 
 !>>>>> ././src/fpm/manifest.f90
 !> Package configuration data.
 !>
@@ -26824,8 +27252,8 @@ contains
 
 
 end module fpm_manifest
-
-
+ 
+ 
 !>>>>> ././src/fpm/cmd/new.f90
 module fpm_cmd_new
 !># Definition of the "new" subcommand
@@ -27199,7 +27627,7 @@ character(len=:,kind=tfc),allocatable :: littlefile(:)
         &'#M_strings = { path = "M_strings" }                                             ',&
         &'                                                                                ',&
         &'  # This tells fpm that we depend on a crate called M_strings which is found    ',&
-        &'  # in the M_strings folder (relative to the fpm.toml it   s written in).         ',&
+        &'  # in the M_strings folder (relative to the fpm.toml it’s written in).         ',&
         &'  #                                                                             ',&
         &'  # For a more verbose layout use normal tables rather than inline tables       ',&
         &'  # to specify dependencies:                                                    ',&
@@ -27456,17 +27884,17 @@ end function git_metadata
 
 subroutine create_verified_basic_manifest(filename)
 !> create a basic but verified default manifest file
-use fpm_toml, only : toml_table, toml_serializer, set_value
+use fpm_toml, only : toml_table, toml_serialize, set_value
 use fpm_manifest_package, only : package_config_t, new_package
 use fpm_error, only : error_t
 implicit none
 character(len=*),intent(in) :: filename
    type(toml_table)            :: table
-   type(toml_serializer)       :: ser
    type(package_config_t)      :: package
    type(error_t), allocatable  :: error
    integer                     :: lun
    character(len=8)            :: date
+   character(:), allocatable   :: output
 
     if(exists(filename))then
        write(stderr,'(*(g0,1x))')'<INFO>  ',filename,&
@@ -27476,7 +27904,6 @@ character(len=*),intent(in) :: filename
     !> get date to put into metadata in manifest file "fpm.toml"
     call date_and_time(DATE=date)
     table = toml_table()
-    ser = toml_serializer()
     call fileopen(filename,lun) ! fileopen stops on error
 
     call set_value(table, "name",       BNAME)
@@ -27489,11 +27916,11 @@ character(len=*),intent(in) :: filename
     ! ...
     call new_package(package, table, error=error)
     if (allocated(error)) call fpm_stop( 3,'')
+    output = toml_serialize(table)
     if(settings%verbose)then
-       call table%accept(ser)
+       print '(a)', output
     endif
-    ser%unit=lun
-    call table%accept(ser)
+    write(lun, '(a)') output
     call fileclose(lun) ! fileopen stops on error
 
 end subroutine create_verified_basic_manifest
@@ -27502,27 +27929,25 @@ end subroutine create_verified_basic_manifest
 subroutine validate_toml_data(input)
 !> verify a string array is a valid fpm.toml file
 !
-use tomlf, only : toml_parse
-use fpm_toml, only : toml_table, toml_serializer
+use tomlf, only : toml_load
+use fpm_toml, only : toml_table, toml_serialize
 implicit none
 character(kind=tfc,len=:),intent(in),allocatable :: input(:)
 character(len=1), parameter                      :: nl = new_line('a')
 type(toml_table), allocatable                    :: table
 character(kind=tfc, len=:), allocatable          :: joined_string
-type(toml_serializer)                            :: ser
 
 ! you have to add a newline character by using the intrinsic
 ! function `new_line("a")` to get the lines processed correctly.
 joined_string = join(input,right=nl)
 
 if (allocated(table)) deallocate(table)
-call toml_parse(table, joined_string)
+call toml_load(table, joined_string)
 if (allocated(table)) then
    if(settings%verbose)then
       ! If the TOML file is successfully parsed the table will be allocated and
-      ! can be written to the standard output by passing the `toml_serializer`
-      ! as visitor to the table.
-      call table%accept(ser)
+      ! can be written by `toml_serialize` to the standard output
+      print '(a)', toml_serialize(table)
    endif
    call table%destroy
 endif
@@ -27532,9 +27957,9 @@ end subroutine validate_toml_data
 end subroutine cmd_new
 
 end module fpm_cmd_new
-
-
-!>>>>> ././src/fpm_compiler.f90
+ 
+ 
+!>>>>> ././src/fpm_compiler.F90
 !># Define compiler command options
 !!
 !! This module defines compiler options to use for the debug and release builds.
@@ -27671,11 +28096,11 @@ end interface debug
 character(*), parameter :: &
     flag_gnu_coarray = " -fcoarray=single", &
     flag_gnu_backtrace = " -fbacktrace", &
-    flag_gnu_opt = " -O3 -funroll-loops", &
+    flag_gnu_opt = " -O3 -funroll-loops -flto", &
     flag_gnu_debug = " -g", &
     flag_gnu_pic = " -fPIC", &
     flag_gnu_warn = " -Wall -Wextra -Wimplicit-interface", &
-    flag_gnu_check = " -fcheck=bounds -fcheck=array-temps", &
+    flag_gnu_check = " -fcheck=bounds -fcheck=array-temps -fcheck=all", &
     flag_gnu_limit = " -fmax-errors=1", &
     flag_gnu_external = " -Wimplicit-interface"
 
@@ -27724,7 +28149,7 @@ character(*), parameter :: &
 character(*), parameter :: &
     flag_lfortran_opt = " --fast"
 
-
+    
 contains
 
 
@@ -27954,7 +28379,7 @@ pure subroutine set_cpp_preprocessor_flags(id, flags)
 
 end subroutine set_cpp_preprocessor_flags
 
-!> This function will parse and read the macros list and
+!> This function will parse and read the macros list and 
 !> return them as defined flags.
 function get_macros(id, macros_list, version) result(macros)
     integer(compiler_enum), intent(in) :: id
@@ -27964,7 +28389,7 @@ function get_macros(id, macros_list, version) result(macros)
     character(len=:), allocatable :: macros
     character(len=:), allocatable :: macro_definition_symbol
     character(:), allocatable :: valued_macros(:)
-
+    
 
     integer :: i
 
@@ -27987,10 +28412,10 @@ function get_macros(id, macros_list, version) result(macros)
     end if
 
     do i = 1, size(macros_list)
-
+        
         !> Split the macro name and value.
         call split(macros_list(i)%s, valued_macros, delimiters="=")
-
+ 
         if (size(valued_macros) > 1) then
             !> Check if the value of macro starts with '{' character.
             if (str_begins_with_str(trim(valued_macros(size(valued_macros))), "{")) then
@@ -28000,15 +28425,15 @@ function get_macros(id, macros_list, version) result(macros)
 
                     !> Check if the string contains "version" as substring.
                     if (index(valued_macros(size(valued_macros)), "version") /= 0) then
-
+                    
                         !> These conditions are placed in order to ensure proper spacing between the macros.
                         macros = macros//macro_definition_symbol//trim(valued_macros(1))//'='//version
                         cycle
                     end if
                 end if
-            end if
+            end if 
         end if
-
+         
         macros = macros//macro_definition_symbol//macros_list(i)%s
 
     end do
@@ -28331,7 +28756,7 @@ subroutine new_compiler(self, fc, cc, cxx, echo, verbose)
     logical, intent(in) :: verbose
 
     self%id = get_compiler_id(fc)
-
+    
     self%echo = echo
     self%verbose = verbose
     self%fc = fc
@@ -28474,9 +28899,9 @@ end subroutine link
 
 
 !> Create an archive
-!> @todo An OMP critical section is added for Windows OS,
-!> which may be related to a bug in Mingw64-openmp and is expected to be resolved in the future,
-!> see issue #707 and #708.
+!> @todo For Windows OS, use the local `delete_file_win32` in stead of `delete_file`.
+!> This may be related to a bug in Mingw64-openmp and is expected to be resolved in the future,
+!> see issue #707, #708 and #808.
 subroutine make_archive(self, output, args, log_file, stat)
     !> Instance of the archiver object
     class(archiver_t), intent(in) :: self
@@ -28490,16 +28915,27 @@ subroutine make_archive(self, output, args, log_file, stat)
     integer, intent(out) :: stat
 
     if (self%use_response_file) then
-        !$omp critical
         call write_response_file(output//".resp" , args)
         call run(self%ar // output // " @" // output//".resp", echo=self%echo, &
             &  verbose=self%verbose, redirect=log_file, exitstat=stat)
-        call delete_file(output//".resp")
-        !$omp end critical
+        call delete_file_win32(output//".resp")
+
     else
         call run(self%ar // output // " " // string_cat(args, " "), &
             & echo=self%echo, verbose=self%verbose, redirect=log_file, exitstat=stat)
     end if
+
+    contains
+        subroutine delete_file_win32(file)
+            character(len=*), intent(in) :: file
+            logical :: exist
+            integer :: unit, iostat
+            inquire(file=file, exist=exist)
+            if (exist) then
+                open(file=file, newunit=unit)
+                close(unit, status='delete', iostat=iostat)
+            end if
+        end subroutine delete_file_win32
 end subroutine make_archive
 
 
@@ -28513,7 +28949,7 @@ subroutine write_response_file(name, argv)
 
     integer :: iarg, io
 
-    open(file=name, newunit=io)
+    open(file=name, newunit=io, status='replace')
     do iarg = 1, size(argv)
         write(io, '(a)') unix_path(argv(iarg)%s)
     end do
@@ -28544,8 +28980,8 @@ end function debug_archiver
 
 
 end module fpm_compiler
-
-
+ 
+ 
 !>>>>> ././src/fpm/dependency.f90
 !> # Dependency management
 !>
@@ -28608,12 +29044,13 @@ module fpm_dependency
   use fpm_environment, only : get_os_type, OS_WINDOWS
   use fpm_error, only : error_t, fatal_error
   use fpm_filesystem, only : exists, join_path, mkdir, canon_path, windows_path
-  use fpm_git, only : git_target_revision, git_target_default, git_revision
+  use fpm_git, only : git_target_revision, git_target_default, git_revision, operator(==)
   use fpm_manifest, only : package_config_t, dependency_config_t, &
     get_package_data
+  use fpm_manifest_dependency, only: manifest_has_changed
   use fpm_strings, only : string_t, operator(.in.)
-  use fpm_toml, only : toml_table, toml_key, toml_error, toml_serializer, &
-    toml_parse, get_value, set_value, add_table
+  use fpm_toml, only : toml_table, toml_key, toml_error, toml_serialize, &
+    toml_load, get_value, set_value, add_table
   use fpm_versioning, only : version_t, new_version, char
   implicit none
   private
@@ -28644,6 +29081,8 @@ module fpm_dependency
   contains
     !> Update dependency from project manifest
     procedure :: register
+    !> Print information on this instance
+    procedure :: info
   end type dependency_node_t
 
 
@@ -28667,7 +29106,7 @@ module fpm_dependency
   contains
     !> Overload procedure to add new dependencies to the tree
     generic :: add => add_project, add_project_dependencies, add_dependencies, &
-      add_dependency
+      add_dependency, add_dependency_node
     !> Main entry point to add a project
     procedure, private :: add_project
     !> Add a project and its dependencies to the dependency tree
@@ -28676,6 +29115,8 @@ module fpm_dependency
     procedure, private :: add_dependencies
     !> Add a single dependency to the dependency tree
     procedure, private :: add_dependency
+    !> Add a single dependency node to the dependency tree
+    procedure, private :: add_dependency_node
     !> Resolve dependencies
     generic :: resolve => resolve_dependencies, resolve_dependency
     !> Resolve dependencies
@@ -28707,9 +29148,11 @@ module fpm_dependency
     !> Write dependency tree to TOML data structure
     procedure, private :: dump_to_toml
     !> Update dependency tree
-    generic :: update => update_dependency
+    generic :: update => update_dependency,update_tree
     !> Update a list of dependencies
     procedure, private :: update_dependency
+    !> Update all dependencies in the tree
+    procedure, private :: update_tree
   end type dependency_tree_t
 
   !> Common output format for writing to the command line
@@ -28740,7 +29183,7 @@ contains
   end subroutine new_dependency_tree
 
   !> Create a new dependency node from a configuration
-  pure subroutine new_dependency_node(self, dependency, version, proj_dir, update)
+   subroutine new_dependency_node(self, dependency, version, proj_dir, update)
     !> Instance of the dependency node
     type(dependency_node_t), intent(out) :: self
     !> Dependency configuration data
@@ -28767,6 +29210,49 @@ contains
     end if
 
   end subroutine new_dependency_node
+
+  !> Write information on instance
+  subroutine info(self, unit, verbosity)
+
+    !> Instance of the dependency configuration
+    class(dependency_node_t), intent(in) :: self
+
+    !> Unit for IO
+    integer, intent(in) :: unit
+
+    !> Verbosity of the printout
+    integer, intent(in), optional :: verbosity
+
+    integer :: pr
+    character(:), allocatable :: ver
+    character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+    if (present(verbosity)) then
+        pr = verbosity
+    else
+        pr = 1
+    end if
+
+    !> Call base object info
+    call self%dependency_config_t%info(unit,pr)
+
+    if (allocated(self%version)) then
+        call self%version%to_string(ver)
+        write(unit, fmt) "- version", ver
+    end if
+
+    if (allocated(self%proj_dir)) then
+        write(unit, fmt) "- dir", self%proj_dir
+    end if
+
+    if (allocated(self%revision)) then
+        write(unit, fmt) "- revision", self%revision
+    end if
+
+    write(unit, fmt) "- done", merge('YES','NO ',self%done)
+    write(unit, fmt) "- update", merge('YES','NO ',self%update)
+
+  end subroutine info
 
   !> Add project dependencies, each depth level after each other.
   !>
@@ -28905,8 +29391,47 @@ contains
 
   end subroutine add_dependencies
 
+  !> Add a single dependency node to the dependency tree
+  !> Dependency nodes contain additional information (version, git, revision)
+   subroutine add_dependency_node(self, dependency, error)
+    !> Instance of the dependency tree
+    class(dependency_tree_t), intent(inout) :: self
+    !> Dependency configuration to add
+    type(dependency_node_t), intent(in) :: dependency
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: id
+    logical :: needs_update
+
+    id = self%find(dependency)
+
+    exists: if (id > 0) then
+
+      !> A dependency with this same name is already in the dependency tree.
+
+      !> check if it needs to be updated
+      needs_update = dependency_has_changed(self%dep(id), dependency)
+
+      !> Ensure an update is requested whenever the dependency has changed
+      if (needs_update) then
+         write(self%unit, out_fmt) "Dependency change detected:", dependency%name
+         self%dep(id) = dependency
+         self%dep(id)%update = .true.
+      endif
+
+    else exists
+
+      !> New dependency: add from scratch
+      self%ndep = self%ndep + 1
+      self%dep(self%ndep) = dependency
+
+    end if exists
+
+  end subroutine add_dependency_node
+
   !> Add a single dependency to the dependency tree
-  pure subroutine add_dependency(self, dependency, error)
+   subroutine add_dependency(self, dependency, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> Dependency configuration to add
@@ -28914,13 +29439,10 @@ contains
     !> Error handling
     type(error_t), allocatable, intent(out) :: error
 
-    integer :: id
+    type(dependency_node_t) :: node
 
-    id = self%find(dependency)
-    if (id == 0) then
-      self%ndep = self%ndep + 1
-      call new_dependency_node(self%dep(self%ndep), dependency)
-    end if
+    call new_dependency_node(node, dependency)
+    call add_dependency_node(self, node, error)
 
   end subroutine add_dependency
 
@@ -28949,6 +29471,7 @@ contains
         if (self%verbosity > 1) then
           write(self%unit, out_fmt) "Update:", dep%name
         end if
+        write(self%unit, out_fmt) "Update:", dep%name
         proj_dir = join_path(self%dep_dir, dep%name)
         call dep%git%checkout(proj_dir, error)
         if (allocated(error)) return
@@ -28967,6 +29490,23 @@ contains
     end associate
 
   end subroutine update_dependency
+
+  !> Update whole dependency tree
+  subroutine update_tree(self, error)
+    !> Instance of the dependency tree
+    class(dependency_tree_t), intent(inout) :: self
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: i
+
+    ! Update dependencies where needed
+    do i = 1, self%ndep
+       call self%update(self%dep(i)%name,error)
+       if (allocated(error)) return
+    end do
+
+  end subroutine update_tree
 
   !> Resolve all dependencies in the tree
   subroutine resolve_dependencies(self, root, error)
@@ -29165,7 +29705,7 @@ contains
     type(toml_error), allocatable :: parse_error
     type(toml_table), allocatable :: table
 
-    call toml_parse(table, unit, parse_error)
+    call toml_load(table, unit, error=parse_error)
 
     if (allocated(parse_error)) then
       allocate(error)
@@ -29275,14 +29815,11 @@ contains
     type(error_t), allocatable, intent(out) :: error
 
     type(toml_table) :: table
-    type(toml_serializer) :: ser
 
     table = toml_table()
-    ser = toml_serializer(unit)
-
     call self%dump(table, error)
 
-    call table%accept(ser)
+    write(unit, '(a)') toml_serialize(table)
 
   end subroutine dump_to_unit
 
@@ -29360,9 +29897,37 @@ contains
 
   end subroutine resize_dependency_node
 
+  !> Check if a dependency node has changed
+  logical function dependency_has_changed(this,that) result(has_changed)
+     !> Two instances of the same dependency to be compared
+     type(dependency_node_t), intent(in) :: this,that
+
+     has_changed = .true.
+
+     !> All the following entities must be equal for the dependency to not have changed
+     if (manifest_has_changed(this, that)) return
+
+     !> For now, only perform the following checks if both are available. A dependency in cache.toml
+     !> will always have this metadata; a dependency from fpm.toml which has not been fetched yet
+     !> may not have it
+     if (allocated(this%version) .and. allocated(that%version)) then
+        if (this%version/=that%version) return
+     endif
+     if (allocated(this%revision) .and. allocated(that%revision)) then
+        if (this%revision/=that%revision) return
+     endif
+     if (allocated(this%proj_dir) .and. allocated(that%proj_dir)) then
+        if (this%proj_dir/=that%proj_dir) return
+     endif
+
+     !> All checks passed: the two dependencies have no differences
+     has_changed = .false.
+
+  end function dependency_has_changed
+
 end module fpm_dependency
-
-
+ 
+ 
 !>>>>> ././src/fpm_model.f90
 !># The fpm package model
 !>
@@ -29378,7 +29943,7 @@ end module fpm_dependency
 !>### Enumerations
 !>
 !> __Source type:__ `FPM_UNIT_*`
-!> Describes the type of source file     determines build target generation
+!> Describes the type of source file — determines build target generation
 !>
 !> The logical order of precedence for assigning `unit_type` is as follows:
 !>
@@ -29398,13 +29963,13 @@ end module fpm_dependency
 !> (This allows tree-shaking/pruning of build targets based on unused module dependencies.)
 !>
 !> __Source scope:__ `FPM_SCOPE_*`
-!> Describes the scoping rules for using modules     controls module dependency resolution
+!> Describes the scoping rules for using modules — controls module dependency resolution
 !>
 module fpm_model
 use iso_fortran_env, only: int64
 use fpm_compiler, only: compiler_t, archiver_t, debug
 use fpm_dependency, only: dependency_tree_t
-use fpm_strings, only: string_t, str
+use fpm_strings, only: string_t, str, len_trim
 implicit none
 
 private
@@ -29496,6 +30061,10 @@ type package_t
     !> Package version number.
     character(:), allocatable :: version
 
+    !> Module naming conventions
+    logical :: enforce_module_names
+    type(string_t) :: module_prefix
+
 end type package_t
 
 
@@ -29545,6 +30114,10 @@ type :: fpm_model_t
     !> Whether tests should be added to the build list
     logical :: include_tests = .true.
 
+    !> Whether module names should be prefixed with the package name
+    logical :: enforce_module_names = .false.
+    type(string_t) :: module_prefix
+
 end type fpm_model_t
 
 contains
@@ -29565,6 +30138,14 @@ function info_package(p) result(s)
         if (i < size(p%sources)) s = s // ", "
     end do
     s = s // "]"
+
+    ! Print module naming convention
+    s = s // ', enforce_module_names="' // merge('T','F',p%enforce_module_names) // '"'
+
+    ! Print custom prefix
+    if (p%enforce_module_names .and. len_trim(p%module_prefix)>0) &
+    s = s // ', custom_prefix="' // p%module_prefix%s // '"'
+
     s = s // ")"
 
 end function info_package
@@ -29709,6 +30290,14 @@ function info_model(model) result(s)
     ! TODO: print `dependency_tree_t` properly, which should become part of the
     !       model, not imported from another file
     s = s // ", deps=dependency_tree_t(...)"
+
+    ! Print module naming convention
+    s = s // ', enforce_module_names="' // merge('T','F',model%enforce_module_names) // '"'
+
+    ! Print custom prefix
+    if (model%enforce_module_names .and. len_trim(model%module_prefix)>0) &
+    s = s // ', custom_prefix="' // model%module_prefix%s // '"'
+
     !end type fpm_model_t
     s = s // ")"
 end function info_model
@@ -29720,8 +30309,8 @@ subroutine show_model(model)
 end subroutine show_model
 
 end module fpm_model
-
-
+ 
+ 
 !>>>>> ././src/fpm/cmd/update.f90
 module fpm_cmd_update
   use fpm_command_line, only : fpm_update_settings
@@ -29768,10 +30357,8 @@ contains
     if (settings%fetch_only) return
 
     if (size(settings%name) == 0) then
-      do ii = 1, deps%ndep
-        call deps%update(deps%dep(ii)%name, error)
-        call handle_error(error)
-      end do
+      call deps%update(error)
+      call handle_error(error)
     else
       do ii = 1, size(settings%name)
         call deps%update(trim(settings%name(ii)), error)
@@ -29791,8 +30378,8 @@ contains
   end subroutine handle_error
 
 end module fpm_cmd_update
-
-
+ 
+ 
 !>>>>> ././src/fpm_source_parsing.f90
 !># Parsing of package source files
 !>
@@ -29919,7 +30506,7 @@ function parse_f_source(f_filename,error) result(f_source)
             ! Detect exported C-API via bind(C)
             if (.not.inside_interface .and. &
                 parse_subsequence(file_lines_lower(i)%s,'bind','(','c')) then
-
+                
                 do j=i,1,-1
 
                     if (index(file_lines_lower(j)%s,'function') > 0 .or. &
@@ -30098,7 +30685,7 @@ function parse_f_source(f_filename,error) result(f_source)
                     f_source%unit_type = FPM_UNIT_MODULE
                 end if
 
-                if (.not.inside_module) then
+                if (.not.inside_module) then    
                     inside_module = .true.
                 else
                     ! Must have missed an end module statement (can't assume a pure module)
@@ -30137,7 +30724,7 @@ function parse_f_source(f_filename,error) result(f_source)
                           file_lines_lower(i)%s)
                     return
                 end if
-
+                
                 if (f_source%unit_type /= FPM_UNIT_PROGRAM) then
                     f_source%unit_type = FPM_UNIT_SUBMODULE
                 end if
@@ -30199,7 +30786,7 @@ function parse_f_source(f_filename,error) result(f_source)
             !  (to check for code outside of modules)
             if (parse_sequence(file_lines_lower(i)%s,'end','module') .or. &
                 parse_sequence(file_lines_lower(i)%s,'end','submodule')) then
-
+                
                 inside_module = .false.
                 cycle
 
@@ -30256,7 +30843,7 @@ function parse_c_source(c_filename,error) result(c_source)
 
         c_source%unit_type = FPM_UNIT_CHEADER
 
-    else if (str_ends_with(lower(c_filename), ".cpp")) then
+    else if (str_ends_with(lower(c_filename), ".cpp")) then 
 
         c_source%unit_type = FPM_UNIT_CPPSOURCE
 
@@ -30369,7 +30956,7 @@ function parse_subsequence(string,t1,t2,t3,t4) result(found)
     found = .false.
     offset = 1
 
-    do
+    do 
 
         i = index(string(offset:),t1)
 
@@ -30451,8 +31038,8 @@ end function parse_sequence
 
 end module fpm_source_parsing
 
-
-
+ 
+ 
 !>>>>> ././src/fpm_targets.f90
 !># Build target handling
 !>
@@ -30477,7 +31064,7 @@ end module fpm_source_parsing
 !>### Enumerations
 !>
 !> __Target type:__ `FPM_TARGET_*`
-!> Describes the type of build target     determines backend build rules
+!> Describes the type of build target — determines backend build rules
 !>
 module fpm_targets
 use iso_fortran_env, only: int64
@@ -30598,7 +31185,7 @@ subroutine targets_from_sources(targets,model,prune,error)
 
     !> Enable tree-shaking/pruning of module dependencies
     logical, intent(in) :: prune
-
+    
     !> Error structure
     type(error_t), intent(out), allocatable :: error
 
@@ -30691,14 +31278,14 @@ subroutine build_target_list(targets,model)
                                 output_name = get_object_name(sources(i)), &
                                 macros = model%packages(j)%macros, &
                                 version = model%packages(j)%version)
-
+                                
 
                     if (with_lib .and. sources(i)%unit_scope == FPM_SCOPE_LIB) then
                         ! Archive depends on object
                         call add_dependency(targets(1)%ptr, targets(size(targets))%ptr)
                     end if
 
-                case (FPM_UNIT_CPPSOURCE)
+                case (FPM_UNIT_CPPSOURCE) 
 
                     call add_target(targets,package=model%packages(j)%name,source = sources(i), &
                                 type = FPM_TARGET_CPP_OBJECT, &
@@ -30835,7 +31422,7 @@ subroutine collect_exe_link_dependencies(targets)
                             dep%source%unit_type /= FPM_UNIT_MODULE .and. &
                             index(dirname(dep%source%file_name), exe_source_dir) == 1) then
 
-                            call add_dependency(exe, dep)
+                            call add_dependency(exe, dep) 
 
                         end if
 
@@ -31030,13 +31617,13 @@ subroutine prune_build_targets(targets, root_package)
     type(build_target_ptr), intent(inout), allocatable :: targets(:)
 
     !> Name of root package
-    character(*), intent(in) :: root_package
+    character(*), intent(in) :: root_package 
 
     integer :: i, j, nexec
     type(string_t), allocatable :: modules_used(:)
     logical :: exclude_target(size(targets))
     logical, allocatable :: exclude_from_archive(:)
-
+    
     if (size(targets) < 1) then
         return
     end if
@@ -31046,7 +31633,7 @@ subroutine prune_build_targets(targets, root_package)
 
     ! Enumerate modules used by executables, non-module subprograms and their dependencies
     do i=1,size(targets)
-
+            
         if (targets(i)%ptr%target_type == FPM_TARGET_EXECUTABLE) then
 
             nexec = nexec + 1
@@ -31067,16 +31654,16 @@ subroutine prune_build_targets(targets, root_package)
     ! If there aren't any executables, then prune
     !  based on modules used in root package
     if (nexec < 1) then
-
+        
         do i=1,size(targets)
-
+            
             if (targets(i)%ptr%package_name == root_package .and. &
                  targets(i)%ptr%target_type /= FPM_TARGET_ARCHIVE) then
-
+    
                 call collect_used_modules(targets(i)%ptr)
-
+    
             end if
-
+            
         end do
 
     end if
@@ -31098,11 +31685,11 @@ subroutine prune_build_targets(targets, root_package)
                     do j=1,size(target%source%modules_provided)
 
                         if (target%source%modules_provided(j)%s .in. modules_used) then
-
+                            
                             exclude_target(i) = .false.
                             target%skip = .false.
 
-                        end if
+                        end if 
 
                     end do
 
@@ -31114,11 +31701,11 @@ subroutine prune_build_targets(targets, root_package)
                     do j=1,size(target%source%parent_modules)
 
                         if (target%source%parent_modules(j)%s .in. modules_used) then
-
+                            
                             exclude_target(i) = .false.
                             target%skip = .false.
 
-                        end if
+                        end if 
 
                     end do
 
@@ -31131,7 +31718,7 @@ subroutine prune_build_targets(targets, root_package)
                 target%skip = .false.
             end if
 
-        end associate
+        end associate        
     end do
 
     targets = pack(targets,.not.exclude_target)
@@ -31268,7 +31855,7 @@ subroutine resolve_target_linking(targets, model)
             target%compile_flags = target%compile_flags // get_macros(model%compiler%id, &
                                                             target%macros, &
                                                             target%version)
-
+ 
             if (len(global_include_flags) > 0) then
                 target%compile_flags = target%compile_flags//global_include_flags
             end if
@@ -31486,8 +32073,8 @@ end subroutine filter_modules
 
 
 end module fpm_targets
-
-
+ 
+ 
 !>>>>> ././src/fpm_sources.f90
 !># Discovery of sources
 !>
@@ -31724,8 +32311,8 @@ subroutine get_executable_source_dirs(exe_dirs,executables)
 end subroutine get_executable_source_dirs
 
 end module fpm_sources
-
-
+ 
+ 
 !>>>>> ././src/fpm_backend_output.f90
 !># Build Backend Progress Output
 !> This module provides a derived type `build_progress_t` for printing build status
@@ -31777,7 +32364,7 @@ interface build_progress_t
 end interface build_progress_t
 
 contains
-
+    
     !> Initialise a new build progress object
     function new_build_progress(target_queue,plain_mode) result(progress)
         !> The queue of scheduled targets
@@ -31850,7 +32437,7 @@ contains
         character(100) :: output_string
         character(7) :: overall_progress
 
-        !$omp critical
+        !$omp critical 
         progress%n_complete = progress%n_complete + 1
         !$omp end critical
 
@@ -31904,8 +32491,8 @@ contains
 
     end subroutine output_progress_success
 
-end module fpm_backend_output
-
+end module fpm_backend_output 
+ 
 !>>>>> ././src/fpm_backend.F90
 !># Build backend
 !> Uses a list of `[[build_target_ptr]]` and a valid `[[fpm_model]]` instance
@@ -32283,12 +32870,13 @@ subroutine print_build_log(target)
 end subroutine print_build_log
 
 end module fpm_backend
-
-
+ 
+ 
 !>>>>> ././src/fpm.f90
 module fpm
 use fpm_strings, only: string_t, operator(.in.), glob, join, string_cat, &
-                      lower, str_ends_with
+                      lower, str_ends_with, is_fortran_name, str_begins_with_str, &
+                      is_valid_module_name, len_trim
 use fpm_backend, only: build_package
 use fpm_command_line, only: fpm_build_settings, fpm_new_settings, &
                       fpm_run_settings, fpm_install_settings, fpm_test_settings, &
@@ -32348,6 +32936,10 @@ subroutine build_model(model, settings, package, error)
     call model%deps%add(package, error)
     if (allocated(error)) return
 
+    ! Update dependencies where needed
+    call model%deps%update(error)
+    if (allocated(error)) return
+
     ! build/ directory should now exist
     if (.not.exists("build/.gitignore")) then
       call filewrite(join_path("build", ".gitignore"),["*"])
@@ -32380,6 +32972,8 @@ subroutine build_model(model, settings, package, error)
     model%build_prefix = join_path("build", basename(model%compiler%fc))
 
     model%include_tests = settings%build_tests
+    model%enforce_module_names = package%build%module_naming
+    model%module_prefix = package%build%module_prefix
 
     allocate(model%packages(model%deps%ndep))
 
@@ -32441,6 +33035,11 @@ subroutine build_model(model, settings, package, error)
             if (allocated(dependency%build%external_modules)) then
                 model%external_modules = [model%external_modules, dependency%build%external_modules]
             end if
+
+            ! Copy naming conventions from this dependency's manifest
+            model%packages(i)%enforce_module_names = dependency%build%module_naming
+            model%packages(i)%module_prefix        = dependency%build%module_prefix
+
         end associate
     end do
     if (allocated(error)) return
@@ -32521,7 +33120,11 @@ subroutine build_model(model, settings, package, error)
         write(*,*)'<INFO> CXX COMPILER OPTIONS: ', model%cxx_compile_flags
         write(*,*)'<INFO> LINKER OPTIONS:  ', model%link_flags
         write(*,*)'<INFO> INCLUDE DIRECTORIES:  [', string_cat(model%include_dirs,','),']'
-     end if
+    end if
+
+    ! Check for invalid module names
+    call check_module_names(model, error)
+    if (allocated(error)) return
 
     ! Check for duplicate modules
     call check_modules_for_duplicates(model, duplicates_found)
@@ -32574,6 +33177,99 @@ subroutine check_modules_for_duplicates(model, duplicates_found)
     end do
 end subroutine check_modules_for_duplicates
 
+! Check names of all modules in this package and its dependencies
+subroutine check_module_names(model, error)
+    type(fpm_model_t), intent(in) :: model
+    type(error_t), allocatable, intent(out) :: error
+    integer :: i,j,k,l,m
+    logical :: valid,errors_found,enforce_this_file
+    type(string_t) :: package_name,module_name,package_prefix
+
+    errors_found = .false.
+
+    ! Loop through modules provided by each source file of every package
+    ! Add it to the array if it is not already there
+    ! Otherwise print out warning about duplicates
+    do k=1,size(model%packages)
+
+        package_name = string_t(model%packages(k)%name)
+
+        ! Custom prefix is taken from each dependency's manifest
+        if (model%packages(k)%enforce_module_names) then
+            package_prefix = model%packages(k)%module_prefix
+        else
+            package_prefix = string_t("")
+        end if
+
+        ! Warn the user if some of the dependencies have loose naming
+        if (model%enforce_module_names .and. .not.model%packages(k)%enforce_module_names) then
+           write(stderr, *) "Warning: Dependency ",package_name%s // &
+                            " does not enforce module naming, but project does. "
+        end if
+
+        do l=1,size(model%packages(k)%sources)
+
+            ! Module naming is not enforced in test modules
+            enforce_this_file =  model%enforce_module_names .and. &
+                                 model%packages(k)%sources(l)%unit_scope/=FPM_SCOPE_TEST
+
+            if (allocated(model%packages(k)%sources(l)%modules_provided)) then
+
+                do m=1,size(model%packages(k)%sources(l)%modules_provided)
+
+                    module_name = model%packages(k)%sources(l)%modules_provided(m)
+
+                    valid = is_valid_module_name(module_name, &
+                                                 package_name, &
+                                                 package_prefix, &
+                                                 enforce_this_file)
+
+                    if (.not.valid) then
+
+                        if (enforce_this_file) then
+
+                            if (len_trim(package_prefix)>0) then
+
+                            write(stderr, *) "ERROR: Module ",module_name%s, &
+                                             " in ",model%packages(k)%sources(l)%file_name, &
+                                             " does not match its package name ("//package_name%s// &
+                                             ") or custom prefix ("//package_prefix%s//")."
+                            else
+
+                            write(stderr, *) "ERROR: Module ",module_name%s, &
+                                             " in ",model%packages(k)%sources(l)%file_name, &
+                                             " does not match its package name ("//package_name%s//")."
+
+                            endif
+
+                        else
+
+                            write(stderr, *) "ERROR: Module ",module_name%s, &
+                                             " in ",model%packages(k)%sources(l)%file_name, &
+                                             " has an invalid Fortran name. "
+
+                        end if
+
+                        errors_found = .true.
+
+                    end if
+                end do
+            end if
+        end do
+    end do
+
+    if (errors_found) then
+
+        if (model%enforce_module_names) &
+            write(stderr, *) "       Hint: Try disabling module naming in the manifest: [build] module-naming=false . "
+
+        call fatal_error(error,"The package contains invalid module names. "// &
+                               "Naming conventions "//merge('are','not',model%enforce_module_names)// &
+                               " being requested.")
+    end if
+
+end subroutine check_module_names
+
 subroutine cmd_build(settings)
 type(fpm_build_settings), intent(in) :: settings
 type(package_config_t) :: package
@@ -32624,7 +33320,7 @@ subroutine cmd_run(settings,test)
     type(string_t), allocatable :: executables(:)
     type(build_target_t), pointer :: exe_target
     type(srcfile_t), pointer :: exe_source
-    integer :: run_scope
+    integer :: run_scope,firsterror
     integer, allocatable :: stat(:)
     character(len=:),allocatable :: line
     logical :: toomany
@@ -32769,10 +33465,12 @@ subroutine cmd_run(settings,test)
         if (any(stat /= 0)) then
             do i=1,size(stat)
                 if (stat(i) /= 0) then
-                    write(stderr,'(*(g0:,1x))') '<ERROR> Execution failed for object "',basename(executables(i)%s),'"'
+                    write(stderr,'(*(g0:,1x))') '<ERROR> Execution for object "',basename(executables(i)%s),&
+                                                '" returned exit code ',stat(i)
                 end if
             end do
-            call fpm_stop(1,'*cmd_run*:stopping due to failed executions')
+            firsterror = findloc(stat/=0,value=.true.,dim=1)
+            call fpm_stop(stat(firsterror),'*cmd_run*:stopping due to failed executions')
         end if
 
     endif
@@ -32862,8 +33560,8 @@ subroutine cmd_clean(settings)
 end subroutine cmd_clean
 
 end module fpm
-
-
+ 
+ 
 !>>>>> ././src/fpm/cmd/install.f90
 module fpm_cmd_install
   use, intrinsic :: iso_fortran_env, only : output_unit
@@ -33027,8 +33725,8 @@ contains
   end subroutine handle_error
 
 end module fpm_cmd_install
-
-
+ 
+ 
 !>>>>> app/main.f90
 program main
 use, intrinsic :: iso_fortran_env, only : error_unit, output_unit
@@ -33149,4 +33847,4 @@ contains
     end subroutine get_working_dir
 
 end program main
-
+ 
