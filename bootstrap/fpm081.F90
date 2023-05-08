@@ -27290,7 +27290,7 @@ contains
         call get_value(table, "path", uri)
         if (allocated(uri)) then
             if (get_os_type() == OS_WINDOWS) uri = windows_path(uri)
-            if (present(root)) uri = root//uri  ! Relative to the fpm.toml it’s written in
+            if (present(root)) uri = root//uri  ! Relative to the fpm.toml it   s written in
             call move_alloc(uri, self%path)
             return
         end if
@@ -29127,7 +29127,7 @@ character(len=:,kind=tfc),allocatable :: littlefile(:)
         &'#M_strings = { path = "M_strings" }                                             ',&
         &'                                                                                ',&
         &'  # This tells fpm that we depend on a crate called M_strings which is found    ',&
-        &'  # in the M_strings folder (relative to the fpm.toml it’s written in).         ',&
+        &'  # in the M_strings folder (relative to the fpm.toml it   s written in).         ',&
         &'  #                                                                             ',&
         &'  # For a more verbose layout use normal tables rather than inline tables       ',&
         &'  # to specify dependencies:                                                    ',&
@@ -31853,7 +31853,7 @@ end module fpm_dependency
 !>### Enumerations
 !>
 !> __Source type:__ `FPM_UNIT_*`
-!> Describes the type of source file — determines build target generation
+!> Describes the type of source file     determines build target generation
 !>
 !> The logical order of precedence for assigning `unit_type` is as follows:
 !>
@@ -31873,7 +31873,7 @@ end module fpm_dependency
 !> (This allows tree-shaking/pruning of build targets based on unused module dependencies.)
 !>
 !> __Source scope:__ `FPM_SCOPE_*`
-!> Describes the scoping rules for using modules — controls module dependency resolution
+!> Describes the scoping rules for using modules     controls module dependency resolution
 !>
 module fpm_model
 use iso_fortran_env, only: int64
@@ -33000,7 +33000,7 @@ end module fpm_source_parsing
 !>### Enumerations
 !>
 !> __Target type:__ `FPM_TARGET_*`
-!> Describes the type of build target — determines backend build rules
+!> Describes the type of build target     determines backend build rules
 !>
 module fpm_targets
 use iso_fortran_env, only: int64
