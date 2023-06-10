@@ -151,7 +151,8 @@ Please provide feedback on the
  - [fpm presentation](https://tcevents.chem.uzh.ch/event/12/contributions/39/attachments/35/104/Richardson-fpm-presentation.pdf)
  - [youtube:getting started with fpm](https://www.youtube.com/watch?v=pg77uR792YU)
  - [youtube:visual studio plugin](https://www.youtube.com/watch?v=pg77uR792YU)
- - [search github for fpm projects](https://github.com/search?o=desc&amp;q=path%3A%2F+filename%3Afpm.toml&amp;s=indexed&amp;type=Code)
+ - [search github for fpm projects](https://github.com/search?o=desc&amp;q=path%3A%2F+filename%3Afpm.toml&amp;s=indexed&amp;type=Code) by looking for "fpm.toml" files
+ - [search github for fpm projects](https://github.com/topics/fortran-package-manager) by looking for topic "fortran-package-manager"
 
 ### fpm packages
     + fpm-search : null
