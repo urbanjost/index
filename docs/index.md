@@ -196,8 +196,7 @@ Fortran and HPC searches
 Sites for gathering programming idioms and programming chrestomathy
 -------------------------------------------------------------------
 
--   [Rosetta Code (multi-lingual code
-    samples)](https://www.rosettacode.org)
+-   [Rosetta Code (multi-lingual code samples)](https://www.rosettacode.org)
 -   [Fortran-specific Rosetta
     Code](http://rosettacode.org/wiki/Category:Fortran)
 -   [Exercism](https://exercism.io/)

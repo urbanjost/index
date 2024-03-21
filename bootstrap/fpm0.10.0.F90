@@ -1,4 +1,7 @@
+#define FPM_RELEASE_VERSION 0.8.0
 #define FPM_BOOTSTRAP
+#undef linux
+#undef unix
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -25,8 +28,7 @@
 !! - [[IS_FORTRAN_NAME]]  determine whether a string is an acceptable Fortran entity name
 !! - [[TO_FORTRAN_NAME]]  replace allowed special but unusuable characters in names with underscore
 !!### Whitespace
-!! - [[NOTABS]]  subroutine to expand tab characters assuming a tab space every eight characters
-!! - [[DILATE]]  function to expand tab characters assuming a tab space every eight characters
+!! - [[NOTABS]]  Expand tab characters assuming a tab space every eight characters
 !! - [[LEN_TRIM]]  Determine total trimmed length of **STRING_T** array
 !!### Miscellaneous
 !! - [[FNV_1A]]  Hash a **CHARACTER(*)** string of default kind or a **TYPE(STRING_T)** array
@@ -42,12 +44,11 @@ use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_po
 implicit none
 
 private
-public :: f_string, lower, upper, split, str_ends_with, string_t, str_begins_with_str
+public :: f_string, lower, split, str_ends_with, string_t, str_begins_with_str
 public :: to_fortran_name, is_fortran_name
 public :: string_array_contains, string_cat, len_trim, operator(.in.), fnv_1a
 public :: replace, resize, str, join, glob
-public :: notabs, dilate, remove_newline_characters, remove_characters_in_set
-public :: operator(==)
+public :: notabs
 
 !> Module naming
 public :: is_valid_module_name, is_valid_module_prefix, &
@@ -79,7 +80,6 @@ end interface fnv_1a
 interface str_ends_with
     procedure :: str_ends_with_str
     procedure :: str_ends_with_any
-    procedure :: str_ends_with_any_string
 end interface str_ends_with
 
 interface str
@@ -93,11 +93,6 @@ end interface string_t
 interface f_string
     module procedure f_string, f_string_cptr, f_string_cptr_n
 end interface f_string
-
-interface operator(==)
-    module procedure string_is_same
-    module procedure string_arrays_same
-end interface
 
 contains
 
@@ -130,23 +125,6 @@ pure logical function str_ends_with_any(s, e) result(r)
     r = .false.
 
 end function str_ends_with_any
-
-!> Test if a CHARACTER string ends with any of an array of string suffixs
-pure logical function str_ends_with_any_string(s, e) result(r)
-    character(*), intent(in) :: s
-    type(string_t), intent(in) :: e(:)
-
-    integer :: i
-
-    r = .true.
-    do i=1,size(e)
-
-        if (str_ends_with(s,trim(e(i)%s))) return
-
-    end do
-    r = .false.
-
-end function str_ends_with_any_string
 
 !> test if a CHARACTER string begins with a specified prefix
 pure logical function str_begins_with_str(s, e, case_sensitive) result(r)
@@ -194,6 +172,7 @@ function f_string(c_string)
     end do
 
 end function f_string
+
 
 !> return Fortran character variable when given a null-terminated c_ptr
 function f_string_cptr(cptr) result(s)
@@ -244,6 +223,7 @@ pure function fnv_1a_char(input, seed) result(hash)
 
 end function fnv_1a_char
 
+
 !> Hash a string_t array of default kind
 pure function fnv_1a_string_t(input, seed) result(hash)
     type(string_t), intent(in) :: input(:)
@@ -260,9 +240,10 @@ pure function fnv_1a_string_t(input, seed) result(hash)
 
 end function fnv_1a_string_t
 
-!>Author: John S. Urban
-!!License: Public Domain
-!! Changes a string to lowercase over optional specified column range
+
+ !>Author: John S. Urban
+ !!License: Public Domain
+ !! Changes a string to lowercase over optional specified column range
 elemental pure function lower(str,begin,end) result (string)
 
     character(*), intent(In)     :: str
@@ -291,37 +272,6 @@ elemental pure function lower(str,begin,end) result (string)
     end do
 
 end function lower
-
-  !!License: Public Domain
- !! Changes a string to upprtcase over optional specified column range
-elemental pure function upper(str,begin,end) result (string)
-
-    character(*), intent(In)     :: str
-    character(len(str))          :: string
-    integer,intent(in),optional  :: begin, end
-    integer                      :: i
-    integer                      :: ibegin, iend
-    string = str
-
-    ibegin = 1
-    if (present(begin))then
-        ibegin = max(ibegin,begin)
-    endif
-
-    iend = len_trim(str)
-    if (present(end))then
-        iend= min(iend,end)
-    endif
-
-    do i = ibegin, iend                               ! step thru each letter in the string in specified range
-        select case (str(i:i))
-        case ('a':'z')
-            string(i:i) = char(iachar(str(i:i))-32)   ! change letter to capitalized
-        case default
-        end select
-    end do
-
-end function upper
 
 !> Helper function to generate a new string_t instance
 !>  (Required due to the allocatable component)
@@ -679,9 +629,8 @@ integer                              :: i
    if(present(end))string=string//end
 end function join
 
-!>AUTHOR: John S. Urban
-!!LICENSE: Public Domain
-!>
+!>##AUTHOR John S. Urban
+!!##LICENSE Public Domain
 !!## NAME
 !!    glob(3f) - [fpm_strings:COMPARE] compare given string for match to
 !!    pattern which may contain wildcard characters
@@ -1070,7 +1019,7 @@ pure function to_fortran_name(string) result(res)
     res = replace(string, SPECIAL_CHARACTERS, '_')
 end function to_fortran_name
 
-elemental function is_fortran_name(line) result (lout)
+function is_fortran_name(line) result (lout)
 ! determine if a string is a valid Fortran name ignoring trailing spaces
 ! (but not leading spaces)
     character(len=*),parameter   :: int='0123456789'
@@ -1101,6 +1050,7 @@ logical function is_valid_module_name(module_name,package_name,custom_prefix,enf
     type(string_t), intent(in) :: package_name
     type(string_t), intent(in) :: custom_prefix
     logical       , intent(in) :: enforce_module_names
+
 
     !> Basic check: check the name is Fortran-compliant
     valid = is_fortran_name(module_name%s); if (.not.valid) return
@@ -1145,6 +1095,7 @@ logical function is_valid_module_prefix(module_prefix) result(valid)
     endif
 
 end function is_valid_module_prefix
+
 
 type(string_t) function module_prefix_template(project_name,custom_prefix) result(prefix)
     type(string_t), intent(in) :: project_name
@@ -1221,6 +1172,7 @@ logical function has_valid_custom_prefix(module_name,custom_prefix) result(valid
 
 end function has_valid_custom_prefix
 
+
 !> Check that a module name is prefixed with the default package prefix:
 !> 1) It must be a valid FORTRAN name (<=63 chars, begin with letter, "_" is only allowed non-alphanumeric)
 !> 2) It must begin with the package name
@@ -1272,110 +1224,6 @@ logical function has_valid_standard_prefix(module_name,package_name) result(vali
 
 end function has_valid_standard_prefix
 
-!> Check that two string _objects_ are exactly identical
-pure logical function string_is_same(this,that)
-   !> two strings to be compared
-   type(string_t), intent(in) :: this, that
-
-   integer :: i
-
-   string_is_same = .false.
-
-   if (allocated(this%s).neqv.allocated(that%s)) return
-   if (allocated(this%s)) then
-      if (.not.len(this%s)==len(that%s)) return
-      if (.not.len_trim(this%s)==len_trim(that%s)) return
-      do i=1,len_trim(this%s)
-         if (.not.(this%s(i:i)==that%s(i:i))) return
-      end do
-   end if
-
-   ! All checks passed
-   string_is_same = .true.
-
-end function string_is_same
-
-!> Check that two allocatable string _object_ arrays are exactly identical
-pure logical function string_arrays_same(this,that)
-   !> two string arrays to be compared
-   type(string_t), allocatable, intent(in) :: this(:), that(:)
-
-   integer :: i
-
-   string_arrays_same = .false.
-
-   if (allocated(this).neqv.allocated(that)) return
-   if (allocated(this)) then
-      if (.not.(size(this)==size(that))) return
-      if (.not.(ubound(this,1)==ubound(that,1))) return
-      if (.not.(lbound(this,1)==lbound(that,1))) return
-      do i=lbound(this,1),ubound(this,1)
-         if (.not.string_is_same(this(i),that(i))) return
-      end do
-   end if
-
-   ! All checks passed
-   string_arrays_same = .true.
-
-end function string_arrays_same
-
-! Remove all characters from a set from a string
-subroutine remove_characters_in_set(string,set,replace_with)
-    character(len=:), allocatable, intent(inout) :: string
-    character(*), intent(in) :: set
-    character, optional, intent(in) :: replace_with ! Replace with this character instead of removing
-
-    integer :: feed,length
-
-    if (.not.allocated(string)) return
-    if (len(set)<=0) return
-
-    length = len(string)
-    feed   = scan(string,set)
-
-    do while (length>0 .and. feed>0)
-
-        ! Remove heading
-        if (length==1) then
-            string = ""
-
-        elseif (feed==1) then
-            string = string(2:length)
-
-        ! Remove trailing
-        elseif (feed==length) then
-            string = string(1:length-1)
-
-        ! In between: replace with given character
-        elseif (present(replace_with)) then
-            string(feed:feed) = replace_with
-        ! Or just remove
-        else
-            string = string(1:feed-1)//string(feed+1:length)
-        end if
-
-        length = len(string)
-        feed   = scan(string,set)
-
-    end do
-
-end subroutine remove_characters_in_set
-
-! Remove all new line characters from the current string, replace them with spaces
-subroutine remove_newline_characters(string)
-    type(string_t), intent(inout) :: string
-
-    integer :: feed,length
-
-    character(*), parameter :: CRLF  = new_line('a')//achar(13)
-    character(*), parameter :: SPACE = ' '
-
-    call remove_characters_in_set(string%s,set=CRLF,replace_with=SPACE)
-
-end subroutine remove_newline_characters
-
-!>AUTHOR: John S. Urban
-!!LICENSE: Public Domain
 !>
 !!### NAME
 !!   notabs(3f) - [fpm_strings:NONALPHA] expand tab characters
@@ -1433,6 +1281,11 @@ end subroutine remove_newline_characters
 !!### SEE ALSO
 !!   GNU/Unix commands expand(1) and unexpand(1)
 !!
+!!### AUTHOR
+!!   John S. Urban
+!!
+!!### LICENSE
+!!   Public Domain
 elemental impure subroutine notabs(instr,outstr,ilen)
 
 ! ident_31="@(#)fpm_strings::notabs(3f): convert tabs to spaces while maintaining columns, remove CRLF chars"
@@ -1479,69 +1332,8 @@ integer                       :: iade         ! ADE (ASCII Decimal Equivalent) o
 
 end subroutine notabs
 
-!>AUTHOR: John S. Urban
-!!LICENSE: Public Domain
-!>
-!!##NAME
-!!    dilate(3f) - [M_strings:NONALPHA] expand tab characters
-!!    (LICENSE:PD)
-!!
-!!##SYNOPSIS
-!!
-!!    function dilate(INSTR) result(OUTSTR)
-!!
-!!     character(len=*),intent=(in)  :: INSTR
-!!     character(len=:),allocatable  :: OUTSTR
-!!
-!!##DESCRIPTION
-!!     dilate() converts tabs in INSTR to spaces in OUTSTR.  It assumes a
-!!     tab is set every 8 characters. Trailing spaces are removed.
-!!
-!!     In addition, trailing carriage returns and line feeds are removed
-!!     (they are usually a problem created by going to and from MSWindows).
-!!
-!!##OPTIONS
-!!     instr     Input line to remove tabs from
-!!
-!!##RESULTS
-!!     outstr    Output string with tabs expanded.
-!!
-!!##EXAMPLES
-!!
-!!   Sample program:
-!!
-!!    program demo_dilate
-!!
-!!    use M_strings, only : dilate
-!!    implicit none
-!!    character(len=:),allocatable :: in
-!!    integer                      :: i
-!!       in='  this is my string  '
-!!       ! change spaces to tabs to make a sample input
-!!       do i=1,len(in)
-!!          if(in(i:i) == ' ')in(i:i)=char(9)
-!!       enddo
-!!       write(*,'(a)')in,dilate(in)
-!!    end program demo_dilate
-!!
-function dilate(instr) result(outstr)
-
-   character(len=*), intent(in)  :: instr        ! input line to scan for tab characters
-   character(len=:), allocatable :: outstr       ! tab-expanded version of INSTR produced
-   integer                       :: i
-   integer                       :: icount
-   integer                       :: lgth
-   icount = 0
-   do i = 1, len(instr)
-      if (instr(i:i) == char(9)) icount = icount + 1
-   end do
-   allocate (character(len=(len(instr) + 8*icount)) :: outstr)
-   call notabs(instr, outstr, lgth)
-   outstr = outstr(:lgth)
-
-end function dilate
-
 end module fpm_strings
+
 
 !>>>>> ././src/fpm_backend_console.f90
 !># Build Backend Console
@@ -1618,7 +1410,7 @@ subroutine console_write_line(console,str,line,advance)
     if (present(line)) then
         line = console%n_line
     end if
-    
+
     write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
 
     if (adv=="yes") then
@@ -1695,6 +1487,7 @@ module tomlf_constants
    !> Long length for integers
    integer, public, parameter :: tf_i8 = selected_int_kind(18)
 
+
    !> Default character kind
    integer, public, parameter :: tfc = selected_char_kind('DEFAULT')
 
@@ -1706,6 +1499,7 @@ module tomlf_constants
 
    !> Default output channel
    integer, public, parameter :: tfout = output_unit
+
 
    !> Possible escape characters in TOML
    type :: enum_escape
@@ -1739,6 +1533,7 @@ module tomlf_constants
    !> Actual enumerator with TOML escape characters
    type(enum_escape), public, parameter :: toml_escape = enum_escape()
 
+
    !> Possible kinds of TOML values in key-value pairs
    type :: enum_type
 
@@ -1764,6 +1559,7 @@ module tomlf_constants
 
    !> Actual enumerator with TOML value types
    type(enum_type), public, parameter :: toml_type = enum_type()
+
 
    !> Single quotes denote literal strings
    character(kind=tfc, len=*), public, parameter :: TOML_SQUOTE = "'"
@@ -1800,6 +1596,7 @@ module tomlf_constants
 
 end module tomlf_constants
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/version.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -1822,6 +1619,7 @@ module tomlf_version
    public :: get_tomlf_version
    public :: tomlf_version_string, tomlf_version_compact
 
+
    !> String representation of the TOML-Fortran version
    character(len=*), parameter :: tomlf_version_string = "0.4.1"
 
@@ -1838,7 +1636,9 @@ module tomlf_version
    integer, parameter :: tomlf_version_compact = &
       & tomlf_major*10000 + tomlf_minor*100 + tomlf_patch
 
+
 contains
+
 
 !> Getter function to retrieve TOML-Fortran version
 subroutine get_tomlf_version(major, minor, patch, string)
@@ -1870,7 +1670,9 @@ subroutine get_tomlf_version(major, minor, patch, string)
 
 end subroutine get_tomlf_version
 
+
 end module tomlf_version
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/token.f90
 ! This file is part of toml-f.
@@ -1892,6 +1694,7 @@ module tomlf_de_token
    private
 
    public :: toml_token, stringify, token_kind, resize
+
 
    !> Possible token kinds
    type :: enum_token
@@ -2034,6 +1837,7 @@ pure function stringify(token) result(str)
 end function stringify
 
 end module tomlf_de_token
+
 
 !>>>>> build/dependencies/M_CLI2/src/M_CLI2.F90
 !VERSION 1.0 20200115
@@ -8284,788 +8088,6 @@ end module M_CLI2
 !       strings=[character(len=len(strings)) ::]
 !===================================================================================================================================
 
-!>>>>> build/dependencies/fortran-regex/src/regex.f90
-! *************************************************************************************************
-!                                    ____  ___________________  __
-!                                   / __ \/ ____/ ____/ ____/ |/ /
-!                                  / /_/ / __/ / / __/ __/  |   /
-!                                 / _, _/ /___/ /_/ / /___ /   |
-!                                /_/ |_/_____/\____/_____//_/|_|
-!
-! MIT License
-!
-! (C) Federico Perini, 2022
-!     A Fortran port of the tiny-regex library.
-!
-!     https://github.com/kokke/tiny-regex-c
-!     Code inspired by Rob Pike's regex code described in:
-!     http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
-!
-! *************************************************************************************************
-module regex_module
-    use iso_fortran_env, only: output_unit
-    implicit none
-    private
-
-    public :: parse_pattern
-    public :: check_pattern
-    public :: regex
-
-    ! Character kind
-    integer, parameter, public :: RCK = selected_char_kind("ascii")
-
-    logical, parameter, public :: RE_DOT_MATCHES_NEWLINE = .true. ! Define .false. if you DON'T want '.' to match '\r' + '\n'
-    integer, parameter, public :: MAX_REGEXP_OBJECTS = 512        ! Max number of regex symbols in expression.
-    integer, parameter, public :: MAX_CHAR_CLASS_LEN = 1024       ! Max length of character-class buffer in.
-
-    ! Turn on verbosity for debugging
-    logical, parameter :: DEBUG = .false.
-
-    ! Supported patterns
-    integer, parameter :: UNUSED         = 0
-    integer, parameter :: DOT            = 1   ! '.'        Dot, matches any character
-    integer, parameter :: BEGIN_WITH     = 2   ! '^'        Start anchor, matches beginning of string
-    integer, parameter :: END_WITH       = 3   ! '$'        End anchor, matches end of string
-    integer, parameter :: QUESTIONMARK   = 4   ! '?'        Question, match zero or one (non-greedy)
-    integer, parameter :: STAR           = 5   ! '*'        Asterisk, match zero or more (greedy)
-    integer, parameter :: PLUS           = 6   ! '+'        Plus, match one or more (greedy)
-    integer, parameter :: ATCHAR         = 7   ! '[a-zA-Z]' Character ranges, the character set of the ranges { a-z | A-Z }
-    integer, parameter :: AT_CHAR_CLASS  = 8   ! '[abc]'    Character class, match if one of {'a', 'b', 'c'}
-    integer, parameter :: INV_CHAR_CLASS = 9   ! '[^abc]'   Inverted class, match if NOT one of {'a', 'b', 'c'} -- NOTE: feature is currently broken!
-    integer, parameter :: DIGIT          = 10  ! '\d'       Digits, [0-9]
-    integer, parameter :: NOT_DIGIT      = 11  ! '\D'       Non-digits
-    integer, parameter :: ALPHA          = 12  ! '\w'       Alphanumeric, [a-zA-Z0-9_]
-    integer, parameter :: NOT_ALPHA      = 13  ! '\W'       Non-alphanumeric
-    integer, parameter :: WHITESPACE     = 14  ! '\s'       Whitespace, \t \f \r \n \v and spaces
-    integer, parameter :: NOT_WHITESPACE = 15  ! '\S'       Non-whitespace
-
-    character(kind=RCK,len=*), parameter :: types(*) = [ character(len=14) :: "UNUSED", "DOT", "BEGIN", "END", "QUESTIONMARK", &
-        "STAR", "PLUS", "CHAR", "CHAR_CLASS", "INV_CHAR_CLASS", "DIGIT", "NOT_DIGIT", "ALPHA", "NOT_ALPHA", &
-        "WHITESPACE", "NOT_WHITESPACE", "BRANCH" ]
-
-    ! Characters
-    character(kind=RCK,len=*), parameter :: lowercase="abcdefghijklmnopqrstuvwxyz"
-    character(kind=RCK,len=*), parameter :: uppercase="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-    character(kind=RCK), parameter, public :: UNDERSCORE = "_"
-    character(kind=RCK), parameter, public :: SPACE      = " "
-    character(kind=RCK), parameter, public :: DASH       = "-"
-    character(kind=RCK), parameter, public :: CNULL      = achar( 0,kind=RCK)  ! \0 or null character
-    character(kind=RCK), parameter, public :: NEWLINE    = achar(10,kind=RCK)  ! \n or line feed
-    character(kind=RCK), parameter, public :: BACKSPCE   = achar( 8,kind=RCK)  ! \b or backspace character
-    character(kind=RCK), parameter, public :: TAB        = achar( 9,kind=RCK)  ! \t or tabulation character
-
-    ! Regex pattern element
-    type, public :: regex_token
-
-        integer :: type = UNUSED
-
-        ! Single or multi-character pattern
-        character(kind=RCK,len=:), allocatable :: ccl
-        contains
-
-          procedure :: print => print_pattern
-          procedure :: destroy => pat_destroy
-          procedure :: match => pat_match
-
-    end type regex_token
-
-    type, public :: regex_pattern
-
-        integer :: n = 0
-
-        type(regex_token), dimension(MAX_REGEXP_OBJECTS) :: pattern
-
-        contains
-
-           procedure :: new     => new_from_pattern
-           procedure :: write   => write_pattern
-           procedure :: nrules
-           procedure :: destroy
-           final     :: finalize
-
-    end type regex_pattern
-
-    ! Public interface
-    interface regex
-        module procedure re_match
-        module procedure re_match_noback
-        module procedure re_match_nolength
-        module procedure re_match_nolength_noback
-        module procedure re_matchp
-        module procedure re_matchp_noback
-        module procedure re_matchp_nolength
-        module procedure re_matchp_nolength_noback
-    end interface regex
-
-    ! Override default constructor for ifort bug
-    interface regex_token
-        module procedure pat_from_char
-    end interface regex_token
-
-    contains
-
-    ! Construct a regex pattern from a single character
-    elemental type(regex_token) function pat_from_char(type,ccl) result(this)
-       integer, intent(in) :: type
-       character(kind=RCK), intent(in) :: ccl
-       call pat_destroy(this)
-       this%type = type
-       allocate(character(len=1,kind=RCK) :: this%ccl)
-       this%ccl(1:1) = ccl
-    end function pat_from_char
-
-    ! Check that a pattern matches the expected result
-    logical function check_pattern(string,pattern,expected) result(success)
-       character(len=*,kind=RCK), intent(in) :: string
-       character(len=*,kind=RCK), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: expected
-
-       integer :: idx,length
-
-       idx = regex(string,pattern,length)
-
-       if (idx>0) then
-           success = length==len(expected)
-           if (success) success = string(idx:idx+length-1)==expected
-       else
-           success = len(expected)<=0
-       end if
-
-       if (DEBUG .and. .not.success) then
-         print "('[regex] test FAILED: text=',a,' pattern=',a,' index=',i0,' len=',i0)", &
-                                               string,pattern,idx,length
-         stop 1
-       endif
-
-    end function check_pattern
-
-    ! Clean up a pattern
-    elemental subroutine pat_destroy(this)
-       class(regex_token), intent(inout) :: this
-       integer :: ierr
-       this%type = UNUSED
-       deallocate(this%ccl,stat=ierr)
-    end subroutine pat_destroy
-
-    ! Number of rules in the current pattern
-    elemental integer function nrules(this)
-       class(regex_pattern), intent(in) :: this
-       integer :: i
-       nrules = 0
-       do i=1,MAX_REGEXP_OBJECTS
-          if (this%pattern(i)%type==UNUSED) return
-          nrules = nrules + 1
-       end do
-    end function nrules
-
-    subroutine write_pattern(this,iunit)
-        class(regex_pattern), intent(in) :: this
-        integer, optional, intent(in) :: iunit
-
-        integer :: i,u
-
-        if (present(iunit)) then
-            u = iunit
-        else
-            u = output_unit
-        end if
-
-        do i=1,this%nrules()
-           write(u,'(a)') this%pattern(i)%print()
-        end do
-
-    end subroutine write_pattern
-
-    elemental subroutine destroy(this)
-        class(regex_pattern), intent(inout) :: this
-        integer :: i
-        do i=1,MAX_REGEXP_OBJECTS
-            call this%pattern(i)%destroy()
-        end do
-    end subroutine destroy
-
-    subroutine finalize(this)
-        type(regex_pattern), intent(inout) :: this
-        integer :: i
-        do i=1,MAX_REGEXP_OBJECTS
-            call this%pattern(i)%destroy()
-        end do
-    end subroutine finalize
-
-    ! Check that a character matches a dot ("any character") pattern
-    elemental logical function matchdot(c)
-       character(kind=RCK), intent(in) :: c
-       if (RE_DOT_MATCHES_NEWLINE) then
-          matchdot = .true.
-       else
-          matchdot = c/=NEWLINE .and. c/=BACKSPCE
-       end if
-    end function matchdot
-
-    elemental logical function ismetachar(c)
-       character(kind=RCK), intent(in) :: c
-       ismetachar = index("sSwWdD",c)>0
-    end function ismetachar
-
-    pure logical function matchmetachar(c, str)
-       character(kind=RCK), intent(in) :: c
-       character(kind=RCK,len=*), intent(in) :: str
-
-       select case (str(1:1))
-          case ('d');   matchmetachar =      isdigit(c)
-          case ('D');   matchmetachar = .not.isdigit(c)
-          case ('w');   matchmetachar =      isalphanum(c)
-          case ('W');   matchmetachar = .not.isalphanum(c)
-          case ('s');   matchmetachar =      isspace(c)
-          case ('S');   matchmetachar = .not.isspace(c)
-          case default; matchmetachar = c==str(1:1)
-       end select
-    end function matchmetachar
-
-    elemental logical function isdigit(c)
-       character(kind=RCK), intent(in) :: c
-       isdigit = index("1234567890",c)>0
-    end function isdigit
-
-    elemental logical function isalpha(c)
-       character(kind=RCK), intent(in) :: c
-       isalpha = index(lowercase,c)>0 .or. index(uppercase,c)>0
-    end function isalpha
-
-    elemental logical function isalphanum(c)
-       character(kind=RCK), intent(in) :: c
-       isalphanum = isalpha(c) .or. isdigit(c) .or. c==UNDERSCORE
-    end function isalphanum
-
-    elemental logical function isspace(c)
-       character(kind=RCK), intent(in) :: c
-       isspace = c==SPACE
-    end function isspace
-
-    ! Match range of the tye 0-9  or 5-7 etc.
-    elemental logical function matchrange(c,str)
-       character(kind=RCK), intent(in) :: c
-       character(kind=RCK,len=*), intent(in) :: str ! the range pattern
-
-       matchrange = len(str)>=3; if (.not.matchrange) return
-       matchrange = c /= DASH &
-                    .and. str(1:1) /= DASH &
-                    .and. str(2:2) == DASH &
-                    .and. iachar(c)>=iachar(str(1:1)) &
-                    .and. iachar(c)<=iachar(str(3:3))    ! Range (number/letters) is in increasing order
-
-    end function matchrange
-
-    logical function matchcharclass(c,str) result(match)
-       character(kind=RCK), intent(in) :: c         ! The current character
-       character(kind=RCK,len=*), intent(in) :: str ! The charclass contents
-
-       integer :: i
-
-       match = .false.
-       i = 0
-
-       ! All characters in the charclass contents
-       loop: do while (i<len(str))
-
-          i = i+1
-
-          ! We're in a range: must check this further
-          if (matchrange(c,str(i:))) then
-            match = .true.
-            return
-
-          ! Escaped character? look what's next
-          elseif (str(i:i) == '\') then
-
-             i = i+1
-
-             ! Valid escaped sequence
-
-             if (matchmetachar(c,str(i:))) then
-                match = .true.
-                return
-             elseif (c==str(i:i) .and. (.not.ismetachar(c))) then
-                match = .true.
-                return
-             endif
-
-          elseif (c==str(i:i)) then
-
-             ! Character match
-             if (c==DASH) then
-
-                ! Dash is a single character only if it does not have characters before/after
-                match = i==1 .or. i+1>len(str)
-
-             else
-                match = .true.
-             end if
-             return
-          end if
-
-       end do loop
-
-       if (DEBUG) print *, 'charclass: no match on i=',i,' str=',trim(str),' c=',c
-
-    end function matchcharclass
-
-    recursive logical function matchquestion(p, pattern, text, matchlength)
-       type(regex_token), intent(in) :: p, pattern(:)
-       character(len=*,kind=RCK), intent(in) :: text
-       integer, intent(inout) :: matchlength
-
-       matchquestion = .false.
-
-       if (p%type == UNUSED) then
-          matchquestion = .true.
-          return
-       elseif (matchpattern(pattern, text, matchlength)) then
-          matchquestion = .true.
-          return
-       elseif (len(text)>0) then
-          if (pat_match(p,text) .and. len(text)>1) then
-             if (matchpattern(pattern,text(2:),matchlength)) then
-                matchlength  = matchlength+1
-                matchquestion = .true.
-                return
-             endif
-          end if
-       end if
-
-    end function matchquestion
-
-    recursive logical function matchstar(p, pattern, text, it0, matchlength)
-       type(regex_token), intent(in) :: p, pattern(:)
-       character(len=*,kind=RCK), intent(in) :: text
-       integer, intent(in)    :: it0 ! starting point
-       integer, intent(inout) :: matchlength
-
-       integer :: prelen,it
-
-       if (DEBUG) print *, 'match star, length=',matchlength,' it0=',it0,' lenm=',len(text)
-
-       if (len(text)<=0) then
-          matchstar = .false.
-          return
-       end if
-
-       ! Save input variables
-       prelen   = matchlength
-       it = it0
-
-       do while (it>0 .and. it<=len(text))
-          if (.not.pat_match(p, text(it:))) exit
-          it          = it+1
-          matchlength = matchlength+1
-       end do
-
-       do while (it>=it0)
-         matchstar = matchpattern(pattern, text(it:), matchlength)
-         it          = it-1
-         if (matchstar) return
-         matchlength = matchlength-1
-       end do
-
-       matchlength = prelen
-       matchstar   = .false.
-
-    end function matchstar
-
-    recursive logical function matchplus(p, pattern, text, it0, matchlength)
-       type(regex_token), intent(in) :: p, pattern(:)
-       character(len=*,kind=RCK), intent(in) :: text
-       integer, intent(in) :: it0
-       integer, intent(inout) :: matchlength
-
-       integer :: it
-
-       if (DEBUG) print *, 'matching PLUS pattern'
-
-       it = it0
-       do while (it>0 .and. it<=len(text))
-          if (.not. pat_match(p, text(it:))) exit
-          it = it+1
-          matchlength = matchlength+1
-       end do
-
-       do while (it>it0)
-          matchplus = matchpattern(pattern, text(it:), matchlength)
-          it = it-1
-          if (matchplus) return
-          matchlength = matchlength-1
-       end do
-
-       matchplus = .false.
-
-    end function matchplus
-
-    ! Find matches of the given pattern in the string
-    integer function re_match(string, pattern, length, back) result(index)
-       character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: string
-       integer, intent(out) :: length
-       logical, intent(in)  :: back
-       type (regex_pattern) :: command
-
-       command = parse_pattern(pattern)
-       index = re_matchp(string,command,length,back)
-
-    end function re_match
-
-    ! Find matches of the given pattern in the string
-    integer function re_match_noback(string, pattern, length) result(index)
-       character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: string
-       integer, intent(out) :: length
-       type (regex_pattern) :: command
-
-       command = parse_pattern(pattern)
-       index = re_matchp(string,command,length,.false.)
-
-    end function re_match_noback
-
-    ! Find matches of the given pattern in the string
-    integer function re_match_nolength(string, pattern, back) result(index)
-       character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: string
-       logical              , intent(in) :: back
-
-       type (regex_pattern) :: command
-       integer :: length
-
-       command = parse_pattern(pattern)
-       index = re_matchp(string,command,length,back)
-
-    end function re_match_nolength
-
-    ! Find matches of the given pattern in the string
-    integer function re_match_nolength_noback(string, pattern) result(index)
-       character(*,kind=RCK), intent(in) :: pattern
-       character(*,kind=RCK), intent(in) :: string
-
-       type (regex_pattern) :: command
-       integer :: length
-
-       command = parse_pattern(pattern)
-       index = re_matchp(string,command,length,.false.)
-
-    end function re_match_nolength_noback
-
-    type(regex_pattern) function parse_pattern(pattern) result(this)
-       character(*,kind=RCK), intent(in) :: pattern
-
-       call new_from_pattern(this,pattern)
-
-    end function parse_pattern
-
-    subroutine new_from_pattern(this,pattern)
-       class(regex_pattern), intent(inout) :: this
-       character(*,kind=RCK), intent(in) :: pattern
-
-       ! Local variables
-       character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: ccl_buf ! size of buffer for chars in all char-classes in the expression. */
-       integer :: loc,i,j,lenp,lenc
-       character(kind=RCK) :: c
-
-       ! Initialize class
-       call this%destroy()
-       ccl_buf = repeat(SPACE,MAX_CHAR_CLASS_LEN)
-
-       if (DEBUG) print "('[regex] parsing pattern: <',a,'>')", trim(pattern)
-
-       i = 1 ! index in pattern
-       j = 1 ! index in re-compiled
-       lenp = len_trim(pattern)
-
-       ! Move along the pattern string
-       to_the_moon: do while (i<=lenp)
-
-         c = pattern(i:i)
-         if (DEBUG) print "('[regex] at location ',i0,': <',a,'>')", i, c
-
-         select case (c)
-
-            ! Meta-characters are single-character patterns
-            case ('^'); this%pattern(j) = regex_token(BEGIN_WITH,c)
-            case ('$'); this%pattern(j) = regex_token(END_WITH,c)
-            case ('.'); this%pattern(j) = regex_token(DOT,c)
-            case ('*'); this%pattern(j) = regex_token(STAR,c)
-            case ('+'); this%pattern(j) = regex_token(PLUS,c)
-            case ('?'); this%pattern(j) = regex_token(QUESTIONMARK,c)
-
-            ! Escaped character-classes (\s, \w, ...)
-            case ('\');
-
-                ! Parse an escaped character class
-                if (i<lenp) then
-
-                    ! There's something next: check it
-                    i = i+1;
-
-                    select case (pattern(i:i))
-                       case ('d'); this%pattern(j) = regex_token(DIGIT,'d')
-                       case ('D'); this%pattern(j) = regex_token(NOT_DIGIT,'D')
-                       case ('w'); this%pattern(j) = regex_token(ALPHA,'w')
-                       case ('W'); this%pattern(j) = regex_token(NOT_ALPHA,'W')
-                       case ('s'); this%pattern(j) = regex_token(WHITESPACE,'s')
-                       case ('S'); this%pattern(j) = regex_token(NOT_WHITESPACE,'S')
-                       case default;
-                            ! Escaped character: "." or "$"
-                            this%pattern(j) = regex_token(ATCHAR,pattern(i:i))
-                    end select
-
-                else
-
-                    ! This is the first character of a sequence *and* the end of rht pattern. store as CHAR
-                    this%pattern(j) = regex_token(ATCHAR,c)
-
-                endif
-
-            ! Character class
-            case ('[')
-
-                loc = 1
-
-                ! First, check if this class is negated ("^")
-                if (pattern(i+1:i+1)=='^') then
-                    this%pattern(j)%type = INV_CHAR_CLASS
-
-                    i = i+1 ! Increment i to avoid including "^" in the char-buffer
-
-                    ! incomplete pattern
-                    if (i>=lenp) then
-                        call this%destroy()
-                        return
-                    end if
-
-                else
-                    this%pattern(j)%type = AT_CHAR_CLASS
-                end if
-
-                ! Remove any escape characters
-                loc = index(pattern(i+1:),']')
-                lenc = loc-1
-                if (loc>0) then
-                    ccl_buf = pattern(i+1:i+loc-1)
-                    i = i+loc
-                    if (DEBUG) print "('[regex] at end of multi-character pattern: ',a)", trim(ccl_buf)
-                else
-                    ! Incomplete [] pattern
-                    call this%destroy()
-                    return
-                end if
-
-                ! If there is any escape character(s), just check that the next is nonempty
-                loc = index(ccl_buf,'\')
-                if (loc>0) then
-                    if (loc>=len(ccl_buf)) then
-                        ! stop 'incomplete escaped character inside [] pattern'
-                        call this%destroy()
-                        return
-                    end if
-                    if (ccl_buf(loc+1:loc+1)==SPACE) then
-                        ! stop 'empty escaped character inside [] pattern'
-                        call this%destroy()
-                        return
-                    end if
-                end if
-
-                ! Ensure there are no spaces
-
-                allocate(character(len=lenc,kind=RCK) :: this%pattern(j)%ccl)
-                this%pattern(j)%ccl = ccl_buf(:lenc)
-
-         case default
-
-             ! Single character
-             this%pattern(j) = regex_token(ATCHAR,c)
-
-         end select
-
-         if (DEBUG) print "('[regex] added pattern ',i0,': ',a)",j,this%pattern(j)%print()
-
-         ! A pattern was added: move to next
-         i = i+1
-         j = j+1
-         if (j>MAX_REGEXP_OBJECTS) stop 'max regexp reached!'
-
-       end do to_the_moon
-
-       ! Save number of patterns
-       this%n = j-1
-       return
-
-    end subroutine new_from_pattern
-
-    function print_pattern(pattern) result(msg)
-        class(regex_token), intent(in) :: pattern
-        character(:,kind=RCK), allocatable :: msg
-
-        character(len=MAX_CHAR_CLASS_LEN,kind=RCK) :: buffer
-        integer :: lt
-
-        write(buffer,1) trim(types(pattern%type+1)),trim(pattern%ccl)
-
-        lt = len_trim(buffer)
-        allocate(character(len=lt,kind=RCK) :: msg)
-        if (lt>0) msg(1:lt) = buffer(1:lt)
-
-        1 format('type=',a,:,1x,'char=',a)
-
-    end function print_pattern
-
-    ! Match a single pattern at the g
-    recursive logical function pat_match(p, c) result(match)
-       class(regex_token), intent(in) :: p
-       character(kind=RCK), intent(in) :: c
-
-       select case (p%type)
-          case (DOT);            match = matchdot(c)
-          case (AT_CHAR_CLASS);  match = matchcharclass(c,p%ccl)
-          case (INV_CHAR_CLASS); match = .not.matchcharclass(c,p%ccl)
-          case (DIGIT);          match = isdigit(c)
-          case (NOT_DIGIT);      match = .not.isdigit(c)
-          case (ALPHA);          match = isalphanum(c)
-          case (NOT_ALPHA);      match = .not.isalphanum(c)
-          case (WHITESPACE);     match = isspace(c)
-          case (NOT_WHITESPACE); match = .not.isspace(c)
-          case default;          match = c==p%ccl(1:1)
-       end select
-
-       if (DEBUG) print "('[regex] current pattern=',a,' at char=',a,' match? ',l1)", p%print(),c,match
-
-    end function pat_match
-
-    integer function re_matchp_nolength(string, pattern, back) result(index)
-       type(regex_pattern), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: string
-       logical, intent(in) :: back
-       integer :: matchlength
-       index = re_matchp(string, pattern, matchlength, back)
-    end function re_matchp_nolength
-
-    integer function re_matchp_nolength_noback(string, pattern) result(index)
-       type(regex_pattern), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: string
-       integer :: matchlength
-       index = re_matchp(string, pattern, matchlength, .false.)
-    end function re_matchp_nolength_noback
-
-    integer function re_matchp_noback(string, pattern, length) result(index)
-       type(regex_pattern), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: string
-       integer, intent(out) :: length
-       index = re_matchp(string, pattern, length, .false.)
-    end function re_matchp_noback
-
-    integer function re_matchp(string, pattern, length, back) result(index)
-       type(regex_pattern), intent(in) :: pattern
-       character(len=*,kind=RCK), intent(in) :: string
-       integer, intent(out) :: length
-       logical, intent(in) :: back
-
-       integer :: first,last,step
-
-       if (pattern%n>0) then
-
-          if (pattern%pattern(1)%type == BEGIN_WITH) then
-
-             ! String must begin with this pattern
-             length = 0
-             index = merge(1,0,matchpattern(pattern%pattern(2:), string, length) .and. len(string)>0)
-
-          else
-
-             first  = merge(1,len(string),.not.back)
-             last   = merge(1,len(string),back)
-             step   = sign(1,last-first)
-
-             do index=first,last,step
-                length = 0
-                if (matchpattern(pattern%pattern,string(index:),length)) goto 1
-             end do
-
-             index = 0
-
-          end if
-
-       else
-
-          ! On an empty/invalid pattern, return -1
-          index = -1
-
-       end if
-
-       1 if (DEBUG) then
-          if (index==-1) then
-             print "('[regex] end: empty/invalid regex pattern. ')"
-          elseif (index==0) then
-             print "('[regex] end: pattern not found. ')"
-          else
-             print "('[regex] end: pattern found at ',i0,': ',a)", index,string(index:)
-          end if
-       end if
-
-    end function re_matchp
-
-   ! Iterative matching
-   recursive logical function matchpattern(pattern, text, matchlength) result(match)
-      type(regex_token), intent(in) :: pattern(:)
-      character(kind=RCK,len=*), intent(in) :: text
-      integer, intent(inout) :: matchlength
-
-      integer :: pre,ip,it
-
-      pre = matchlength
-      ip  = 1
-      it  = 1
-
-      iterate: do while (ip<=size(pattern))
-
-         if (pattern(ip)%type == UNUSED .or. pattern(ip+1)%type == QUESTIONMARK) then
-
-            match = matchquestion(pattern(ip),pattern(ip+2:),text(it:),matchlength)
-            return
-
-         elseif (pattern(ip+1)%type == STAR) then
-
-            match = matchstar(pattern(ip),pattern(ip+2:), text, it, matchlength)
-            return
-
-         elseif (pattern(ip+1)%type == PLUS) then
-
-            match = matchplus(pattern(ip),pattern(ip+2:), text, it, matchlength)
-            return
-
-         elseif (pattern(ip)%type == END_WITH .and. pattern(ip+1)%type == UNUSED) then
-
-            if (DEBUG .and. len(text(it:))>0) print *, '[regex] at end: remaining = ',text(it:),' len=',matchlength
-
-            match = it>len(text)
-            return
-
-         end if
-
-         if (it>len(text)) exit iterate
-
-         matchlength = matchlength+1
-
-         if (DEBUG) print "('[regex] matching ',i0,'-th pattern on chunk <',i0,':',i0,'>')", ip,it,len(text)
-         if (.not. pat_match(pattern(ip), text(it:it))) exit iterate
-         ip = ip+1
-         it = it+1
-
-      end do iterate
-
-      matchlength = pre
-      match = .false.
-      return
-
-   end function matchpattern
-
-end module regex_module
 
 !>>>>> build/dependencies/jonquil/src/jonquil/version.f90
 ! This file is part of jonquil.
@@ -9089,6 +8111,7 @@ module jonquil_version
    public :: get_jonquil_version
    public :: jonquil_version_string, jonquil_version_compact
 
+
    !> String representation of the jonquil version
    character(len=*), parameter :: jonquil_version_string = "0.4.0"
 
@@ -9105,7 +8128,9 @@ module jonquil_version
    integer, parameter :: jonquil_version_compact = &
       & jonquil_major*10000 + jonquil_minor*100 + jonquil_patch
 
+
 contains
+
 
 !> Getter function to retrieve jonquil version
 subroutine get_jonquil_version(major, minor, patch, string)
@@ -9137,444 +8162,9 @@ subroutine get_jonquil_version(major, minor, patch, string)
 
 end subroutine get_jonquil_version
 
+
 end module jonquil_version
 
-!>>>>> build/dependencies/fortran-shlex/src/shlex_module.f90
-! *************************************************************************************************
-!                                    ____  ___________________  __
-!                                   / __ \/ ____/ ____/ ____/ |/ /
-!                                  / /_/ / __/ / / __/ __/  |   /
-!                                 / _, _/ /___/ /_/ / /___ /   |
-!                                /_/ |_/_____/\____/_____//_/|_|
-!
-! MIT License
-!
-! (C) Federico Perini, 2023
-!     A Fortran port of the Python standard library shlex module.
-!
-!     https://github.com/kokke/tiny-regex-c
-!     Code inspired by Rob Pike's regex code described in:
-!     http://www.cs.princeton.edu/courses/archive/spr09/cos333/beautiful.html
-!
-! *************************************************************************************************
-module shlex_module
-    use iso_fortran_env, only: output_unit
-    implicit none
-    private
-
-    integer, parameter, public :: SCK = selected_char_kind("ascii")
-
-    ! Shlex: return tokens
-    public :: shlex
-    interface shlex
-        module procedure shlex_bool
-        module procedure shlex_error
-    end interface
-
-    ! Split: return split strings
-    public :: split
-    interface split
-        module procedure split_bool
-        module procedure split_error
-    end interface
-
-    ! Turn on verbosity for debugging
-    logical, parameter :: DEBUG = .false.
-
-    ! Character types
-    integer, parameter :: CHAR_UNKNOWN           = 0
-    integer, parameter :: CHAR_SPACE             = 1
-    integer, parameter :: CHAR_ESCAPING_QUOTE    = 2
-    integer, parameter :: CHAR_NONESCAPING_QUOTE = 3
-    integer, parameter :: CHAR_ESCAPE            = 4
-    integer, parameter :: CHAR_COMMENT           = 5
-    integer, parameter :: CHAR_EOF               = 6
-
-    ! Error types
-    integer, parameter :: NO_ERROR               = 0
-    integer, parameter :: SYNTAX_ERROR           = 1
-    integer, parameter :: EOF_ERROR              = 2
-
-    character(kind=SCK), parameter, public :: NEWLINE    = achar(10,kind=SCK)  ! \n or line feed
-    character(kind=SCK), parameter, public :: TAB        = achar( 9,kind=SCK)  ! \t or tabulation character
-    character(kind=SCK), parameter, public :: CARRIAGE   = achar(13,kind=SCK)  ! \t or tabulation character
-
-    integer, parameter :: MAX_CHAR_CLASS_LEN = 1024
-
-    ! Character type sets
-    character(kind=SCK,len=*), parameter :: SPACE_CHARS = " "//NEWLINE//TAB//CARRIAGE
-    character(kind=SCK,len=*), parameter :: ESCAPING_QUOTE_CHARS = '"'
-    character(kind=SCK,len=*), parameter :: NONESCAPING_QUOTE_CHARS = "'"
-    character(kind=SCK,len=*), parameter :: ESCAPE_CHARS = "\"
-    character(kind=SCK,len=*), parameter :: COMMENT_CHARS = "#"
-
-    ! Token types
-    integer, parameter :: TOKEN_UNKNOWN = 0
-    integer, parameter :: TOKEN_WORD    = 1
-    integer, parameter :: TOKEN_SPACE   = 2
-    integer, parameter :: TOKEN_COMMENT = 3
-
-    ! Lexer state
-    integer, parameter :: STATE_START            = 0 ! No characters read yet
-    integer, parameter :: STATE_INWORD           = 1 ! Processing characters in a word
-    integer, parameter :: STATE_ESCAPING         = 2 ! Just found an escape character: next has to be literal
-    integer, parameter :: STATE_ESCAPING_QUOTED  = 3 ! Just found an e2cape character within a quoted string
-    integer, parameter :: STATE_QUOTING_ESCAPING = 4 ! Within a quoted string that supports escaping ("...")
-    integer, parameter :: STATE_QUOTING          = 5 ! Within a quoted string that does not support escaping ('...')
-    integer, parameter :: STATE_COMMENT          = 6 ! Within a comment
-
-    type, public :: shlex_token
-
-        integer :: type = TOKEN_UNKNOWN
-        character(kind=SCK,len=:), allocatable :: string
-
-    end type shlex_token
-
-    type, public :: shlex_lexer
-
-        ! The input string
-        integer :: input_position = 0
-        integer :: input_length   = -1
-
-        contains
-
-           procedure :: destroy
-           procedure :: new
-
-    end type shlex_lexer
-
-    contains
-
-    elemental subroutine destroy_token(this)
-       class(shlex_token), intent(inout) :: this
-       this%type = TOKEN_UNKNOWN
-       if (allocated(this%string)) deallocate(this%string)
-    end subroutine destroy_token
-
-    elemental type(shlex_token) function new_token(type,string) result(token)
-       integer, intent(in) :: type
-       character(kind=SCK,len=*), intent(in) :: string
-       call destroy_token(token)
-       token%type = type
-       token%string = string
-    end function new_token
-
-    ! Return
-    elemental integer function CHAR_TYPE(c)
-       character(kind=SCK), intent(in) :: c
-
-       if (scan(c,SPACE_CHARS)>0) then
-          CHAR_TYPE = CHAR_SPACE
-       elseif (scan(c,ESCAPING_QUOTE_CHARS)>0) then
-          CHAR_TYPE = CHAR_ESCAPING_QUOTE
-       elseif (scan(c,NONESCAPING_QUOTE_CHARS)>0) then
-          CHAR_TYPE = CHAR_NONESCAPING_QUOTE
-       elseif (scan(c,ESCAPE_CHARS)>0) then
-          CHAR_TYPE = CHAR_ESCAPE
-       elseif (scan(c,COMMENT_CHARS)>0) then
-          CHAR_TYPE = CHAR_COMMENT
-       else
-          CHAR_TYPE = CHAR_UNKNOWN
-       end if
-
-    end function CHAR_TYPE
-
-    ! High level interface: return a list of strings, with error type
-    function split_bool(pattern,success) result(list)
-        character(*),      intent(in)  :: pattern
-        logical, optional, intent(out) :: success
-        character(kind=SCK,len=:), allocatable :: list(:)
-        type(shlex_token) :: error
-
-        list = split_error(pattern,error)
-        if (present(success)) success = error%type==NO_ERROR
-
-    end function split_bool
-
-    ! High level interface: return a list of strings
-    function split_error(pattern,error) result(list)
-        character(*),      intent(in)  :: pattern
-        type(shlex_token), intent(out) :: error
-        character(kind=SCK,len=:), allocatable :: list(:)
-
-        type(shlex_token), allocatable :: tokens(:)
-
-        integer :: n,maxlen,i,l
-
-        tokens = shlex(pattern,error)
-
-        n      = size(tokens)
-        maxlen = 0
-        do i=1,n
-           maxlen = max(maxlen,len(tokens(i)%string))
-        end do
-
-        allocate(character(kind=SCK,len=maxlen) :: list(n))
-        do i=1,n
-            list(i) = tokens(i)%string
-        end do
-
-    end function split_error
-
-    ! High level interface: return a list of tokens
-    function shlex_bool(pattern,success) result(list)
-        character(*),      intent(in)  :: pattern
-        logical, optional, intent(out) :: success
-        type(shlex_token), allocatable :: list(:)
-        type(shlex_token) :: error
-
-        list = shlex_error(pattern,error)
-        if (present(success)) success = error%type==NO_ERROR
-    end function shlex_bool
-
-    ! High level interface: return a list of tokens
-    function shlex_error(pattern,error) result(list)
-        character(*),      intent(in)  :: pattern
-        type(shlex_token), intent(out) :: error
-        type(shlex_token), allocatable :: list(:)
-
-        type(shlex_lexer) :: s
-        type(shlex_token) :: next
-
-        ! Initialize lexer
-        call s%new(pattern)
-
-        allocate(list(0))
-        error = new_token(NO_ERROR,"SUCCESS")
-        do while (error%type==NO_ERROR)
-
-            next = scan_stream(s,pattern,error)
-            select case (error%type)
-               case (EOF_ERROR)
-                  ! Finished reading
-                  error = new_token(NO_ERROR,"SUCCESS")
-                  exit
-               case (SYNTAX_ERROR)
-                  ! Something happened
-                  exit
-               case default
-                  ! Keep reading
-                  list = [list,next]
-            end select
-
-        end do
-
-        return
-
-    end function shlex_error
-
-    type(shlex_token) function scan_stream(this,pattern,error) result(token)
-        class(shlex_lexer), intent(inout) :: this
-        character(kind=SCK,len=*), intent(in) :: pattern
-        type(shlex_token), intent(out) :: error
-
-        integer :: state,next_type,token_type
-        character(kind=SCK) :: next_char
-        character(kind=SCK,len=:), allocatable :: value
-
-        state      = STATE_START
-        token_type = TOKEN_UNKNOWN
-        allocate(character(kind=SCK,len=0) :: value)
-
-        read_chars: do
-
-           ! Get next character
-           this%input_position = this%input_position + 1
-           if (this%input_position<=this%input_length) then
-              if (len(pattern)>=this%input_position) then
-                 next_char = pattern(this%input_position:this%input_position)
-                 next_type = CHAR_TYPE(next_char)
-                 error     = new_token(NO_ERROR,"SUCCESS")
-              else
-                 ! Should never happen
-                 call destroy_token(token)
-                 error = new_token(SYNTAX_ERROR,"END-OF-RECORD reading pattern")
-                 return
-              endif
-           else
-              next_char = ""
-              next_type = CHAR_EOF
-              error = new_token(NO_ERROR,"SUCCESS")
-           end if
-
-           select case (state)
-
-              ! No characters read yet
-              case (STATE_START)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         call destroy_token(token)
-                         error = new_token(EOF_ERROR,"END-OF-FILE encountered")
-                         return
-                      case (CHAR_SPACE)
-                         ! do nothing
-                      case (CHAR_ESCAPING_QUOTE)
-                         token_type = TOKEN_WORD
-                         state      = STATE_QUOTING_ESCAPING
-                      case (CHAR_NONESCAPING_QUOTE)
-                         token_type = TOKEN_WORD
-                         state      = STATE_QUOTING
-                      case (CHAR_ESCAPE)
-                         token_type = TOKEN_WORD
-                         state      = STATE_ESCAPING
-                      case (CHAR_COMMENT)
-                         token_type = TOKEN_COMMENT
-                         state      = STATE_COMMENT
-                      case default
-                         token_type = TOKEN_WORD
-                         state      = STATE_INWORD
-                         value      = value//next_char
-                   end select
-
-              ! Into a regular word
-              case (STATE_INWORD)
-
-                   select case (next_type)
-                      case (CHAR_EOF, CHAR_SPACE)
-                         token = new_token(token_type,value)
-                         return
-                      case (CHAR_ESCAPING_QUOTE)
-                         state = STATE_QUOTING_ESCAPING
-                      case (CHAR_NONESCAPING_QUOTE)
-                         state = STATE_QUOTING
-                      case (CHAR_ESCAPE)
-                         state = STATE_ESCAPING
-                      case default
-                         value = value//next_char
-                   end select
-
-              ! After an escape character
-              case (STATE_ESCAPING)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         ! Error: EOF after an escape character
-                         error = new_token(SYNTAX_ERROR,"END-OF-FILE after an escape character")
-                         token = new_token(token_type,value)
-                         return
-                      case default
-                         state = STATE_INWORD
-                         value = value//next_char
-                   end select
-
-              ! Inside escaping double quotes
-              case (STATE_ESCAPING_QUOTED)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         ! Error: EOF when expecting closing quote
-                         error = new_token(SYNTAX_ERROR,"END-OF-FILE when expecting escaped closing quote")
-                         token = new_token(token_type,value)
-                         return
-                      case default
-                         ! go back to quoting excping
-                         state = STATE_QUOTING_ESCAPING
-                         value = value//next_char
-                   end select
-
-              ! Inside escaping double quotes
-              case (STATE_QUOTING_ESCAPING)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         ! Error: EOF when expecting closing quote
-                         error = new_token(SYNTAX_ERROR,"END-OF-FILE when expecting closing quote")
-                         token = new_token(token_type,value)
-                         return
-                      case (CHAR_ESCAPING_QUOTE)
-                         state = STATE_INWORD
-                      case (CHAR_ESCAPE)
-                         state = STATE_ESCAPING_QUOTED
-                      case default
-                         value = value//next_char
-                   end select
-
-              ! Inside non-escaping single quotes
-              case (STATE_QUOTING)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         ! Error: EOF when expecting closing quote
-                         error = new_token(SYNTAX_ERROR,"END-OF-FILE when expecting closing quote")
-                         token = new_token(token_type,value)
-                         return
-                      case (CHAR_NONESCAPING_QUOTE)
-                         state = STATE_INWORD
-                      case default
-                         value = value//next_char
-                   end select
-
-              ! Inside a comment string
-              case (STATE_COMMENT)
-
-                   select case (next_type)
-                      case (CHAR_EOF)
-                         token = new_token(token_type,value)
-                         return
-                      case (CHAR_SPACE)
-
-                         if (next_char==NEWLINE) then
-                            state = STATE_START
-                            token = new_token(token_type,value)
-                            return
-                         else
-                            value = value//next_char
-                         end if
-                      case default
-                         value = value//next_char
-                   end select
-
-              ! Invalid state
-              case default
-                 error = new_token(SYNTAX_ERROR,"Internal error: invalid state at [["//pattern(1:this%input_position)//']]')
-                 call destroy_token(token)
-                 return
-           end select
-
-        end do read_chars
-
-    end function scan_stream
-
-    ! Cleanup
-    elemental subroutine destroy(this)
-       class(shlex_lexer), intent(inout) :: this
-
-       this%input_length   = -1
-       this%input_position = 0
-
-    end subroutine destroy
-
-    ! Initialize lexer
-    pure subroutine new(this,pattern)
-       class(shlex_lexer), intent(inout) :: this
-       character(kind=SCK, len=*), intent(in) :: pattern
-
-       call this%destroy()
-
-       this%input_position = 0
-       this%input_length = len(pattern)
-
-    end subroutine new
-
-    function print_token(token) result(msg)
-        class(shlex_token), intent(in) :: token
-        character(:,kind=SCK), allocatable :: msg
-
-        character(len=MAX_CHAR_CLASS_LEN,kind=SCK) :: buffer
-        integer :: lt
-
-        write(buffer,1) token%type,trim(token%string)
-
-        lt = len_trim(buffer)
-        allocate(character(len=lt,kind=SCK) :: msg)
-        if (lt>0) msg(1:lt) = buffer(1:lt)
-
-        1 format('type=',i0,:,1x,'char=',a)
-
-    end function print_token
-
-end module shlex_module
 
 !>>>>> ././src/fpm/error.f90
 !> Implementation of basic error handling.
@@ -9589,6 +8179,7 @@ module fpm_error
     public :: file_parse_error
     public :: bad_name_error
     public :: fpm_stop
+
 
     !> Data type defining an error
     type :: error_t
@@ -9651,6 +8242,7 @@ contains
 
     end function bad_name_error
 
+
     !> Error created when a file is missing or not found
     subroutine file_not_found_error(error, file_name)
 
@@ -9664,6 +8256,7 @@ contains
         error%message = "'"//file_name//"' could not be found, check if the file exists"
 
     end subroutine file_not_found_error
+
 
     !> Error created when file parsing fails
     subroutine file_parse_error(error, file_name, message, line_num, &
@@ -9758,6 +8351,7 @@ contains
 
 end module fpm_error
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/datetime.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -9781,6 +8375,7 @@ module tomlf_datetime
    public :: toml_datetime, toml_time, toml_date, to_string, has_date, has_time
    public :: operator(==)
 
+
    !> TOML time value (HH:MM:SS.sssssZ...)
    type :: toml_time
       integer :: hour = -1
@@ -9794,6 +8389,7 @@ module tomlf_datetime
       module procedure :: new_toml_time
    end interface toml_time
 
+
    !> TOML date value (YYYY-MM-DD)
    type :: toml_date
       integer :: year = -1
@@ -9801,11 +8397,13 @@ module tomlf_datetime
       integer :: day = -1
    end type
 
+
    !> TOML datatime value type
    type :: toml_datetime
       type(toml_date) :: date
       type(toml_time) :: time
    end type
+
 
    !> Create a new TOML datetime value
    interface toml_datetime
@@ -9813,15 +8411,19 @@ module tomlf_datetime
       module procedure :: new_datetime_from_string
    end interface toml_datetime
 
+
    interface operator(==)
       module procedure :: compare_datetime
    end interface operator(==)
+
 
    interface to_string
       module procedure :: to_string_datetime
    end interface to_string
 
+
 contains
+
 
 pure function new_datetime(year, month, day, hour, minute, second, msecond, zone) &
       & result(datetime)
@@ -9853,6 +8455,7 @@ pure function new_datetime(year, month, day, hour, minute, second, msecond, zone
       end if
    end if
 end function new_datetime
+
 
 pure function new_datetime_from_string(string) result(datetime)
    character(len=*), intent(in) :: string
@@ -9942,6 +8545,7 @@ pure function new_datetime_from_string(string) result(datetime)
 
 end function new_datetime_from_string
 
+
 pure function to_string_datetime(datetime) result(str)
    type(toml_datetime), intent(in) :: datetime
    character(kind=tfc, len=:), allocatable :: str
@@ -9993,6 +8597,7 @@ pure function to_string_time(time) result(str)
    if (allocated(time%zone)) str = str // trim(time%zone)
 end function to_string_time
 
+
 pure function has_date(datetime)
    class(toml_datetime), intent(in) :: datetime
    logical :: has_date
@@ -10008,6 +8613,7 @@ pure function has_time(datetime)
       & (datetime%time%minute >= 0) .and. &
       & (datetime%time%second >= 0)
 end function has_time
+
 
 !> Constructor for toml_time type, necessary due to PGI bug in NVHPC 20.7 and 20.9
 elemental function new_toml_time(hour, minute, second, msec, zone) &
@@ -10025,6 +8631,7 @@ elemental function new_toml_time(hour, minute, second, msec, zone) &
    if (present(zone)) self%zone = zone
 end function new_toml_time
 
+
 pure function compare_datetime(lhs, rhs) result(match)
    type(toml_datetime), intent(in) :: lhs
    type(toml_datetime), intent(in) :: rhs
@@ -10041,6 +8648,7 @@ pure function compare_datetime(lhs, rhs) result(match)
    end if
 end function compare_datetime
 
+
 pure function compare_date(lhs, rhs) result(match)
    type(toml_date), intent(in) :: lhs
    type(toml_date), intent(in) :: rhs
@@ -10048,6 +8656,7 @@ pure function compare_date(lhs, rhs) result(match)
 
    match = lhs%year == rhs%year .and. lhs%month == rhs%month .and. lhs%day == rhs%day
 end function compare_date
+
 
 pure function compare_time(lhs, rhs) result(match)
    type(toml_time), intent(in) :: lhs
@@ -10067,7 +8676,9 @@ pure function compare_time(lhs, rhs) result(match)
    end if
 end function compare_time
 
+
 end module tomlf_datetime
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/error.f90
 ! This file is part of toml-f.
@@ -10090,6 +8701,7 @@ module tomlf_error
    private
 
    public :: toml_stat, toml_error, make_error
+
 
    !> Possible TOML-Fortran error codes
    type :: enum_stat
@@ -10119,6 +8731,7 @@ module tomlf_error
    !> Actual enumerator for return states
    type(enum_stat), parameter :: toml_stat = enum_stat()
 
+
    !> Error message produced by TOML-Fortran
    type :: toml_error
 
@@ -10129,6 +8742,7 @@ module tomlf_error
       character(kind=tfc, len=:), allocatable :: message
 
    end type toml_error
+
 
 contains
 
@@ -10152,6 +8766,7 @@ end subroutine make_error
 
 end module tomlf_error
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/io.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -10173,6 +8788,7 @@ module tomlf_utils_io
    private
 
    public :: read_whole_file, read_whole_line
+
 
 contains
 
@@ -10243,6 +8859,7 @@ end subroutine read_whole_line
 
 end module tomlf_utils_io
 
+
 !>>>>> ././src/fpm_environment.f90
 !> This module contains procedures that interact with the programming environment.
 !!
@@ -10261,7 +8878,6 @@ module fpm_environment
     public :: get_command_arguments_quoted
     public :: separator
 
-                        public :: OS_NAME
     integer, parameter, public :: OS_UNKNOWN = 0
     integer, parameter, public :: OS_LINUX   = 1
     integer, parameter, public :: OS_MACOS   = 2
@@ -10271,25 +8887,6 @@ module fpm_environment
     integer, parameter, public :: OS_FREEBSD = 6
     integer, parameter, public :: OS_OPENBSD = 7
 contains
-
-    !> Return string describing the OS type flag
-    pure function OS_NAME(os)
-        integer, intent(in) :: os
-        character(len=:), allocatable :: OS_NAME
-
-        select case (os)
-            case (OS_LINUX);   OS_NAME =  "Linux"
-            case (OS_MACOS);   OS_NAME =  "macOS"
-            case (OS_WINDOWS); OS_NAME =  "Windows"
-            case (OS_CYGWIN);  OS_NAME =  "Cygwin"
-            case (OS_SOLARIS); OS_NAME =  "Solaris"
-            case (OS_FREEBSD); OS_NAME =  "FreeBSD"
-            case (OS_OPENBSD); OS_NAME =  "OpenBSD"
-            case (OS_UNKNOWN); OS_NAME =  "Unknown"
-            case default     ; OS_NAME =  "UNKNOWN"
-        end select
-    end function OS_NAME
-
     !> Determine the OS type
     integer function get_os_type() result(r)
         !!
@@ -10302,11 +8899,11 @@ contains
         !! found on specific system types only.
         !!
         !! Returns OS_UNKNOWN if the operating system cannot be determined.
-        character(len=255) :: val
-        integer            :: length, rc
-        logical            :: file_exists
-        logical, save      :: first_run = .true.
-        integer, save      :: ret = OS_UNKNOWN
+        character(len=32) :: val
+        integer           :: length, rc
+        logical           :: file_exists
+        logical, save     :: first_run = .true.
+        integer, save     :: ret = OS_UNKNOWN
         !$omp threadprivate(ret, first_run)
 
         if (.not. first_run) then
@@ -10586,17 +9183,16 @@ character(len=:),allocatable :: fname
 end function separator
 end module fpm_environment
 
+
 !>>>>> ././src/fpm/versioning.f90
 !> Implementation of versioning data for comparing packages
 module fpm_versioning
     use fpm_error, only : error_t, syntax_error
-    use fpm_strings, only: string_t
-    use regex_module, only: regex
     implicit none
     private
 
     public :: version_t, new_version
-    public :: regex_version_from_text
+
 
     type :: version_t
         private
@@ -10633,15 +9229,19 @@ module fpm_versioning
 
     end type version_t
 
+
     !> Arbitrary internal limit of the version parser
     integer, parameter :: max_limit = 3
+
 
     interface new_version
         module procedure :: new_version_from_string
         module procedure :: new_version_from_int
     end interface new_version
 
+
 contains
+
 
     !> Create a new version from a string
     subroutine new_version_from_int(self, num)
@@ -10655,6 +9255,7 @@ contains
         self%num = num
 
     end subroutine new_version_from_int
+
 
     !> Create a new version from a string
     subroutine new_version_from_string(self, string, error)
@@ -10705,6 +9306,7 @@ contains
         call new_version(self, num(:nn))
 
     end subroutine new_version_from_string
+
 
     !> Tokenize a version string
     subroutine next(string, istart, iend, is_number, error)
@@ -10772,6 +9374,7 @@ contains
 
     end subroutine next
 
+
     !> Create an error on an invalid token, provide some visual context as well
     subroutine token_error(error, string, istart, iend, message)
 
@@ -10798,6 +9401,7 @@ contains
 
     end subroutine token_error
 
+
     pure function s(self) result(string)
 
         !> Version number
@@ -10810,7 +9414,7 @@ contains
         character(len=buffersize) :: buffer
         integer :: ii
 
-        do ii = 1, ndigits(self)
+        do ii = 1, size(self%num)
             if (allocated(string)) then
                 write(buffer, '(".", i0)') self%num(ii)
                 string = string // trim(buffer)
@@ -10825,6 +9429,7 @@ contains
         end if
 
     end function s
+
 
     !> Check to version numbers for equality
     elemental function equals(lhs, rhs) result(is_equal)
@@ -10845,6 +9450,7 @@ contains
 
     end function equals
 
+
     !> Check two versions for inequality
     elemental function not_equals(lhs, rhs) result(not_equal)
 
@@ -10864,6 +9470,7 @@ contains
 
     end function not_equals
 
+
     !> Relative comparison of two versions
     elemental function greater(lhs, rhs) result(is_greater)
 
@@ -10876,24 +9483,25 @@ contains
         !> First version is greater
         logical :: is_greater
 
-        integer :: ii, lhs_size, rhs_size
+        integer :: ii
 
-        do ii = 1, min(ndigits(lhs),ndigits(rhs))
+        do ii = 1, min(size(lhs%num), size(rhs%num))
             if (lhs%num(ii) /= rhs%num(ii)) then
                 is_greater = lhs%num(ii) > rhs%num(ii)
                 return
             end if
         end do
 
-        is_greater = ndigits(lhs) > ndigits(rhs)
+        is_greater = size(lhs%num) > size(rhs%num)
         if (is_greater) then
-            do ii = ndigits(rhs) + 1, ndigits(lhs)
+            do ii = size(rhs%num) + 1, size(lhs%num)
                 is_greater = lhs%num(ii) > 0
                 if (is_greater) return
             end do
         end if
 
     end function greater
+
 
     !> Relative comparison of two versions
     elemental function less(lhs, rhs) result(is_less)
@@ -10911,6 +9519,7 @@ contains
 
     end function less
 
+
     !> Relative comparison of two versions
     elemental function greater_equals(lhs, rhs) result(is_greater_equal)
 
@@ -10927,6 +9536,7 @@ contains
 
     end function greater_equals
 
+
     !> Relative comparison of two versions
     elemental function less_equals(lhs, rhs) result(is_less_equal)
 
@@ -10942,6 +9552,7 @@ contains
         is_less_equal = .not. (lhs > rhs)
 
     end function less_equals
+
 
     !> Try to match first version against second version
     elemental function match(lhs, rhs)
@@ -10966,53 +9577,9 @@ contains
 
     end function match
 
-    !> Number of digits
-    elemental integer function ndigits(self)
-       class(version_t), intent(in) :: self
-
-       if (allocated(self%num)) then
-          ndigits = size(self%num)
-       else
-          ndigits = 0
-       end if
-
-    end function ndigits
-
-    ! Extract canonical version flags "1.0.0" or "1.0" as the first instance inside a text
-    ! (whatever long) using regex
-    type(string_t) function regex_version_from_text(text,what,error) result(ver)
-        character(*), intent(in) :: text
-        character(*), intent(in) :: what
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: ire, length
-
-        if (len_trim(text)<=0) then
-            call syntax_error(error,'cannot retrieve '//what//' version: empty input string')
-            return
-        end if
-
-        ! Extract 3-sized version "1.0.4"
-        ire = regex(text,'\d+\.\d+\.\d+',length=length)
-        if (ire>0 .and. length>0) then
-            ! Parse version into the object (this should always work)
-            ver = string_t(text(ire:ire+length-1))
-        else
-
-            ! Try 2-sized version "1.0"
-            ire = regex(text,'\d+\.\d+',length=length)
-
-            if (ire>0 .and. length>0) then
-                ver = string_t(text(ire:ire+length-1))
-            else
-                call syntax_error(error,'cannot retrieve '//what//' version.')
-            end if
-
-        end if
-
-    end function regex_version_from_text
 
 end module fpm_versioning
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils.f90
 ! This file is part of toml-f.
@@ -11039,6 +9606,7 @@ module tomlf_utils
    public :: to_string
    public :: read_whole_file, read_whole_line
 
+
    interface to_string
       module procedure :: to_string_i1
       module procedure :: to_string_i2
@@ -11047,7 +9615,9 @@ module tomlf_utils
       module procedure :: to_string_r8
    end interface to_string
 
+
 contains
+
 
 !> Escape all special characters in a TOML string
 subroutine toml_escape_string(raw, escaped, multiline)
@@ -11089,6 +9659,7 @@ subroutine toml_escape_string(raw, escaped, multiline)
 
 end subroutine toml_escape_string
 
+
 !> Represent an integer as character sequence.
 pure function to_string_i1(val) result(string)
    integer, parameter :: ik = tf_i1
@@ -11125,6 +9696,7 @@ pure function to_string_i1(val) result(string)
 
    string = buffer(pos:)
 end function to_string_i1
+
 
 !> Represent an integer as character sequence.
 pure function to_string_i2(val) result(string)
@@ -11163,6 +9735,7 @@ pure function to_string_i2(val) result(string)
    string = buffer(pos:)
 end function to_string_i2
 
+
 !> Represent an integer as character sequence.
 pure function to_string_i4(val) result(string)
    integer, parameter :: ik = tf_i4
@@ -11199,6 +9772,7 @@ pure function to_string_i4(val) result(string)
 
    string = buffer(pos:)
 end function to_string_i4
+
 
 !> Represent an integer as character sequence.
 pure function to_string_i8(val) result(string)
@@ -11269,6 +9843,7 @@ end function to_string_r8
 
 end module tomlf_utils
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/de/abc.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -11293,6 +9868,7 @@ module tomlf_de_abc
 
    public :: abstract_lexer
 
+
    !> Abstract base class for TOML lexers.
    type, abstract :: abstract_lexer
    contains
@@ -11314,6 +9890,7 @@ module tomlf_de_abc
       !> Get information about the source
       procedure(get_info), deferred :: get_info
    end type abstract_lexer
+
 
    abstract interface
       !> Advance the lexer to the next token.
@@ -11395,6 +9972,7 @@ module tomlf_de_abc
 
 end module tomlf_de_abc
 
+
 !>>>>> ././src/fpm_filesystem.F90
 !> This module contains general routines for interacting with the file system
 !!
@@ -11404,7 +9982,7 @@ module fpm_filesystem
                                OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_WINDOWS, &
                                OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD
     use fpm_environment, only: separator, get_env, os_is_unix
-    use fpm_strings, only: f_string, replace, string_t, split, dilate, str_begins_with_str
+    use fpm_strings, only: f_string, replace, string_t, split, notabs, str_begins_with_str
     use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_pointer
     use fpm_error, only : fpm_stop, error_t, fatal_error
     implicit none
@@ -11412,7 +9990,9 @@ module fpm_filesystem
     public :: basename, canon_path, dirname, is_dir, join_path, number_of_rows, list_files, get_local_prefix, &
             mkdir, exists, get_temp_filename, windows_path, unix_path, getline, delete_file, fileopen, fileclose, &
             filewrite, warnwrite, parent_dir, is_hidden_file, read_lines, read_lines_expanded, which, run, &
-            os_delete_dir, is_absolute_path, get_home, execute_and_read_output, get_dos_path
+            LINE_BUFFER_LEN, os_delete_dir, is_absolute_path, env_variable, get_home, get_tmp_directory, &
+            execute_and_read_output
+    integer, parameter :: LINE_BUFFER_LEN = 1000
 
 #ifndef FPM_BOOTSTRAP
     interface
@@ -11450,6 +10030,29 @@ module fpm_filesystem
 
 contains
 
+
+!> return value of environment variable
+subroutine env_variable(var, name)
+   character(len=:), allocatable, intent(out) :: var
+   character(len=*), intent(in) :: name
+   integer :: length, stat
+
+   call get_environment_variable(name, length=length, status=stat)
+   if (stat /= 0) return
+
+   allocate(character(len=length) :: var)
+
+   if (length > 0) then
+      call get_environment_variable(name, var, status=stat)
+      if (stat /= 0) then
+         deallocate(var)
+         return
+      end if
+   end if
+
+end subroutine env_variable
+
+
 !> Extract filename from path with/without suffix
 function basename(path,suffix) result (base)
 
@@ -11480,6 +10083,7 @@ function basename(path,suffix) result (base)
     endif
 
 end function basename
+
 
 !> Canonicalize path for comparison
 !! * Handles path string redundancies
@@ -11581,6 +10185,7 @@ contains
     end subroutine next
 end function canon_path
 
+
 !> Extract dirname from path
 function dirname(path) result (dir)
     character(*), intent(in) :: path
@@ -11598,6 +10203,7 @@ function parent_dir(path) result (dir)
     dir = path(1:scan(path,'/\',back=.true.)-1)
 
 end function parent_dir
+
 
 !> test if a name matches an existing directory path
 logical function is_dir(dir)
@@ -11681,6 +10287,7 @@ function join_path(a1,a2,a3,a4,a5) result(path)
 
 end function join_path
 
+
 !> Determine number or rows in a file given a LUN
 integer function number_of_rows(s) result(nrows)
     integer,intent(in)::s
@@ -11701,13 +10308,14 @@ function read_lines_expanded(fh) result(lines)
     type(string_t), allocatable :: lines(:)
 
     integer :: i
-    integer :: iostat
-    character(len=:),allocatable :: line_buffer_read
+    integer :: ilen
+    character(LINE_BUFFER_LEN) :: line_buffer_read, line_buffer_expanded
 
     allocate(lines(number_of_rows(fh)))
     do i = 1, size(lines)
-        call getline(fh, line_buffer_read, iostat)
-        lines(i)%s = dilate(line_buffer_read)
+        read(fh, '(A)') line_buffer_read
+        call notabs(line_buffer_read, line_buffer_expanded, ilen)
+        lines(i)%s = trim(line_buffer_expanded)
     end do
 
 end function read_lines_expanded
@@ -11718,11 +10326,12 @@ function read_lines(fh) result(lines)
     type(string_t), allocatable :: lines(:)
 
     integer :: i
-    integer :: iostat
+    character(LINE_BUFFER_LEN) :: line_buffer
 
     allocate(lines(number_of_rows(fh)))
     do i = 1, size(lines)
-        call getline(fh, lines(i)%s, iostat)
+        read(fh, '(A)') line_buffer
+        lines(i)%s = trim(line_buffer)
     end do
 
 end function read_lines
@@ -11905,17 +10514,13 @@ end subroutine list_files
 
 #endif
 
+
 !> test if pathname already exists
 logical function exists(filename) result(r)
     character(len=*), intent(in) :: filename
     inquire(file=filename, exist=r)
-
-    !> Directories are not files for the Intel compilers. If so, also use this compiler-dependent extension
-#if defined(__INTEL_COMPILER)
-    if (.not.r) inquire(directory=filename, exist=r)
-#endif
-
 end function
+
 
 !> Get a unused temporary filename
 !!  Calls posix 'tempnam' - not recommended, but
@@ -11925,7 +10530,6 @@ end function
 function get_temp_filename() result(tempfile)
     !
     use iso_c_binding, only: c_ptr, C_NULL_PTR, c_f_pointer
-    integer, parameter :: MAX_FILENAME_LENGTH = 32768
     character(:), allocatable :: tempfile
 
     type(c_ptr) :: c_tempfile_ptr
@@ -11948,13 +10552,14 @@ function get_temp_filename() result(tempfile)
     end interface
 
     c_tempfile_ptr = c_tempnam(C_NULL_PTR, C_NULL_PTR)
-    call c_f_pointer(c_tempfile_ptr,c_tempfile,[MAX_FILENAME_LENGTH])
+    call c_f_pointer(c_tempfile_ptr,c_tempfile,[LINE_BUFFER_LEN])
 
     tempfile = f_string(c_tempfile)
 
     call c_free(c_tempfile_ptr)
 
 end function get_temp_filename
+
 
 !> Replace file system separators for windows
 function windows_path(path) result(winpath)
@@ -11974,6 +10579,7 @@ function windows_path(path) result(winpath)
 
 end function windows_path
 
+
 !> Replace file system separators for unix
 function unix_path(path) result(nixpath)
 
@@ -11992,68 +10598,8 @@ function unix_path(path) result(nixpath)
 
 end function unix_path
 
-!>AUTHOR: fpm(1) contributors
-!!LICENSE: MIT
-!>
-!!##NAME
-!!     getline(3f) - [M_io:READ] read a line of arbintrary length from specified
-!!     LUN into allocatable string (up to system line length limit)
-!!    (LICENSE:PD)
-!!
-!!##SYNTAX
-!!   subroutine getline(unit,line,iostat,iomsg)
-!!
-!!    integer,intent(in)                       :: unit
-!!    character(len=:),allocatable,intent(out) :: line
-!!    integer,intent(out)                      :: iostat
-!!    character(len=:), allocatable, optional  :: iomsg
-!!
-!!##DESCRIPTION
-!!    Read a line of any length up to programming environment maximum
-!!    line length. Requires Fortran 2003+.
-!!
-!!    It is primarily expected to be used when reading input which will
-!!    then be parsed or echoed.
-!!
-!!    The input file must have a PAD attribute of YES for the function
-!!    to work properly, which is typically true.
-!!
-!!    The simple use of a loop that repeatedly re-allocates a character
-!!    variable in addition to reading the input file one buffer at a
-!!    time could (depending on the programming environment used) be
-!!    inefficient, as it could reallocate and allocate memory used for
-!!    the output string with each buffer read.
-!!
-!!##OPTIONS
-!!    LINE    The line read when IOSTAT returns as zero.
-!!    LUN     LUN (Fortran logical I/O unit) number of file open and ready
-!!            to read.
-!!    IOSTAT  status returned by READ(IOSTAT=IOS). If not zero, an error
-!!            occurred or an end-of-file or end-of-record was encountered.
-!!    IOMSG   error message returned by system when IOSTAT is not zero.
-!!
-!!##EXAMPLE
-!!
-!!   Sample program:
-!!
-!!    program demo_getline
-!!    use,intrinsic :: iso_fortran_env, only : stdin=>input_unit
-!!    use,intrinsic :: iso_fortran_env, only : iostat_end
-!!    use FPM_filesystem, only : getline
-!!    implicit none
-!!    integer :: iostat
-!!    character(len=:),allocatable :: line, iomsg
-!!       open(unit=stdin,pad='yes')
-!!       INFINITE: do
-!!          call getline(stdin,line,iostat,iomsg)
-!!          if(iostat /= 0) exit INFINITE
-!!          write(*,'(a)')'['//line//']'
-!!       enddo INFINITE
-!!       if(iostat /= iostat_end)then
-!!          write(*,*)'error reading input:',iomsg
-!!       endif
-!!    end program demo_getline
-!!
+
+!> read a line of arbitrary length into a CHARACTER variable from the specified LUN
 subroutine getline(unit, line, iostat, iomsg)
 
     !> Formatted IO unit
@@ -12068,9 +10614,8 @@ subroutine getline(unit, line, iostat, iomsg)
     !> Error message
     character(len=:), allocatable, optional :: iomsg
 
-    integer, parameter :: BUFFER_SIZE = 32768
-    character(len=BUFFER_SIZE)       :: buffer
-    character(len=256)               :: msg
+    character(len=LINE_BUFFER_LEN) :: buffer
+    character(len=LINE_BUFFER_LEN) :: msg
     integer :: size
     integer :: stat
 
@@ -12094,6 +10639,7 @@ subroutine getline(unit, line, iostat, iomsg)
     iostat = stat
 
 end subroutine getline
+
 
 !> delete a file by filename
 subroutine delete_file(file)
@@ -12198,32 +10744,31 @@ character(len=256)                    :: message
 
 end subroutine filewrite
 
-!>AUTHOR: John S. Urban
-!!LICENSE: Public Domain
+function which(command) result(pathname)
 !>
-!!##Name
+!!##NAME
 !!     which(3f) - [M_io:ENVIRONMENT] given a command name find the pathname by searching
 !!                 the directories in the environment variable $PATH
 !!     (LICENSE:PD)
 !!
-!!##Syntax
+!!##SYNTAX
 !!   function which(command) result(pathname)
 !!
 !!    character(len=*),intent(in)  :: command
 !!    character(len=:),allocatable :: pathname
 !!
-!!##Description
+!!##DESCRIPTION
 !!    Given a command name find the first file with that name in the directories
 !!    specified by the environment variable $PATH.
 !!
-!!##options
+!!##OPTIONS
 !!    COMMAND   the command to search for
 !!
-!!##Returns
+!!##RETURNS
 !!    PATHNAME  the first pathname found in the current user path. Returns blank
 !!              if the command is not found.
 !!
-!!##Example
+!!##EXAMPLE
 !!
 !!   Sample program:
 !!
@@ -12237,7 +10782,11 @@ end subroutine filewrite
 !!        write(*,*)'install is ',which('install')
 !!     end program demo_which
 !!
-function which(command) result(pathname)
+!!##AUTHOR
+!!    John S. Urban
+!!##LICENSE
+!!    Public Domain
+
 character(len=*),intent(in)     :: command
 character(len=:),allocatable    :: pathname, checkon, paths(:), exts(:)
 integer                         :: i, j
@@ -12275,66 +10824,8 @@ integer                         :: i, j
    enddo SEARCH
 end function which
 
-!>AUTHOR: fpm(1) contributors
-!!LICENSE: MIT
-!>
-!!##Name
-!!    run(3f) -  execute specified system command and selectively echo
-!!    command and output to a file and/or stdout.
-!!    (LICENSE:MIT)
-!!
-!!##Syntax
-!!    subroutine run(cmd,echo,exitstat,verbose,redirect)
-!!
-!!     character(len=*), intent(in)       :: cmd
-!!     logical,intent(in),optional        :: echo
-!!     integer, intent(out),optional      :: exitstat
-!!     logical, intent(in), optional      :: verbose
-!!     character(*), intent(in), optional :: redirect
-!!
-!!##Description
-!!   Execute the specified system command. Optionally
-!!
-!!   +  echo the command before execution
-!!   +  return the system exit status of the command.
-!!   +  redirect the output of the command to a file.
-!!   +  echo command output to stdout
-!!
-!!   Calling run(3f) is preferred to direct calls to
-!!   execute_command_line(3f) in the fpm(1) source to provide a standard
-!!   interface where output modes can be specified.
-!!
-!!##Options
-!!    CMD       System command to execute
-!!    ECHO      Whether to echo the command being executed or not
-!!              Defaults to .TRUE. .
-!!    VERBOSE   Whether to redirect the command output to a null device or not
-!!              Defaults to .TRUE. .
-!!    REDIRECT  Filename to redirect stdout and stderr of the command into.
-!!              If generated it is closed before run(3f) returns.
-!!    EXITSTAT  The system exit status of the command when supported by
-!!              the system. If not present and a non-zero status is
-!!              generated program termination occurs.
-!!
-!!##Example
-!!
-!!   Sample program:
-!!
-!!   Checking the error message and counting lines:
-!!
-!!     program demo_run
-!!     use fpm_filesystem, only : run
-!!     implicit none
-!!     logical,parameter :: T=.true., F=.false.
-!!     integer :: exitstat
-!!     character(len=:),allocatable :: cmd
-!!        cmd='ls -ltrasd *.md'
-!!        call run(cmd)
-!!        call run(cmd,exitstat=exitstat)
-!!        call run(cmd,echo=F)
-!!        call run(cmd,verbose=F)
-!!     end program demo_run
-!!
+!> echo command string and pass it to the system for execution
+!call run(cmd,echo=.false.,exitstat=exitstat,verbose=.false.,redirect='')
 subroutine run(cmd,echo,exitstat,verbose,redirect)
     character(len=*), intent(in) :: cmd
     logical,intent(in),optional  :: echo
@@ -12441,15 +10932,15 @@ end subroutine os_delete_dir
         character(len=:), allocatable :: home
 
         if (os_is_unix(os)) then
-            home=get_env('HOME','')
-            if (home /= '' ) then
+            call env_variable(home, "HOME")
+            if (allocated(home)) then
                 prefix = join_path(home, ".local")
             else
                 prefix = default_prefix_unix
             end if
         else
-            home=get_env('APPDATA','')
-            if (home /= '' ) then
+            call env_variable(home, "APPDATA")
+            if (allocated(home)) then
                 prefix = join_path(home, "local")
             else
                 prefix = default_prefix_win
@@ -12492,14 +10983,14 @@ end subroutine os_delete_dir
         type(error_t), allocatable, intent(out) :: error
 
         if (os_is_unix()) then
-            home=get_env('HOME','')
-            if ( home == '' ) then
+            call env_variable(home, 'HOME')
+            if (.not. allocated(home)) then
                 call fatal_error(error, "Couldn't retrieve 'HOME' variable")
                 return
             end if
         else
-            home=get_env('USERPROFILE','')
-            if ( home == '' ) then
+            call env_variable(home, 'USERPROFILE')
+            if (.not. allocated(home)) then
                 call fatal_error(error, "Couldn't retrieve '%USERPROFILE%' variable")
                 return
             end if
@@ -12507,108 +10998,70 @@ end subroutine os_delete_dir
     end subroutine get_home
 
     !> Execute command line and return output as a string.
-    subroutine execute_and_read_output(cmd, output, error, verbose)
+    subroutine execute_and_read_output(cmd, output, error, exitstat)
         !> Command to execute.
         character(len=*), intent(in) :: cmd
         !> Command line output.
         character(len=:), allocatable, intent(out) :: output
         !> Error to handle.
         type(error_t), allocatable, intent(out) :: error
-        !> Print additional information if true.
-        logical, intent(in), optional :: verbose
+        !> Can optionally used for error handling.
+        integer, intent(out), optional :: exitstat
 
-        integer :: exitstat, unit, stat
-        character(len=:), allocatable :: cmdmsg, tmp_file, output_line
-        logical :: is_verbose
+        integer :: cmdstat, unit, stat = 0
+        character(len=:), allocatable :: cmdmsg, tmp_path
+        character(len=1000) :: output_line
 
-        if (present(verbose)) then
-          is_verbose = verbose
-        else
-          is_verbose = .false.
-        end if
+        call get_tmp_directory(tmp_path, error)
+        if (allocated(error)) return
 
-        tmp_file = get_temp_filename()
+        if (.not. exists(tmp_path)) call mkdir(tmp_path)
+        tmp_path = join_path(tmp_path, 'command_line_output')
+        call delete_file(tmp_path)
+        call filewrite(tmp_path, [''])
 
-        call run(cmd//' > '//tmp_file, exitstat=exitstat, echo=is_verbose)
-        if (exitstat /= 0) call fatal_error(error, '*run*: '//"Command failed: '"//cmd//"'. Message: '"//trim(cmdmsg)//"'.")
+        call execute_command_line(cmd//' > '//tmp_path, exitstat=exitstat, cmdstat=cmdstat)
+        if (cmdstat /= 0) call fpm_stop(1,'*run*: '//"Command failed: '"//cmd//"'. Message: '"//trim(cmdmsg)//"'.")
 
-        open(newunit=unit, file=tmp_file, action='read', status='old')
+        open(unit, file=tmp_path, action='read', status='old')
         output = ''
         do
-           call getline(unit, output_line, stat)
-           if (stat /= 0) exit
-           output = output//output_line//' '
+          read(unit, *, iostat=stat) output_line
+          if (stat /= 0) exit
+          output = output//trim(output_line)//' '
         end do
-        if (is_verbose) print *, output
         close(unit, status='delete')
     end
 
-    !> Ensure a windows path is converted to an 8.3 DOS path if it contains spaces
-    function get_dos_path(path,error)
-        character(len=*), intent(in) :: path
+    !> Get system-dependent tmp directory.
+    subroutine get_tmp_directory(tmp_dir, error)
+        !> System-dependant tmp directory.
+        character(len=:), allocatable, intent(out) :: tmp_dir
+        !> Error to handle.
         type(error_t), allocatable, intent(out) :: error
-        character(len=:), allocatable :: get_dos_path
 
-        character(:), allocatable :: redirect,screen_output,line
-        integer :: stat,cmdstat,iunit,last
-
-        ! Non-Windows OS
-        if (get_os_type()/=OS_WINDOWS) then
-            get_dos_path = path
-            return
+        tmp_dir = get_env('TMPDIR', '')
+        if (tmp_dir /= '') then
+          tmp_dir = tmp_dir//'fpm'; return
         end if
 
-        ! Trim path first
-        get_dos_path = trim(path)
+        tmp_dir = get_env('TMP', '')
+        if (tmp_dir /= '') then
+          tmp_dir = tmp_dir//'fpm'; return
+        end if
 
-        !> No need to convert if there are no spaces
-        has_spaces: if (scan(get_dos_path,' ')>0) then
+        tmp_dir = get_env('TEMP', '')
+        if (tmp_dir /= '') then
+          tmp_dir = tmp_dir//'fpm'; return
+        end if
 
-            redirect = get_temp_filename()
-            call execute_command_line('cmd /c for %A in ("'//path//'") do @echo %~sA >'//redirect//' 2>&1',&
-                                      exitstat=stat,cmdstat=cmdstat)
-
-            !> Read screen output
-            command_OK: if (cmdstat==0 .and. stat==0) then
-
-                allocate(character(len=0) :: screen_output)
-                open(newunit=iunit,file=redirect,status='old',iostat=stat)
-                if (stat == 0)then
-
-                   do
-                       call getline(iunit, line, stat)
-                       if (stat /= 0) exit
-                       screen_output = screen_output//line//' '
-                   end do
-
-                   ! Close and delete file
-                   close(iunit,status='delete')
-
-                else
-                   call fatal_error(error,'cannot read temporary file from successful DOS path evaluation')
-                   return
-                endif
-
-            else command_OK
-
-                call fatal_error(error,'unsuccessful Windows->DOS path command')
-                return
-
-            end if command_OK
-
-            get_dos_path = trim(adjustl(screen_output))
-
-        endif has_spaces
-
-        !> Ensure there are no trailing slashes
-        last = len_trim(get_dos_path)
-        if (last>1 .and. get_dos_path(last:last)=='/' .or. get_dos_path(last:last)=='\') get_dos_path = get_dos_path(1:last-1)
-
-    end function get_dos_path
+        call fatal_error(error, "Couldn't determine system temporary directory.")
+    end
 
 end module fpm_filesystem
 
-!>>>>> ././src/fpm/fpm_release.F90
+
+!>>>>> ././src/fpm/fpm_release.f90
 !># Release parameters
 !> Module fpm_release contains public constants storing this build's unique version IDs
 module fpm_release
@@ -12629,7 +11082,7 @@ module fpm_release
 
 ! Fallback to last known version in case of undefined macro
 #ifndef FPM_RELEASE_VERSION
-#  define FPM_RELEASE_VERSION 0.10.0
+#  define FPM_RELEASE_VERSION 0.8.0
 #endif
 
 ! Accept solution from https://stackoverflow.com/questions/31649691/stringify-macro-with-gnu-gfortran
@@ -12655,6 +11108,7 @@ module fpm_release
     end function fpm_version
 
 end module fpm_release
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/terminal.f90
 ! This file is part of toml-f.
@@ -12720,6 +11174,7 @@ module tomlf_terminal
 
    public :: toml_terminal
    public :: ansi_code, escape, operator(+), operator(//)
+
 
    !> Char length for integers
    integer, parameter :: i1 = selected_int_kind(2)
@@ -12795,6 +11250,7 @@ module tomlf_terminal
       bg_bright_magenta = ansi_code(bg=105_i1), &
       bg_bright_cyan = ansi_code(bg=106_i1), &
       bg_bright_white = ansi_code(bg=107_i1)
+
 
    !> Terminal wrapper to handle color escape sequences, must be initialized with
    !> color support to provide colorful output. Default and uninitialized instances
@@ -12926,6 +11382,7 @@ pure function add(lval, rval) result(code)
    code%bg = merge(rval%bg, lval%bg, rval%bg >= 0)
 end function add
 
+
 !> Concatenate an escape code with a string and turn it into an actual escape sequence
 pure function concat_left(lval, code) result(str)
    !> String to add the escape code to
@@ -12949,6 +11406,7 @@ pure function concat_right(code, rval) result(str)
 
    str = escape(code) // rval
 end function concat_right
+
 
 !> Transform a color code into an actual ANSI escape sequence
 pure function escape(code) result(str)
@@ -12980,6 +11438,7 @@ end function anycolor
 
 end module tomlf_terminal
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/type/value.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -13002,6 +11461,7 @@ module tomlf_type_value
    private
 
    public :: toml_value, toml_visitor, toml_key
+
 
    !> Abstract base value for TOML data types
    type, abstract :: toml_value
@@ -13028,6 +11488,7 @@ module tomlf_type_value
 
    end type toml_value
 
+
    !> Abstract visitor for TOML values
    type, abstract :: toml_visitor
    contains
@@ -13036,6 +11497,7 @@ module tomlf_type_value
       procedure(visit), deferred :: visit
 
    end type toml_visitor
+
 
    !> Thin wrapper around the deferred-size character intrinisc
    type :: toml_key
@@ -13047,6 +11509,7 @@ module tomlf_type_value
       integer :: origin = 0
 
    end type toml_key
+
 
    abstract interface
       !> Accept a visitor to transverse the data structure
@@ -13071,7 +11534,9 @@ module tomlf_type_value
 
    end interface
 
+
 contains
+
 
 !> Accept a visitor to transverse the data structure
 recursive subroutine accept(self, visitor)
@@ -13085,6 +11550,7 @@ recursive subroutine accept(self, visitor)
    call visitor%visit(self)
 
 end subroutine accept
+
 
 !> Get escaped key to TOML value
 subroutine get_key(self, key)
@@ -13105,6 +11571,7 @@ subroutine get_key(self, key)
 
 end subroutine get_key
 
+
 !> Compare raw key of TOML value to input key
 pure function match_key(self, key) result(match)
 
@@ -13124,7 +11591,9 @@ pure function match_key(self, key) result(match)
 
 end function match_key
 
+
 end module tomlf_type_value
+
 
 !>>>>> build/dependencies/jonquil/src/jonquil/lexer.f90
 ! This file is part of jonquil.
@@ -13310,12 +11779,10 @@ subroutine next_token(lexer, token)
 
    select case(lexer%chunk(pos:pos))
    case(" ", toml_escape%tabulator, toml_escape%newline, toml_escape%carriage_return)
-      do pos = pos, len(lexer%chunk) - 1
-         if (all(lexer%chunk(pos+1:pos+1) /= [" ", toml_escape%tabulator,&
-            & toml_escape%newline, toml_escape%carriage_return])) &
-            & exit
+      do while(any(lexer%chunk(pos+1:pos+1) == [" ", toml_escape%tabulator, &
+            & toml_escape%newline, toml_escape%carriage_return]) .and. pos < len(lexer%chunk))
+         pos = pos + 1
       end do
-
       token = toml_token(token_kind%whitespace, prev, pos)
       return
    case(":")
@@ -13347,10 +11814,10 @@ subroutine next_token(lexer, token)
       return
    end select
 
-   do pos=pos,len(lexer%chunk)-1
-      if (verify(lexer%chunk(pos+1:pos+1), terminated) <= 0) exit
+   ! If the current token is invalid, advance to the next terminator
+   do while(verify(lexer%chunk(pos+1:pos+1), terminated) > 0 .and. pos < len(lexer%chunk))
+      pos = pos + 1
    end do
-
    token = toml_token(token_kind%invalid, prev, pos)
 end subroutine next_token
 
@@ -13469,8 +11936,8 @@ subroutine next_boolean(lexer, token)
    prev = lexer%pos
    pos = lexer%pos
 
-   do pos=lexer%pos,len(lexer%chunk)-1
-      if (verify(lexer%chunk(pos+1:pos+1), terminated) <= 0) exit
+   do while(verify(lexer%chunk(pos+1:pos+1), terminated) > 0 .and. pos < len(lexer%chunk))
+      pos = pos + 1
    end do
 
    select case(lexer%chunk(prev:pos))
@@ -13610,6 +12077,7 @@ subroutine extract_datetime(lexer, token, val)
 end subroutine extract_datetime
 
 end module jonquil_lexer
+
 
 !>>>>> ././src/fpm_os.F90
 module fpm_os
@@ -13860,7 +12328,7 @@ contains
 
     !> Converts a path to an absolute, canonical path.
     subroutine convert_to_absolute_path(path, error)
-        character(len=:), allocatable, intent(inout) :: path
+        character(len=*), intent(inout) :: path
         type(error_t), allocatable, intent(out) :: error
 
         character(len=:), allocatable :: absolute_path
@@ -13870,6 +12338,7 @@ contains
     end subroutine
 
 end module fpm_os
+
 
 !>>>>> ././src/fpm/installer.f90
 !> Implementation of an installer object.
@@ -14151,6 +12620,347 @@ contains
 
 end module fpm_installer
 
+
+!>>>>> ././src/fpm/git.f90
+!> Implementation for interacting with git repositories.
+module fpm_git
+    use fpm_error, only: error_t, fatal_error
+    use fpm_filesystem, only : get_temp_filename, getline, join_path, execute_and_read_output
+    implicit none
+
+    public :: git_target_t, git_target_default, git_target_branch, git_target_tag, git_target_revision, git_revision, &
+            & git_archive, git_matches_manifest, operator(==), compressed_package_name
+
+    !> Name of the compressed package that is generated temporarily.
+    character(len=*), parameter :: compressed_package_name = 'compressed_package'
+
+    !> Possible git target
+    type :: enum_descriptor
+
+        !> Default target
+        integer :: default = 200
+
+        !> Branch in git repository
+        integer :: branch = 201
+
+        !> Tag in git repository
+        integer :: tag = 202
+
+        !> Commit hash
+        integer :: revision = 203
+
+    end type enum_descriptor
+
+    !> Actual enumerator for descriptors
+    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
+
+
+    !> Description of an git target
+    type :: git_target_t
+
+        !> Kind of the git target
+        integer :: descriptor = git_descriptor%default
+
+        !> Target URL of the git repository
+        character(len=:), allocatable :: url
+
+        !> Additional descriptor of the git object
+        character(len=:), allocatable :: object
+
+    contains
+
+        !> Fetch and checkout in local directory
+        procedure :: checkout
+
+        !> Show information on instance
+        procedure :: info
+
+    end type git_target_t
+
+
+    interface operator(==)
+        module procedure git_target_eq
+    end interface
+
+    !> Common output format for writing to the command line
+    character(len=*), parameter :: out_fmt = '("#", *(1x, g0))'
+
+contains
+
+
+    !> Default target
+    function git_target_default(url) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%default
+        self%url = url
+
+    end function git_target_default
+
+
+    !> Target a branch in the git repository
+    function git_target_branch(url, branch) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Name of the branch of interest
+        character(len=*), intent(in) :: branch
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%branch
+        self%url = url
+        self%object = branch
+
+    end function git_target_branch
+
+
+    !> Target a specific git revision
+    function git_target_revision(url, sha1) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Commit hash of interest
+        character(len=*), intent(in) :: sha1
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%revision
+        self%url = url
+        self%object = sha1
+
+    end function git_target_revision
+
+
+    !> Target a git tag
+    function git_target_tag(url, tag) result(self)
+
+        !> Target URL of the git repository
+        character(len=*), intent(in) :: url
+
+        !> Tag name of interest
+        character(len=*), intent(in) :: tag
+
+        !> New git target
+        type(git_target_t) :: self
+
+        self%descriptor = git_descriptor%tag
+        self%url = url
+        self%object = tag
+
+    end function git_target_tag
+
+    !> Check that two git targets are equal
+    logical function git_target_eq(this,that) result(is_equal)
+
+        !> Two input git targets
+        type(git_target_t), intent(in) :: this,that
+
+        is_equal = this%descriptor == that%descriptor .and. &
+                   this%url        == that%url        .and. &
+                   this%object     == that%object
+
+    end function git_target_eq
+
+    !> Check that a cached dependency matches a manifest request
+    logical function git_matches_manifest(cached,manifest,verbosity,iunit)
+
+        !> Two input git targets
+        type(git_target_t), intent(in) :: cached,manifest
+
+        integer, intent(in) :: verbosity,iunit
+
+        git_matches_manifest = cached%url == manifest%url
+        if (.not.git_matches_manifest) then
+            if (verbosity>1) write(iunit,out_fmt) "GIT URL has changed: ",cached%url," vs. ", manifest%url
+            return
+        endif
+
+        !> The manifest dependency only contains partial information (what's requested),
+        !> while the cached dependency always stores a commit hash because it's built
+        !> after the repo is available (saved as git_descriptor%revision==revision).
+        !> So, comparing against the descriptor is not reliable
+        git_matches_manifest = cached%object == manifest%object
+        if (.not.git_matches_manifest) then
+            if (verbosity>1) write(iunit,out_fmt) "GIT OBJECT has changed: ",cached%object," vs. ", manifest%object
+        end if
+
+    end function git_matches_manifest
+
+
+    subroutine checkout(self, local_path, error)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat
+        character(len=:), allocatable :: object, workdir
+
+        if (allocated(self%object)) then
+            object = self%object
+        else
+            object = 'HEAD'
+        end if
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+
+        call execute_command_line("git init "//local_path, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while initiating git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
+                                  self%url//" "//object, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while fetching git repository for remote dependency')
+            return
+        end if
+
+        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error,'Error while checking out git repository for remote dependency')
+            return
+        end if
+
+    end subroutine checkout
+
+
+    subroutine git_revision(local_path, object, error)
+
+        !> Local path to checkout in
+        character(*), intent(in) :: local_path
+
+        !> Git object reference
+        character(len=:), allocatable, intent(out) :: object
+
+        !> Error
+        type(error_t), allocatable, intent(out) :: error
+
+        integer :: stat, unit, istart, iend
+        character(len=:), allocatable :: temp_file, line, iomsg, workdir
+        character(len=*), parameter :: hexdigits = '0123456789abcdef'
+
+        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
+        allocate(temp_file, source=get_temp_filename())
+        line = "git "//workdir//" log -n 1 > "//temp_file
+        call execute_command_line(line, exitstat=stat)
+
+        if (stat /= 0) then
+            call fatal_error(error, "Error while retrieving commit information")
+            return
+        end if
+
+        open(file=temp_file, newunit=unit)
+        call getline(unit, line, stat, iomsg)
+
+        if (stat /= 0) then
+            call fatal_error(error, iomsg)
+            return
+        end if
+        close(unit, status="delete")
+
+        ! Tokenize:
+        ! commit 0123456789abcdef (HEAD, ...)
+        istart = scan(line, ' ') + 1
+        iend = verify(line(istart:), hexdigits) + istart - 1
+        if (iend < istart) iend = len(line)
+        object = line(istart:iend)
+
+    end subroutine git_revision
+
+
+    !> Show information on git target
+    subroutine info(self, unit, verbosity)
+
+        !> Instance of the git target
+        class(git_target_t), intent(in) :: self
+
+        !> Unit for IO
+        integer, intent(in) :: unit
+
+        !> Verbosity of the printout
+        integer, intent(in), optional :: verbosity
+
+        integer :: pr
+        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
+
+        if (present(verbosity)) then
+            pr = verbosity
+        else
+            pr = 1
+        end if
+
+        if (pr < 1) return
+
+        write(unit, fmt) "Git target"
+        if (allocated(self%url)) then
+            write(unit, fmt) "- URL", self%url
+        end if
+        if (allocated(self%object)) then
+            select case(self%descriptor)
+            case default
+                write(unit, fmt) "- object", self%object
+            case(git_descriptor%tag)
+                write(unit, fmt) "- tag", self%object
+            case(git_descriptor%branch)
+                write(unit, fmt) "- branch", self%object
+            case(git_descriptor%revision)
+                write(unit, fmt) "- sha1", self%object
+            end select
+        end if
+
+    end subroutine info
+
+  !> Archive a folder using `git archive`.
+  subroutine git_archive(source, destination, error)
+    !> Directory to archive.
+    character(*), intent(in) :: source
+    !> Destination of the archive.
+    character(*), intent(in) :: destination
+    !> Error handling.
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: stat
+    character(len=:), allocatable :: cmd_output, archive_format
+
+    call execute_and_read_output('git archive -l', cmd_output, error)
+    if (allocated(error)) return
+
+    if (index(cmd_output, 'tar.gz') /= 0) then
+      archive_format = 'tar.gz'
+    else
+      call fatal_error(error, "Cannot find a suitable archive format for 'git archive'."); return
+    end if
+
+    call execute_command_line('git archive HEAD --format='//archive_format//' -o '// &
+    & join_path(destination, compressed_package_name), exitstat=stat)
+    if (stat /= 0) then
+      call fatal_error(error, "Error packing '"//source//"'."); return
+    end if
+  end
+
+
+end module fpm_git
+
+
 !>>>>> build/dependencies/toml-f/src/tomlf/diagnostic.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14174,12 +12984,14 @@ module tomlf_diagnostic
    public :: render
    public :: toml_diagnostic, toml_label
 
+
    interface render
       module procedure render_diagnostic
       module procedure render_text
       module procedure render_text_with_label
       module procedure render_text_with_labels
    end interface render
+
 
    !> Enumerator for diagnostic levels
    type :: level_enum
@@ -14192,6 +13004,7 @@ module tomlf_diagnostic
 
    !> Actual enumerator values
    type(level_enum), parameter, public :: toml_level = level_enum()
+
 
    type toml_label
       !> Level of message
@@ -14210,6 +13023,7 @@ module tomlf_diagnostic
       module procedure new_label
    end interface toml_label
 
+
    !> Definition of diagnostic message
    type :: toml_diagnostic
       !> Level of message
@@ -14226,13 +13040,16 @@ module tomlf_diagnostic
       module procedure new_diagnostic
    end interface toml_diagnostic
 
+
    type :: line_token
       integer :: first, last
    end type line_token
 
    character(len=*), parameter :: nl = new_line('a')
 
+
 contains
+
 
 pure function new_label(level, first, last, text, primary) result(new)
    integer, intent(in) :: level
@@ -14252,6 +13069,7 @@ pure function new_label(level, first, last, text, primary) result(new)
    end if
 end function new_label
 
+
 !> Create new diagnostic message
 pure function new_diagnostic(level, message, source, label) result(new)
    !> Level of message
@@ -14269,6 +13087,7 @@ pure function new_diagnostic(level, message, source, label) result(new)
    if (present(source)) new%source = source
    if (present(label)) new%label = label
 end function new_diagnostic
+
 
 pure function line_tokens(input) result(token)
    character(len=*), intent(in) :: input
@@ -14605,7 +13424,9 @@ pure function to_string(val, width) result(string)
    end if
 end function to_string
 
+
 end module tomlf_diagnostic
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/keyval.f90
 ! This file is part of toml-f.
@@ -14630,6 +13451,7 @@ module tomlf_type_keyval
    private
 
    public :: toml_keyval, new_keyval, new
+
 
    !> Generic TOML value
    type, abstract :: generic_value
@@ -14659,6 +13481,8 @@ module tomlf_type_keyval
    type, extends(generic_value) :: string_value
       character(:, tfc), allocatable :: raw
    end type string_value
+
+
 
    !> TOML key-value pair
    type, extends(toml_value) :: toml_keyval
@@ -14695,12 +13519,15 @@ module tomlf_type_keyval
 
    end type toml_keyval
 
+
    !> Overloaded constructor for TOML values
    interface new
       module procedure :: new_keyval
    end interface
 
+
 contains
+
 
 !> Constructor to create a new TOML key-value pair
 subroutine new_keyval(self)
@@ -14711,6 +13538,7 @@ subroutine new_keyval(self)
    associate(self => self); end associate
 
 end subroutine new_keyval
+
 
 !> Deconstructor to cleanup allocations (optional)
 subroutine destroy(self)
@@ -14728,6 +13556,7 @@ subroutine destroy(self)
 
 end subroutine destroy
 
+
 !> Obtain real value from TOML key-value pair
 subroutine get_float(self, val)
 
@@ -14739,6 +13568,7 @@ subroutine get_float(self, val)
 
    val => cast_float(self%val)
 end subroutine get_float
+
 
 !> Obtain integer value from TOML key-value pair
 subroutine get_integer(self, val)
@@ -14752,6 +13582,7 @@ subroutine get_integer(self, val)
    val => cast_integer(self%val)
 end subroutine get_integer
 
+
 !> Obtain boolean value from TOML key-value pair
 subroutine get_boolean(self, val)
 
@@ -14763,6 +13594,7 @@ subroutine get_boolean(self, val)
 
    val => cast_boolean(self%val)
 end subroutine get_boolean
+
 
 !> Obtain datetime value from TOML key-value pair
 subroutine get_datetime(self, val)
@@ -14776,6 +13608,7 @@ subroutine get_datetime(self, val)
    val => cast_datetime(self%val)
 end subroutine get_datetime
 
+
 !> Obtain datetime value from TOML key-value pair
 subroutine get_string(self, val)
 
@@ -14787,6 +13620,7 @@ subroutine get_string(self, val)
 
    val => cast_string(self%val)
 end subroutine get_string
+
 
 !> Obtain real value from TOML key-value pair
 subroutine set_float(self, val)
@@ -14804,6 +13638,7 @@ subroutine set_float(self, val)
    call move_alloc(tmp, self%val)
 end subroutine set_float
 
+
 !> Obtain integer value from TOML key-value pair
 subroutine set_integer(self, val)
 
@@ -14819,6 +13654,7 @@ subroutine set_integer(self, val)
    tmp%raw = val
    call move_alloc(tmp, self%val)
 end subroutine set_integer
+
 
 !> Obtain boolean value from TOML key-value pair
 subroutine set_boolean(self, val)
@@ -14836,6 +13672,7 @@ subroutine set_boolean(self, val)
    call move_alloc(tmp, self%val)
 end subroutine set_boolean
 
+
 !> Obtain datetime value from TOML key-value pair
 subroutine set_datetime(self, val)
 
@@ -14852,6 +13689,7 @@ subroutine set_datetime(self, val)
    call move_alloc(tmp, self%val)
 end subroutine set_datetime
 
+
 !> Obtain datetime value from TOML key-value pair
 subroutine set_string(self, val)
 
@@ -14867,6 +13705,7 @@ subroutine set_string(self, val)
    tmp%raw = val
    call move_alloc(tmp, self%val)
 end subroutine set_string
+
 
 !> Get the type of the value stored in the key-value pair
 pure function get_type(self) result(value_type)
@@ -14892,6 +13731,7 @@ pure function get_type(self) result(value_type)
       value_type = toml_type%string
    end select
 end function get_type
+
 
 function cast_float(val) result(ptr)
    class(generic_value), intent(in), target :: val
@@ -14950,6 +13790,7 @@ end function cast_string
 
 end module tomlf_type_keyval
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/node.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -14975,6 +13816,7 @@ module tomlf_structure_node
 
    public :: toml_node, resize
 
+
    !> Wrapped TOML value to generate pointer list
    type :: toml_node
 
@@ -14983,10 +13825,13 @@ module tomlf_structure_node
 
    end type toml_node
 
+
    !> Initial storage capacity of the datastructure
    integer, parameter :: initial_size = 16
 
+
 contains
+
 
 !> Change size of the TOML value list
 subroutine resize(list, n)
@@ -14999,6 +13844,7 @@ subroutine resize(list, n)
 
    type(toml_node), allocatable, target :: tmp(:)
    integer :: i
+
 
    if (allocated(list)) then
       call move_alloc(list, tmp)
@@ -15026,6 +13872,7 @@ end subroutine resize
 
 end module tomlf_structure_node
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/list.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -15048,6 +13895,7 @@ module tomlf_structure_list
    private
 
    public :: toml_list_structure
+
 
    !> Ordered data structure, allows iterations
    type, abstract :: toml_list_structure
@@ -15073,6 +13921,7 @@ module tomlf_structure_list
 
    end type toml_list_structure
 
+
    abstract interface
       !> Get number of TOML values in the structure
       pure function get_len(self) result(length)
@@ -15084,6 +13933,7 @@ module tomlf_structure_list
          !> Current length of the ordered structure
          integer :: length
       end function get_len
+
 
       !> Get TOML value at a given index
       subroutine get(self, idx, ptr)
@@ -15099,6 +13949,7 @@ module tomlf_structure_list
          class(toml_value), pointer, intent(out) :: ptr
       end subroutine get
 
+
       !> Push back a TOML value to the structure
       subroutine push_back(self, val)
          import :: toml_list_structure, toml_value
@@ -15110,6 +13961,7 @@ module tomlf_structure_list
          class(toml_value), allocatable, intent(inout) :: val
 
       end subroutine push_back
+
 
       !> Remove the first element from the data structure
       subroutine shift(self, val)
@@ -15123,6 +13975,7 @@ module tomlf_structure_list
 
       end subroutine shift
 
+
       !> Remove the last element from the data structure
       subroutine pop(self, val)
          import :: toml_list_structure, toml_value
@@ -15134,6 +13987,7 @@ module tomlf_structure_list
          class(toml_value), allocatable, intent(out) :: val
 
       end subroutine pop
+
 
       !> Delete TOML value at a given key
       subroutine delete(self, key)
@@ -15147,6 +14001,7 @@ module tomlf_structure_list
 
       end subroutine delete
 
+
       !> Deconstructor for data structure
       subroutine destroy(self)
          import :: toml_list_structure
@@ -15158,7 +14013,9 @@ module tomlf_structure_list
 
    end interface
 
+
 end module tomlf_structure_list
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/map.f90
 ! This file is part of toml-f.
@@ -15182,6 +14039,7 @@ module tomlf_structure_map
    private
 
    public :: toml_map_structure
+
 
    !> Abstract data structure
    type, abstract :: toml_map_structure
@@ -15207,6 +14065,7 @@ module tomlf_structure_map
 
    end type toml_map_structure
 
+
    abstract interface
       !> Get TOML value at a given key
       subroutine get(self, key, ptr)
@@ -15222,6 +14081,7 @@ module tomlf_structure_map
          class(toml_value), pointer, intent(out) :: ptr
       end subroutine get
 
+
       !> Push back a TOML value to the structure
       subroutine push_back(self, val)
          import :: toml_map_structure, toml_value
@@ -15234,6 +14094,7 @@ module tomlf_structure_map
 
       end subroutine push_back
 
+
       !> Get list of all keys in the structure
       subroutine get_keys(self, list)
          import :: toml_map_structure, toml_key
@@ -15245,6 +14106,7 @@ module tomlf_structure_map
          type(toml_key), allocatable, intent(out) :: list(:)
 
       end subroutine get_keys
+
 
       !> Remove TOML value at a given key and return it
       subroutine pop(self, key, val)
@@ -15261,6 +14123,7 @@ module tomlf_structure_map
 
       end subroutine pop
 
+
       !> Delete TOML value at a given key
       subroutine delete(self, key)
          import :: toml_map_structure, toml_value, tfc
@@ -15273,6 +14136,7 @@ module tomlf_structure_map
 
       end subroutine delete
 
+
       !> Deconstructor for data structure
       subroutine destroy(self)
          import :: toml_map_structure
@@ -15284,7 +14148,9 @@ module tomlf_structure_map
 
    end interface
 
+
 end module tomlf_structure_map
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/utils/sort.f90
 ! This file is part of toml-f.
@@ -15308,10 +14174,12 @@ module tomlf_utils_sort
 
    public :: sort, compare_less
 
+
    !> Create overloaded interface for export
    interface sort
       module procedure :: sort_keys
    end interface
+
 
    abstract interface
       !> Define order relation between two TOML keys
@@ -15326,7 +14194,9 @@ module tomlf_utils_sort
       end function compare_less
    end interface
 
+
 contains
+
 
    !> Entry point for sorting algorithm
    pure subroutine sort_keys(list, idx, compare)
@@ -15367,6 +14237,7 @@ contains
 
    end subroutine sort_keys
 
+
    !> Actual quick sort implementation
    pure recursive subroutine quicksort(list, idx, low, high, less)
       type(toml_key), intent(inout) :: list(:)
@@ -15396,6 +14267,7 @@ contains
 
    end subroutine quicksort
 
+
    !> Swap two integer values
    pure subroutine swap(lhs, rhs)
       integer, intent(inout) :: lhs
@@ -15409,6 +14281,7 @@ contains
 
    end subroutine swap
 
+
    !> Default comparison between two TOML keys
    pure function compare_keys_less(lhs, rhs) result(less)
       type(toml_key), intent (in) :: lhs
@@ -15419,7 +14292,9 @@ contains
 
    end function compare_keys_less
 
+
 end module tomlf_utils_sort
+
 
 !>>>>> ././src/fpm_command_line.f90
 !># Definition of the command line interface
@@ -15447,12 +14322,12 @@ end module tomlf_utils_sort
 !> ``fpm-help`` and ``fpm --list`` help pages below to make sure the help output
 !> is complete and consistent as well.
 module fpm_command_line
-use fpm_environment,  only : get_os_type, get_env, &
+use fpm_environment,  only : get_os_type, get_env, os_is_unix, &
                              OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_WINDOWS, &
-                             OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD, OS_NAME
+                             OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD
 use M_CLI2,           only : set_args, lget, sget, unnamed, remaining, specified
 use M_CLI2,           only : get_subcommand, CLI_RESPONSE_FILE
-use fpm_strings,      only : lower, split, to_fortran_name, is_fortran_name, remove_characters_in_set, string_t
+use fpm_strings,      only : lower, split, to_fortran_name, is_fortran_name
 use fpm_filesystem,   only : basename, canon_path, which, run
 use fpm_environment,  only : get_command_arguments_quoted
 use fpm_error,        only : fpm_stop, error_t
@@ -15468,7 +14343,6 @@ private
 public :: fpm_cmd_settings, &
           fpm_build_settings, &
           fpm_install_settings, &
-          fpm_export_settings, &
           fpm_new_settings, &
           fpm_run_settings, &
           fpm_test_settings, &
@@ -15500,7 +14374,6 @@ type, extends(fpm_cmd_settings)  :: fpm_build_settings
     logical                      :: show_model=.false.
     logical                      :: build_tests=.false.
     logical                      :: prune=.true.
-    character(len=:),allocatable :: dump
     character(len=:),allocatable :: compiler
     character(len=:),allocatable :: c_compiler
     character(len=:),allocatable :: cxx_compiler
@@ -15514,12 +14387,9 @@ end type
 
 type, extends(fpm_build_settings)  :: fpm_run_settings
     character(len=ibug),allocatable :: name(:)
-    character(len=:),allocatable :: args ! passed to the app
+    character(len=:),allocatable :: args
     character(len=:),allocatable :: runner
-    character(len=:),allocatable :: runner_args ! passed to the runner
     logical :: example
-    contains
-       procedure :: runner_command
 end type
 
 type, extends(fpm_run_settings)  :: fpm_test_settings
@@ -15536,27 +14406,20 @@ end type
 !> Settings for interacting and updating with project dependencies
 type, extends(fpm_cmd_settings)  :: fpm_update_settings
     character(len=ibug),allocatable :: name(:)
-    character(len=:),allocatable    :: dump
-    logical                         :: fetch_only
-    logical                         :: clean
-end type
-
-!> Settings for exporting model data
-type, extends(fpm_build_settings) :: fpm_export_settings
-    character(len=:),allocatable  :: dump_manifest
-    character(len=:),allocatable  :: dump_dependencies
-    character(len=:),allocatable  :: dump_model
+    logical :: fetch_only
+    logical :: clean
 end type
 
 type, extends(fpm_cmd_settings)   :: fpm_clean_settings
-    logical                       :: clean_skip = .false.
-    logical                       :: clean_call = .false.
+    logical                       :: is_unix
+    character(len=:), allocatable :: calling_dir  ! directory clean called from
+    logical                       :: clean_skip=.false.
+    logical                       :: clean_call=.false.
 end type
 
 type, extends(fpm_build_settings) :: fpm_publish_settings
     logical :: show_package_version = .false.
-    logical :: show_upload_data = .false.
-    logical :: is_dry_run = .false.
+    logical :: show_form_data = .false.
     character(len=:), allocatable :: token
 end type
 
@@ -15576,7 +14439,7 @@ character(len=20),parameter :: manual(*)=[ character(len=20) ::&
 &  'test',  'runner', 'install', 'update', 'list',   'help',   'version', 'publish' ]
 
 character(len=:), allocatable :: val_runner, val_compiler, val_flag, val_cflag, val_cxxflag, val_ldflag, &
-    val_profile, val_runner_args, val_dump
+    val_profile
 
 !   '12345678901234567890123456789012345678901234567890123456789012345678901234567890',&
 character(len=80), parameter :: help_text_build_common(*) = [character(len=80) ::      &
@@ -15604,8 +14467,7 @@ character(len=80), parameter :: help_text_flag(*) = [character(len=80) :: &
     ' --flag  FFLAGS    selects compile arguments for the build, the default value is',&
     '                   set by the FPM_FFLAGS environment variable. These are added  ',&
     '                   to the profile options if --profile is specified, else these ',&
-    '                   are added to the defaults. To override the defaults, use the ',&
-    '                   keyword [fortran] in the manifest. Note object and .mod      ',&
+    '                   these options override the defaults. Note object and .mod    ',&
     '                   directory locations are always built in.                     ',&
     ' --c-flag CFLAGS   selects compile arguments specific for C source in the build.',&
     '                   The default value is set by the FPM_CFLAGS environment       ',&
@@ -15616,6 +14478,7 @@ character(len=80), parameter :: help_text_flag(*) = [character(len=80) :: &
     ' --link-flag LDFLAGS  select arguments passed to the linker for the build. The  ',&
     '                   default value is set by the FPM_LDFLAGS environment variable.'&
     ]
+
 
 character(len=80), parameter :: help_text_environment(*) = [character(len=80) :: &
     'ENVIRONMENT VARIABLES',&
@@ -15652,12 +14515,12 @@ contains
         character(len=4096)           :: cmdarg
         integer                       :: i
         integer                       :: os
+        logical                       :: is_unix
         type(fpm_install_settings), allocatable :: install_settings
         type(fpm_publish_settings), allocatable :: publish_settings
-        type(fpm_export_settings) , allocatable :: export_settings
         type(version_t) :: version
         character(len=:), allocatable :: common_args, compiler_args, run_args, working_dir, &
-            & c_compiler, cxx_compiler, archiver, version_s, token_s
+            & c_compiler, cxx_compiler, archiver, version_s
 
         character(len=*), parameter :: fc_env = "FC", cc_env = "CC", ar_env = "AR", &
             & fflags_env = "FFLAGS", cflags_env = "CFLAGS", cxxflags_env = "CXXFLAGS", ldflags_env = "LDFLAGS", &
@@ -15679,6 +14542,7 @@ contains
             case (OS_UNKNOWN); os_type =  "OS Type:     Unknown"
             case default     ; os_type =  "OS Type:     UNKNOWN"
         end select
+        is_unix = os_is_unix(os)
 
         ! Get current release version
         version = fpm_version()
@@ -15703,8 +14567,7 @@ contains
         run_args = &
           ' --target " "' // &
           ' --list F' // &
-          ' --runner " "' // &
-          ' --runner-args " "'
+          ' --runner " "'
 
         compiler_args = &
           ' --profile " "' // &
@@ -15736,6 +14599,7 @@ contains
                 names=[character(len=len(names)) :: ]
             endif
 
+
             if(specified('target') )then
                call split(sget('target'),tnames,delimiters=' ,:')
                names=[character(len=max(len(names),len(tnames))) :: names,tnames]
@@ -15752,18 +14616,12 @@ contains
                if(names(i)=='..')names(i)='*'
             enddo
 
-            ! If there are additional command-line arguments, remove the additional
-            ! double quotes which have been added by M_CLI2
-            val_runner_args=sget('runner-args')
-            call remove_characters_in_set(val_runner_args,set='"')
-
             c_compiler = sget('c-compiler')
             cxx_compiler = sget('cxx-compiler')
             archiver = sget('archiver')
             allocate(fpm_run_settings :: cmd_settings)
             val_runner=sget('runner')
             if(specified('runner') .and. val_runner=='')val_runner='echo'
-
             cmd_settings=fpm_run_settings(&
             & args=remaining,&
             & profile=val_profile,&
@@ -15781,14 +14639,12 @@ contains
             & build_tests=.false.,&
             & name=names,&
             & runner=val_runner,&
-            & runner_args=val_runner_args, &
             & verbose=lget('verbose') )
 
         case('build')
             call set_args(common_args // compiler_args //'&
             & --list F &
             & --show-model F &
-            & --dump " " &
             & --tests F &
             & --',help_build,version_text)
 
@@ -15797,14 +14653,9 @@ contains
             c_compiler = sget('c-compiler')
             cxx_compiler = sget('cxx-compiler')
             archiver = sget('archiver')
-
-            val_dump = sget('dump')
-            if (specified('dump') .and. val_dump=='')val_dump='fpm_model.toml'
-
             allocate( fpm_build_settings :: cmd_settings )
             cmd_settings=fpm_build_settings(  &
             & profile=val_profile,&
-            & dump=val_dump,&
             & prune=.not.lget('no-prune'), &
             & compiler=val_compiler, &
             & c_compiler=c_compiler, &
@@ -15861,6 +14712,7 @@ contains
                 & '        numbers, underscores, or hyphens, and start with a letter.']
                 call fpm_stop(4,' ')
             endif
+
 
             allocate(fpm_new_settings :: cmd_settings)
             if (any( specified([character(len=10) :: 'src','lib','app','test','example','bare'])) &
@@ -16012,18 +14864,12 @@ contains
                if(names(i)=='..')names(i)='*'
             enddo
 
-            ! If there are additional command-line arguments, remove the additional
-            ! double quotes which have been added by M_CLI2
-            val_runner_args=sget('runner-args')
-            call remove_characters_in_set(val_runner_args,set='"')
-
             c_compiler = sget('c-compiler')
             cxx_compiler = sget('cxx-compiler')
             archiver = sget('archiver')
             allocate(fpm_test_settings :: cmd_settings)
             val_runner=sget('runner')
             if(specified('runner') .and. val_runner=='')val_runner='echo'
-
             cmd_settings=fpm_test_settings(&
             & args=remaining, &
             & profile=val_profile, &
@@ -16041,11 +14887,10 @@ contains
             & build_tests=.true., &
             & name=names, &
             & runner=val_runner, &
-            & runner_args=val_runner_args, &
-            & verbose=lget('verbose'))
+            & verbose=lget('verbose') )
 
         case('update')
-            call set_args(common_args // ' --fetch-only F --clean F --dump " " ', &
+            call set_args(common_args // ' --fetch-only F --clean F', &
                 help_update, version_text)
 
             if( size(unnamed) > 1 )then
@@ -16054,44 +14899,10 @@ contains
                 names=[character(len=len(names)) :: ]
             endif
 
-            val_dump = sget('dump')
-            if (specified('dump') .and. val_dump=='')val_dump='fpm_dependencies.toml'
-
             allocate(fpm_update_settings :: cmd_settings)
-            cmd_settings=fpm_update_settings(name=names, dump=val_dump, &
+            cmd_settings=fpm_update_settings(name=names, &
                 fetch_only=lget('fetch-only'), verbose=lget('verbose'), &
                 clean=lget('clean'))
-
-        case('export')
-
-            call set_args(common_args // compiler_args // '&
-                & --manifest "filename"  &
-                & --model "filename" &
-                & --dependencies "filename" ', &
-                help_build, version_text)
-
-            call check_build_vals()
-
-            c_compiler = sget('c-compiler')
-            cxx_compiler = sget('cxx-compiler')
-            archiver = sget('archiver')
-            allocate(export_settings, source=fpm_export_settings(&
-                profile=val_profile,&
-                prune=.not.lget('no-prune'), &
-                compiler=val_compiler, &
-                c_compiler=c_compiler, &
-                cxx_compiler=cxx_compiler, &
-                archiver=archiver, &
-                flag=val_flag, &
-                cflag=val_cflag, &
-                show_model=.true., &
-                cxxflag=val_cxxflag, &
-                ldflag=val_ldflag, &
-                verbose=lget('verbose')))
-            call get_char_arg(export_settings%dump_model, 'model')
-            call get_char_arg(export_settings%dump_manifest, 'manifest')
-            call get_char_arg(export_settings%dump_dependencies, 'dependencies')
-            call move_alloc(export_settings, cmd_settings)
 
         case('clean')
             call set_args(common_args // &
@@ -16101,14 +14912,15 @@ contains
             allocate(fpm_clean_settings :: cmd_settings)
             call get_current_directory(working_dir, error)
             cmd_settings=fpm_clean_settings( &
+            &   is_unix=is_unix,             &
+            &   calling_dir=working_dir,     &
             &   clean_skip=lget('skip'),     &
-            &   clean_call=lget('all'))
+                clean_call=lget('all'))
 
         case('publish')
             call set_args(common_args // compiler_args //'&
             & --show-package-version F &
-            & --show-upload-data F &
-            & --dry-run F &
+            & --show-form-data F &
             & --token " " &
             & --list F &
             & --show-model F &
@@ -16120,13 +14932,10 @@ contains
             c_compiler = sget('c-compiler')
             cxx_compiler = sget('cxx-compiler')
             archiver = sget('archiver')
-            token_s = sget('token')
 
-            allocate(fpm_publish_settings :: cmd_settings)
-            cmd_settings = fpm_publish_settings( &
+            allocate(publish_settings, source=fpm_publish_settings( &
             & show_package_version = lget('show-package-version'), &
-            & show_upload_data = lget('show-upload-data'), &
-            & is_dry_run = lget('dry-run'), &
+            & show_form_data = lget('show-form-data'), &
             & profile=val_profile,&
             & prune=.not.lget('no-prune'), &
             & compiler=val_compiler, &
@@ -16140,8 +14949,9 @@ contains
             & list=lget('list'),&
             & show_model=lget('show-model'),&
             & build_tests=lget('tests'),&
-            & verbose=lget('verbose'),&
-            & token=token_s)
+            & verbose=lget('verbose')))
+            call get_char_arg(publish_settings%token, 'token')
+            call move_alloc(publish_settings, cmd_settings)
 
         case default
 
@@ -16230,11 +15040,11 @@ contains
    help_list_dash = [character(len=80) :: &
    '                                                                                ', &
    ' build [--compiler COMPILER_NAME] [--profile PROF] [--flag FFLAGS] [--list]     ', &
-   '       [--tests] [--no-prune] [--dump [FILENAME]]                               ', &
+   '       [--tests] [--no-prune]                                                   ', &
    ' help [NAME(s)]                                                                 ', &
    ' new NAME [[--lib|--src] [--app] [--test] [--example]]|                         ', &
    '          [--full|--bare][--backfill]                                           ', &
-   ' update [NAME(s)] [--fetch-only] [--clean] [--verbose] [--dump [FILENAME]]      ', &
+   ' update [NAME(s)] [--fetch-only] [--clean] [--verbose]                          ', &
    ' list [--list]                                                                  ', &
    ' run  [[--target] NAME(s) [--example] [--profile PROF] [--flag FFLAGS] [--all]  ', &
    '      [--runner "CMD"] [--compiler COMPILER_NAME] [--list] [-- ARGS]            ', &
@@ -16243,8 +15053,7 @@ contains
    ' install [--profile PROF] [--flag FFLAGS] [--no-rebuild] [--prefix PATH]        ', &
    '         [options]                                                              ', &
    ' clean [--skip] [--all]                                                         ', &
-   ' publish [--token TOKEN] [--show-package-version] [--show-upload-data]          ', &
-   '         [--dry-run] [--verbose]                                                ', &
+   ' publish [--show-package-version] [--show-form-data] [--token TOKEN]            ', &
    ' ']
     help_usage=[character(len=80) :: &
     '' ]
@@ -16254,7 +15063,7 @@ contains
    '                 executables.                                                   ', &
    '                                                                                ', &
    'SYNOPSIS                                                                        ', &
-   '   fpm run|test --runner CMD ... --runner-args ARGS -- SUFFIX_OPTIONS           ', &
+   '   fpm run|test --runner CMD ... -- SUFFIX_OPTIONS                              ', &
    '                                                                                ', &
    'DESCRIPTION                                                                     ', &
    '   The --runner option allows specifying a program to launch                    ', &
@@ -16270,11 +15079,8 @@ contains
    '               Available for both the "run" and "test" subcommands.             ', &
    '               If the keyword is specified without a value the default command  ', &
    '               is "echo".                                                       ', &
-   ' --runner-args "args"    an additional option to pass command-line arguments    ', &
-   '               to the runner command, instead of to the fpm app.                ', &
    ' -- SUFFIX_OPTIONS  additional options to suffix the command CMD and executable ', &
-   '                    file names with. These options are passed as command-line   ', &
-   '                    arguments to the app.                                       ', &
+   '                    file names with.                                            ', &
    'EXAMPLES                                                                        ', &
    '   Use cases for ''fpm run|test --runner "CMD"'' include employing                ', &
    '   the following common GNU/Linux and Unix commands:                            ', &
@@ -16303,7 +15109,6 @@ contains
    '                                                                                ', &
    '  fpm test --runner gdb                                                         ', &
    '  fpm run --runner "tar cvfz $HOME/bundle.tgz"                                  ', &
-   '  fpm run --runner "mpiexec" --runner-args "-np 12"                             ', &
    '  fpm run --runner ldd                                                          ', &
    '  fpm run --runner strip                                                        ', &
    '  fpm run --runner ''cp -t /usr/local/bin''                                       ', &
@@ -16358,10 +15163,10 @@ contains
     '  Their syntax is                                                      ', &
     '                                                                                ', &
     '    build [--profile PROF] [--flag FFLAGS] [--list] [--compiler COMPILER_NAME]  ', &
-    '          [--tests] [--no-prune] [--dump [FILENAME]]                            ', &
+    '          [--tests] [--no-prune]                                                ', &
     '    new NAME [[--lib|--src] [--app] [--test] [--example]]|                      ', &
     '             [--full|--bare][--backfill]                                        ', &
-    '    update [NAME(s)] [--fetch-only] [--clean] [--dump [FILENAME]]               ', &
+    '    update [NAME(s)] [--fetch-only] [--clean]                                   ', &
     '    run [[--target] NAME(s)] [--profile PROF] [--flag FFLAGS] [--list] [--all]  ', &
     '        [--example] [--runner "CMD"] [--compiler COMPILER_NAME]                 ', &
     '        [--no-prune] [-- ARGS]                                                  ', &
@@ -16372,8 +15177,7 @@ contains
     '    install [--profile PROF] [--flag FFLAGS] [--no-rebuild] [--prefix PATH]     ', &
     '            [options]                                                           ', &
     '    clean [--skip] [--all]                                                      ', &
-    '    publish [--token TOKEN] [--show-package-version] [--show-upload-data]       ', &
-    '            [--dry-run] [--verbose]                                             ', &
+    '    publish [--show-package-version] [--show-form-data] [--token TOKEN]         ', &
     '                                                                                ', &
     'SUBCOMMAND OPTIONS                                                              ', &
     ' -C, --directory PATH', &
@@ -16446,14 +15250,14 @@ contains
     ' + The fpm(1) home page is at https://github.com/fortran-lang/fpm               ', &
     ' + Registered fpm(1) packages are at https://fortran-lang.org/packages          ', &
     ' + The fpm(1) TOML file format is described at                                  ', &
-    '   https://fpm.fortran-lang.org/spec/manifest.html                              ', &
+    '   https://fpm.fortran-lang.org/en/spec/manifest.html                           ', &
     '']
     help_list=[character(len=80) :: &
     'NAME                                                                   ', &
     ' list(1) - list summary of fpm(1) subcommands                          ', &
     '                                                                       ', &
     'SYNOPSIS                                                               ', &
-    ' fpm list                                                              ', &
+    ' fpm list [-list]                                                      ', &
     '                                                                       ', &
     ' fpm list --help|--version                                             ', &
     '                                                                       ', &
@@ -16546,7 +15350,7 @@ contains
     '                                                                       ', &
     'SYNOPSIS                                                               ', &
     ' fpm build [--profile PROF] [--flag FFLAGS] [--compiler COMPILER_NAME] ', &
-    '           [--list] [--tests] [--dump [FILENAME]]                      ', &
+    '           [--list] [--tests]                                          ', &
     '                                                                       ', &
     ' fpm build --help|--version                                            ', &
     '                                                                       ', &
@@ -16574,9 +15378,6 @@ contains
     ' --list        list candidates instead of building or running them     ', &
     ' --tests       build all tests (otherwise only if needed)              ', &
     ' --show-model  show the model and exit (do not build)                  ', &
-    ' --dump [FILENAME] save model representation to file. use JSON format  ', &
-    '                   if file name is *.json; use TOML format otherwise   ', &
-    '                   (default file name: model.toml)                     ', &
     ' --help        print this help and exit                                ', &
     ' --version     print program version information and exit              ', &
     '                                                                       ', &
@@ -16623,15 +15424,13 @@ contains
     help_new=[character(len=80) ::                                             &
     'NAME                                                                   ', &
     ' new(1) - the fpm(1) subcommand to initialize a new project            ', &
-    '                                                                       ', &
     'SYNOPSIS                                                               ', &
-    ' fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|            ', &
-    '              [--full|--bare][--backfill]                              ', &
+    '  fpm new NAME [[--lib|--src] [--app] [--test] [--example]]|           ', &
+    '      [--full|--bare][--backfill]                                      ', &
     ' fpm new --help|--version                                              ', &
     '                                                                       ', &
     'DESCRIPTION                                                            ', &
     ' "fpm new" creates and populates a new programming project directory.  ', &
-    '                                                                       ', &
     ' It                                                                    ', &
     '   o creates a directory with the specified name                       ', &
     '   o runs the command "git init" in that directory                     ', &
@@ -16778,7 +15577,7 @@ contains
     ' update(1) - manage project dependencies', &
     '', &
     'SYNOPSIS', &
-    ' fpm update [--fetch-only] [--clean] [--verbose] [--dump [FILENAME]] [NAME(s)]', &
+    ' fpm update [--fetch-only] [--clean] [--verbose] [NAME(s)]', &
     '', &
     'DESCRIPTION', &
     ' Manage and update project dependencies. If no dependency names are', &
@@ -16788,9 +15587,6 @@ contains
     ' --fetch-only  Only fetch dependencies, do not update existing projects', &
     ' --clean       Do not use previous dependency cache', &
     ' --verbose     Show additional printout', &
-    ' --dump [FILENAME] Dump updated dependency tree to file. use JSON format  ', &
-    '                   if file name is *.json; use TOML format otherwise      ', &
-    '                   (default file name: fpm_dependencies.toml)             ', &
     '', &
     'SEE ALSO', &
     ' The fpm(1) home page at https://github.com/fortran-lang/fpm', &
@@ -16862,47 +15658,16 @@ contains
     ' publish(1) - publish package to the registry', &
     '', &
     'SYNOPSIS', &
-    ' fpm publish [--token TOKEN] [--show-package-version] [--show-upload-data]', &
-    '             [--dry-run] [--verbose]                                      ', &
-    '', &
-    ' fpm publish --help|--version', &
+    ' fpm publish [--token TOKEN]', &
     '', &
     'DESCRIPTION', &
-    ' Follow the steps to create a tarball and upload a package to the registry:', &
-    '', &
-    '  1. Register on the website (https://registry-frontend.vercel.app/).', &
-    '  2. Create a namespace. Uploaded packages must be assigned to a unique', &
-    '     namespace to avoid conflicts among packages with similar names. A', &
-    '     namespace can accommodate multiple packages.', &
-    '  3. Create a token for that namespace. A token is linked to your username', &
-    '     and is used to authenticate you during the upload process. Do not share', &
-    '     the token with others.', &
-    '  4. Run fpm publish --token TOKEN to upload the package to the registry.', &
-    '     But be aware that the upload is permanent. An uploaded package cannot be', &
-    '     deleted.', &
-    '', &
-    ' See documentation for more information regarding package upload and usage:', &
-    '', &
-    ' Package upload:', &
-    ' https://fpm.fortran-lang.org/spec/publish.html', &
-    '', &
-    ' Package usage:', &
-    ' https://fpm.fortran-lang.org/spec/manifest.html#dependencies-from-a-registry', &
+    ' Collect relevant source files and upload package to the registry.', &
+    ' It is mandatory to provide a token. The token can be generated on the', &
+    ' registry website and will be linked to your username and namespace.', &
     '', &
     'OPTIONS', &
     ' --show-package-version   show package version without publishing', &
-    ' --show-upload-data       show upload data without publishing', &
-    ' --dry-run                perform dry run without publishing', &
-    ' --help                   print this help and exit', &
-    ' --version                print program version information and exit', &
-    ' --verbose                print more information', &
-    '', &
-    'EXAMPLES', &
-    '', &
-    ' fpm publish --show-package-version    # show package version without publishing', &
-    ' fpm publish --show-upload-data        # show upload data without publishing', &
-    ' fpm publish --token TOKEN --dry-run   # perform dry run without publishing', &
-    ' fpm publish --token TOKEN             # upload package to the registry', &
+    ' --show-form-data         show sent form data without publishing', &
     '' ]
      end subroutine set_help
 
@@ -16912,6 +15677,7 @@ contains
       var = sget(arg)
       if (len_trim(var) == 0) deallocate(var)
     end subroutine get_char_arg
+
 
     !> Get an environment variable for fpm, this routine ensures that every variable
     !> used by fpm is prefixed with FPM_.
@@ -16925,21 +15691,8 @@ contains
       val = get_env(fpm_prefix//env, default)
     end function get_fpm_env
 
-    !> Build a full runner command (executable + command-line arguments)
-    function runner_command(cmd) result(run_cmd)
-        class(fpm_run_settings), intent(in) :: cmd
-        character(len=:), allocatable :: run_cmd
-        !> Get executable
-        if (len_trim(cmd%runner)>0) then
-            run_cmd = trim(cmd%runner)
-        else
-            run_cmd = ''
-        end if
-        !> Append command-line arguments
-        if (len_trim(cmd%runner_args)>0) run_cmd = run_cmd//' '//trim(cmd%runner_args)
-    end function runner_command
-
 end module fpm_command_line
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/ordered_map.f90
 ! This file is part of toml-f.
@@ -16968,6 +15721,7 @@ module tomlf_structure_ordered_map
    private
 
    public :: toml_ordered_map, new_ordered_map
+
 
    !> Stores TOML values in a list of pointers
    type, extends(toml_map_structure) :: toml_ordered_map
@@ -17000,10 +15754,13 @@ module tomlf_structure_ordered_map
 
    end type toml_ordered_map
 
+
    !> Initial storage capacity of the datastructure
    integer, parameter :: initial_size = 16
 
+
 contains
+
 
 !> Constructor for the storage data structure
 subroutine new_ordered_map(self, n)
@@ -17022,6 +15779,7 @@ subroutine new_ordered_map(self, n)
    end if
 
 end subroutine new_ordered_map
+
 
 !> Get TOML value at a given key
 subroutine get(self, key, ptr)
@@ -17050,6 +15808,7 @@ subroutine get(self, key, ptr)
 
 end subroutine get
 
+
 !> Push back a TOML value to the structure
 subroutine push_back(self, val)
 
@@ -17075,6 +15834,7 @@ subroutine push_back(self, val)
 
 end subroutine push_back
 
+
 !> Get list of all keys in the structure
 subroutine get_keys(self, list)
 
@@ -17098,6 +15858,7 @@ subroutine get_keys(self, list)
    end do
 
 end subroutine get_keys
+
 
 !> Remove TOML value at a given key and return it
 subroutine pop(self, key, val)
@@ -17133,6 +15894,7 @@ subroutine pop(self, key, val)
 
 end subroutine pop
 
+
 !> Delete TOML value at a given key
 subroutine delete(self, key)
 
@@ -17150,6 +15912,7 @@ subroutine delete(self, key)
    end if
 
 end subroutine delete
+
 
 !> Deconstructor for data structure
 subroutine destroy(self)
@@ -17170,7 +15933,9 @@ subroutine destroy(self)
 
 end subroutine destroy
 
+
 end module tomlf_structure_ordered_map
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/structure/array_list.f90
 ! This file is part of toml-f.
@@ -17199,6 +15964,7 @@ module tomlf_structure_array_list
    private
 
    public :: toml_array_list, new_array_list
+
 
    !> Stores TOML values in a list of pointers
    type, extends(toml_list_structure) :: toml_array_list
@@ -17231,10 +15997,13 @@ module tomlf_structure_array_list
 
    end type toml_array_list
 
+
    !> Initial storage capacity of the datastructure
    integer, parameter :: initial_size = 16
 
+
 contains
+
 
 !> Constructor for the storage data structure
 subroutine new_array_list(self, n)
@@ -17254,6 +16023,7 @@ subroutine new_array_list(self, n)
 
 end subroutine new_array_list
 
+
 !> Get number of TOML values in the structure
 pure function get_len(self) result(length)
 
@@ -17266,6 +16036,7 @@ pure function get_len(self) result(length)
    length = self%n
 
 end function get_len
+
 
 !> Get TOML value at a given index
 subroutine get(self, idx, ptr)
@@ -17288,6 +16059,7 @@ subroutine get(self, idx, ptr)
    end if
 
 end subroutine get
+
 
 !> Push back a TOML value to the structure
 subroutine push_back(self, val)
@@ -17314,6 +16086,7 @@ subroutine push_back(self, val)
 
 end subroutine push_back
 
+
 !> Remove the first element from the data structure
 subroutine shift(self, val)
 
@@ -17335,6 +16108,7 @@ subroutine shift(self, val)
 
 end subroutine shift
 
+
 !> Remove the last element from the data structure
 subroutine pop(self, val)
 
@@ -17350,6 +16124,7 @@ subroutine pop(self, val)
    end if
 
 end subroutine pop
+
 
 !> Deconstructor for data structure
 subroutine destroy(self)
@@ -17370,7 +16145,9 @@ subroutine destroy(self)
 
 end subroutine destroy
 
+
 end module tomlf_structure_array_list
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/context.f90
 ! This file is part of toml-f.
@@ -17528,6 +16305,7 @@ end function report2
 
 end module tomlf_de_context
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/structure.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -17565,7 +16343,9 @@ module tomlf_structure
    public :: toml_list_structure, toml_map_structure
    public :: new_list_structure, new_map_structure
 
+
 contains
+
 
 !> Constructor for the ordered storage data structure
 subroutine new_list_structure(self)
@@ -17583,6 +16363,7 @@ subroutine new_list_structure(self)
 
 end subroutine new_list_structure
 
+
 !> Constructor for the storage data structure
 subroutine new_map_structure(self)
 
@@ -17599,7 +16380,9 @@ subroutine new_map_structure(self)
 
 end subroutine new_map_structure
 
+
 end module tomlf_structure
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/lexer.f90
 ! This file is part of toml-f.
@@ -17644,6 +16427,7 @@ module tomlf_de_lexer
 
    public :: toml_lexer, new_lexer_from_file, new_lexer_from_unit, new_lexer_from_string
    public :: toml_token, stringify, token_kind
+
 
    !> Possible characters encountered in a lexeme
    type :: enum_char
@@ -17710,6 +16494,7 @@ module tomlf_de_lexer
    interface resize
       module procedure :: resize_scope
    end interface
+
 
    !> Tokenizer for TOML documents.
    type, extends(abstract_lexer) :: toml_lexer
@@ -17824,6 +16609,7 @@ subroutine new_lexer_from_string(lexer, string)
    lexer%chunk(:length) = string
    call resize(lexer%stack)
 end subroutine new_lexer_from_string
+
 
 !> Advance the lexer to the next token.
 subroutine next(lexer, token)
@@ -18320,6 +17106,7 @@ subroutine next_integer(lexer, token)
       end select
    end if
 
+
    do while(pos <= len(lexer%chunk))
       ch = peek(lexer, pos)
       if (ch == "_") then
@@ -18559,6 +17346,7 @@ pure function valid_date(string) result(valid)
    valid = day >= 1 .and. day <= mday
 end function valid_date
 
+
 !> Validate a string as time
 function valid_time(string) result(valid)
    !> Input string, 8 characters
@@ -18599,6 +17387,7 @@ function valid_time(string) result(valid)
       & .and. hour >= 0 .and. hour < 24
 end function valid_time
 
+
 !> Validate a string as timezone
 function valid_local(string) result(valid)
    !> Input string, 6 characters
@@ -18630,6 +17419,7 @@ function valid_local(string) result(valid)
    valid = minute >= 0 .and. minute < 60 &
       & .and. hour >= 0 .and. hour < 24
 end function valid_local
+
 
 !> Show current character
 elemental function peek(lexer, pos) result(ch)
@@ -18987,6 +17777,7 @@ subroutine extract_datetime(lexer, token, val)
    val = toml_datetime(lexer%chunk(token%first:token%last))
 end subroutine extract_datetime
 
+
 !> Push a new scope onto the lexer stack and record the token
 pure subroutine push_back(lexer, scope, token)
    type(toml_lexer), intent(inout) :: lexer
@@ -19019,6 +17810,7 @@ pure function view_scope(lexer) result(scope)
       scope = lexer_scope%table
    end if
 end function view_scope
+
 
 !> Reallocate list of scopes
 pure subroutine resize_scope(var, n)
@@ -19054,6 +17846,7 @@ pure subroutine resize_scope(var, n)
 
 end subroutine resize_scope
 
+
 !> Extract information about the source
 subroutine get_info(lexer, meta, output)
    !> Instance of the lexer
@@ -19071,6 +17864,7 @@ subroutine get_info(lexer, meta, output)
    end select
 end subroutine get_info
 
+
 function hex_to_int(hex) result(val)
    character(*, tfc), intent(in) :: hex
    integer(tfi) :: val
@@ -19086,6 +17880,7 @@ function hex_to_int(hex) result(val)
    end do
 end function hex_to_int
 
+
 function verify_ucs(escape) result(valid)
    character(*, tfc), intent(in) :: escape
    logical :: valid
@@ -19097,6 +17892,7 @@ function verify_ucs(escape) result(valid)
       & .and. (code < int(z"d800", tfi) .or. code > int(z"dfff", tfi)) &
       & .and. (code < int(z"fffe", tfi) .or. code > int(z"ffff", tfi))
 end function verify_ucs
+
 
 function convert_ucs(escape) result(str)
    character(*, tfc), intent(in) :: escape
@@ -19141,7 +17937,9 @@ function convert_ucs(escape) result(str)
    end select
 end function convert_ucs
 
+
 end module tomlf_de_lexer
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/array.f90
 ! This file is part of toml-f.
@@ -19166,6 +17964,7 @@ module tomlf_type_array
    private
 
    public :: toml_array, new_array, new, initialized, len
+
 
    !> TOML array
    type, extends(toml_value) :: toml_array
@@ -19195,27 +17994,33 @@ module tomlf_type_array
 
    end type toml_array
 
+
    !> Create standard constructor
    interface toml_array
       module procedure :: new_array_func
    end interface toml_array
+
 
    !> Overloaded constructor for TOML values
    interface new
       module procedure :: new_array
    end interface
 
+
    !> Overload len function
    interface len
       module procedure :: get_len
    end interface
+
 
    !> Check whether data structure is initialized properly
    interface initialized
       module procedure :: array_initialized
    end interface initialized
 
+
 contains
+
 
 !> Constructor to create a new TOML array and allocate the internal storage
 subroutine new_array(self)
@@ -19227,6 +18032,7 @@ subroutine new_array(self)
 
 end subroutine new_array
 
+
 !> Default constructor for TOML array type
 function new_array_func() result(self)
 
@@ -19236,6 +18042,7 @@ function new_array_func() result(self)
    call new_array(self)
 
 end function new_array_func
+
 
 !> Check whether data structure is initialized properly
 pure function array_initialized(self) result(okay)
@@ -19249,6 +18056,7 @@ pure function array_initialized(self) result(okay)
    okay = allocated(self%list)
 end function array_initialized
 
+
 !> Get number of TOML values in the array
 pure function get_len(self) result(length)
 
@@ -19261,6 +18069,7 @@ pure function get_len(self) result(length)
    length = self%list%get_len()
 
 end function get_len
+
 
 !> Get the TOML value at the respective index
 subroutine get(self, idx, ptr)
@@ -19277,6 +18086,7 @@ subroutine get(self, idx, ptr)
    call self%list%get(idx, ptr)
 
 end subroutine get
+
 
 !> Push back a TOML value to the array
 subroutine push_back(self, val, stat)
@@ -19301,6 +18111,7 @@ subroutine push_back(self, val, stat)
 
 end subroutine push_back
 
+
 !> Remove the first element from the data structure
 subroutine shift(self, val)
 
@@ -19314,6 +18125,7 @@ subroutine shift(self, val)
 
 end subroutine shift
 
+
 !> Remove the last element from the data structure
 subroutine pop(self, val)
 
@@ -19326,6 +18138,7 @@ subroutine pop(self, val)
    call self%list%pop(val)
 
 end subroutine pop
+
 
 !> Deconstructor to cleanup allocations (optional)
 subroutine destroy(self)
@@ -19344,7 +18157,9 @@ subroutine destroy(self)
 
 end subroutine destroy
 
+
 end module tomlf_type_array
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type/table.f90
 ! This file is part of toml-f.
@@ -19373,6 +18188,7 @@ module tomlf_type_table
    private
 
    public :: toml_table, new_table, new, initialized
+
 
    !> TOML table
    type, extends(toml_value) :: toml_table
@@ -19411,22 +18227,27 @@ module tomlf_type_table
 
    end type toml_table
 
+
    !> Create standard constructor
    interface toml_table
       module procedure :: new_table_func
    end interface toml_table
+
 
    !> Overloaded constructor for TOML values
    interface new
       module procedure :: new_table
    end interface
 
+
    !> Check whether data structure is initialized properly
    interface initialized
       module procedure :: table_initialized
    end interface initialized
 
+
 contains
+
 
 !> Constructor to create a new TOML table and allocate the internal storage
 subroutine new_table(self)
@@ -19438,6 +18259,7 @@ subroutine new_table(self)
 
 end subroutine new_table
 
+
 !> Default constructor for TOML table type
 function new_table_func() result(self)
 
@@ -19447,6 +18269,7 @@ function new_table_func() result(self)
    call new_table(self)
 
 end function new_table_func
+
 
 !> Check whether data structure is initialized properly
 pure function table_initialized(self) result(okay)
@@ -19459,6 +18282,7 @@ pure function table_initialized(self) result(okay)
 
    okay = allocated(self%map)
 end function table_initialized
+
 
 !> Get the TOML value associated with the respective key
 subroutine get(self, key, ptr)
@@ -19476,6 +18300,7 @@ subroutine get(self, key, ptr)
 
 end subroutine get
 
+
 !> Get list of all keys in this table
 subroutine get_keys(self, list)
 
@@ -19488,6 +18313,7 @@ subroutine get_keys(self, list)
    call self%map%get_keys(list)
 
 end subroutine get_keys
+
 
 !> Check if a key is present in the table
 function has_key(self, key) result(found)
@@ -19508,6 +18334,7 @@ function has_key(self, key) result(found)
    found = associated(ptr)
 
 end function has_key
+
 
 !> Push back a TOML value to the table
 subroutine push_back(self, val, stat)
@@ -19545,6 +18372,7 @@ subroutine push_back(self, val, stat)
 
 end subroutine push_back
 
+
 !> Remove TOML value at a given key and return it
 subroutine pop(self, key, val)
 
@@ -19561,6 +18389,7 @@ subroutine pop(self, key, val)
 
 end subroutine pop
 
+
 !> Delete TOML value at a given key
 subroutine delete(self, key)
 
@@ -19573,6 +18402,7 @@ subroutine delete(self, key)
    call self%map%delete(key)
 
 end subroutine delete
+
 
 !> Deconstructor to cleanup allocations (optional)
 subroutine destroy(self)
@@ -19591,7 +18421,9 @@ subroutine destroy(self)
 
 end subroutine destroy
 
+
 end module tomlf_type_table
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/type.f90
 ! This file is part of toml-f.
@@ -19639,12 +18471,14 @@ module tomlf_type
    public :: is_array_of_tables
    public :: cast_to_table, cast_to_array, cast_to_keyval
 
+
    !> Interface to build new tables
    interface add_table
       module procedure :: add_table_to_table
       module procedure :: add_table_to_table_key
       module procedure :: add_table_to_array
    end interface add_table
+
 
    !> Interface to build new arrays
    interface add_array
@@ -19653,6 +18487,7 @@ module tomlf_type
       module procedure :: add_array_to_array
    end interface add_array
 
+
    !> Interface to build new key-value pairs
    interface add_keyval
       module procedure :: add_keyval_to_table
@@ -19660,7 +18495,9 @@ module tomlf_type
       module procedure :: add_keyval_to_array
    end interface add_keyval
 
+
 contains
+
 
 !> Create a new TOML table inside an existing table
 subroutine add_table_to_table(table, key, ptr, stat)
@@ -19711,6 +18548,7 @@ subroutine add_table_to_table(table, key, ptr, stat)
 
 end subroutine add_table_to_table
 
+
 !> Create a new TOML table inside an existing table
 subroutine add_table_to_table_key(table, key, ptr, stat)
 
@@ -19729,6 +18567,7 @@ subroutine add_table_to_table_key(table, key, ptr, stat)
    call add_table(table, key%key, ptr, stat)
    if (associated(ptr)) ptr%origin = key%origin
 end subroutine add_table_to_table_key
+
 
 !> Create a new TOML array inside an existing table
 subroutine add_array_to_table(table, key, ptr, stat)
@@ -19779,6 +18618,7 @@ subroutine add_array_to_table(table, key, ptr, stat)
 
 end subroutine add_array_to_table
 
+
 !> Create a new TOML array inside an existing table
 subroutine add_array_to_table_key(table, key, ptr, stat)
 
@@ -19797,6 +18637,7 @@ subroutine add_array_to_table_key(table, key, ptr, stat)
    call add_array(table, key%key, ptr, stat)
    if (associated(ptr)) ptr%origin = key%origin
 end subroutine add_array_to_table_key
+
 
 !> Create a new key-value pair inside an existing table
 subroutine add_keyval_to_table(table, key, ptr, stat)
@@ -19847,6 +18688,7 @@ subroutine add_keyval_to_table(table, key, ptr, stat)
 
 end subroutine add_keyval_to_table
 
+
 !> Create a new key-value pair inside an existing table
 subroutine add_keyval_to_table_key(table, key, ptr, stat)
 
@@ -19865,6 +18707,7 @@ subroutine add_keyval_to_table_key(table, key, ptr, stat)
    call add_keyval(table, key%key, ptr, stat)
    if (associated(ptr)) ptr%origin = key%origin
 end subroutine add_keyval_to_table_key
+
 
 !> Create a new TOML table inside an existing array
 subroutine add_table_to_array(array, ptr, stat)
@@ -19910,6 +18753,7 @@ subroutine add_table_to_array(array, ptr, stat)
    if (present(stat)) stat = istat
 
 end subroutine add_table_to_array
+
 
 !> Create a new TOML array inside an existing array
 subroutine add_array_to_array(array, ptr, stat)
@@ -19957,6 +18801,7 @@ subroutine add_array_to_array(array, ptr, stat)
 
 end subroutine add_array_to_array
 
+
 !> Create a new key-value pair inside an existing array
 subroutine add_keyval_to_array(array, ptr, stat)
 
@@ -20002,6 +18847,7 @@ subroutine add_keyval_to_array(array, ptr, stat)
 
 end subroutine add_keyval_to_array
 
+
 !> Wrapped constructor to create a new TOML table on an abstract TOML value
 subroutine new_table_(self)
 
@@ -20015,6 +18861,7 @@ subroutine new_table_(self)
    call move_alloc(val, self)
 
 end subroutine new_table_
+
 
 !> Wrapped constructor to create a new TOML array on an abstract TOML value
 subroutine new_array_(self)
@@ -20030,6 +18877,7 @@ subroutine new_array_(self)
 
 end subroutine new_array_
 
+
 !> Wrapped constructor to create a new TOML array on an abstract TOML value
 subroutine new_keyval_(self)
 
@@ -20044,6 +18892,7 @@ subroutine new_keyval_(self)
 
 end subroutine new_keyval_
 
+
 !> Determine if array contains only tables
 function is_array_of_tables(array) result(only_tables)
 
@@ -20055,6 +18904,7 @@ function is_array_of_tables(array) result(only_tables)
 
    class(toml_value), pointer :: ptr
    integer :: i, n
+
 
    n = len(array)
    only_tables = n > 0
@@ -20071,6 +18921,7 @@ function is_array_of_tables(array) result(only_tables)
    end do
 
 end function is_array_of_tables
+
 
 !> Cast an abstract TOML value to a TOML array
 function cast_to_array(ptr) result(array)
@@ -20114,7 +18965,9 @@ function cast_to_keyval(ptr) result(kval)
    end select
 end function cast_to_keyval
 
+
 end module tomlf_type
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/ser.f90
 ! This file is part of toml-f.
@@ -20144,6 +18997,7 @@ module tomlf_ser
    public :: toml_serializer, new_serializer, new
    public :: toml_dump, toml_dumps, toml_serialize
 
+
    interface toml_dumps
       module procedure :: toml_dump_to_string
    end interface toml_dumps
@@ -20153,6 +19007,7 @@ module tomlf_ser
       module procedure :: toml_dump_to_unit
    end interface toml_dump
 
+
    !> Configuration for JSON serializer
    type :: toml_ser_config
 
@@ -20160,6 +19015,7 @@ module tomlf_ser
       character(len=:), allocatable :: indent
 
    end type toml_ser_config
+
 
    !> TOML serializer to produduce a TOML document from a datastructure
    type, extends(toml_visitor) :: toml_serializer
@@ -20190,20 +19046,25 @@ module tomlf_ser
 
    end type toml_serializer
 
+
    !> Create standard constructor
    interface toml_serializer
       module procedure :: new_serializer_func
    end interface toml_serializer
+
 
    !> Overloaded constructor for TOML serializers
    interface new
       module procedure :: new_serializer
    end interface
 
+
    !> Initial size of the key path stack
    integer, parameter :: initial_size = 8
 
+
 contains
+
 
 !> Serialize a JSON value to a string and return it.
 !>
@@ -20226,6 +19087,7 @@ function toml_serialize(val, config) result(string)
    end if
 end function toml_serialize
 
+
 !> Create a string representing the JSON value
 subroutine toml_dump_to_string(val, string, error, config)
 
@@ -20247,6 +19109,7 @@ subroutine toml_dump_to_string(val, string, error, config)
    call val%accept(ser)
    string = ser%output
 end subroutine toml_dump_to_string
+
 
 !> Write string representation of JSON value to a connected formatted unit
 subroutine toml_dump_to_unit(val, io, error, config)
@@ -20275,6 +19138,7 @@ subroutine toml_dump_to_unit(val, io, error, config)
       return
    end if
 end subroutine toml_dump_to_unit
+
 
 !> Write string representation of JSON value to a file
 subroutine toml_dump_to_file(val, filename, error, config)
@@ -20307,6 +19171,7 @@ subroutine toml_dump_to_file(val, filename, error, config)
    end if
 end subroutine toml_dump_to_file
 
+
 !> Constructor to create new serializer instance
 subroutine new_serializer(self, config)
 
@@ -20320,6 +19185,7 @@ subroutine new_serializer(self, config)
    if (present(config)) self%config = config
 end subroutine new_serializer
 
+
 !> Default constructor for TOML serializer
 function new_serializer_func(config) result(self)
 
@@ -20331,6 +19197,7 @@ function new_serializer_func(config) result(self)
 
    call new_serializer(self, config)
 end function new_serializer_func
+
 
 !> Visit a TOML value
 recursive subroutine visit(self, val)
@@ -20351,6 +19218,7 @@ recursive subroutine visit(self, val)
    end select
 
 end subroutine visit
+
 
 !> Visit a TOML key-value pair
 subroutine visit_keyval(visitor, keyval)
@@ -20401,6 +19269,7 @@ subroutine visit_keyval(visitor, keyval)
    end if
 
 end subroutine visit_keyval
+
 
 !> Visit a TOML array
 recursive subroutine visit_array(visitor, array)
@@ -20475,6 +19344,7 @@ recursive subroutine visit_array(visitor, array)
    if (visitor%inline_array) visitor%output = visitor%output // " ]"
 
 end subroutine visit_array
+
 
 !> Visit a TOML table
 recursive subroutine visit_table(visitor, table)
@@ -20594,6 +19464,7 @@ recursive subroutine visit_table(visitor, table)
 
 end subroutine visit_table
 
+
 !> Change size of the stack
 subroutine resize(stack, n)
 
@@ -20631,7 +19502,9 @@ subroutine resize(stack, n)
 
 end subroutine resize
 
+
 end module tomlf_ser
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de/parser.f90
 ! This file is part of toml-f.
@@ -20663,6 +19536,7 @@ module tomlf_de_parser
    private
 
    public :: toml_parser, toml_parser_config, parse
+
 
    !> Configuration of the TOML parser
    type :: toml_parser_config
@@ -20779,6 +19653,7 @@ subroutine parse_root(parser, lexer)
    end do
 end subroutine parse_root
 
+
 !> Parse a table or array of tables header
 subroutine parse_table_header(parser, lexer)
    !> Instance of the parser
@@ -20796,6 +19671,7 @@ subroutine parse_table_header(parser, lexer)
    integer :: top
    type(toml_key), allocatable :: stack(:)
    type(toml_token), allocatable :: leading_whitespace, trailing_whitespace
+
 
    call consume(parser, lexer, token_kind%lbracket)
    if (allocated(parser%diagnostic)) return
@@ -21491,6 +20367,7 @@ end subroutine get_table
 
 end module tomlf_de_parser
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/merge.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -21517,6 +20394,7 @@ module tomlf_build_merge
 
    public :: merge_table, merge_array, merge_policy, toml_merge_config
 
+
    !> Possible merge policies
    type :: enum_policy
 
@@ -21532,6 +20410,7 @@ module tomlf_build_merge
 
    !> Actual enumerator for merging data structures
    type(enum_policy), parameter :: merge_policy = enum_policy()
+
 
    !> Configuration for merging data structures
    type :: toml_merge_config
@@ -21551,7 +20430,9 @@ module tomlf_build_merge
       module procedure :: new_merge_config
    end interface toml_merge_config
 
+
 contains
+
 
 !> Create a new merge configuration
 pure function new_merge_config(table, array, keyval) result(config)
@@ -21589,6 +20470,7 @@ contains
    end subroutine set_enum
 
 end function new_merge_config
+
 
 !> Merge TOML tables by appending their values
 recursive subroutine merge_table(lhs, rhs, config)
@@ -21674,6 +20556,7 @@ recursive subroutine merge_table(lhs, rhs, config)
 
 end subroutine merge_table
 
+
 !> Append values from one TOML array to another
 recursive subroutine merge_array(lhs, rhs)
 
@@ -21698,7 +20581,9 @@ recursive subroutine merge_array(lhs, rhs)
 
 end subroutine merge_array
 
+
 end module tomlf_build_merge
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/keyval.f90
 ! This file is part of toml-f.
@@ -21733,6 +20618,7 @@ module tomlf_build_keyval
 
    public :: get_value, set_value
 
+
    !> Setter functions to manipulate TOML values
    interface set_value
       module procedure :: set_value_float_sp
@@ -21745,6 +20631,7 @@ module tomlf_build_keyval
       module procedure :: set_value_datetime
       module procedure :: set_value_string
    end interface set_value
+
 
    !> Getter functions to manipulate TOML values
    interface get_value
@@ -21759,10 +20646,13 @@ module tomlf_build_keyval
       module procedure :: get_value_string
    end interface get_value
 
+
    !> Length for the static character variables
    integer, parameter :: buffersize = 128
 
+
 contains
+
 
 !> Retrieve TOML value as single precision float (might lose accuracy)
 subroutine get_value_float_sp(self, val, stat, origin)
@@ -21805,6 +20695,7 @@ subroutine get_value_float_sp(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_float_sp
 
+
 !> Retrieve TOML value as double precision float
 subroutine get_value_float_dp(self, val, stat, origin)
 
@@ -21846,6 +20737,7 @@ subroutine get_value_float_dp(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_float_dp
 
+
 !> Retrieve TOML value as one byte integer (might loose precision)
 subroutine get_value_integer_i1(self, val, stat, origin)
 
@@ -21879,6 +20771,7 @@ subroutine get_value_integer_i1(self, val, stat, origin)
    if (present(stat)) stat = info
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i1
+
 
 !> Retrieve TOML value as two byte integer (might loose precision)
 subroutine get_value_integer_i2(self, val, stat, origin)
@@ -21914,6 +20807,7 @@ subroutine get_value_integer_i2(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i2
 
+
 !> Retrieve TOML value as four byte integer (might loose precision)
 subroutine get_value_integer_i4(self, val, stat, origin)
 
@@ -21948,6 +20842,7 @@ subroutine get_value_integer_i4(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i4
 
+
 !> Retrieve TOML value as eight byte integer
 subroutine get_value_integer_i8(self, val, stat, origin)
 
@@ -21977,6 +20872,7 @@ subroutine get_value_integer_i8(self, val, stat, origin)
    if (present(stat)) stat = info
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_integer_i8
+
 
 !> Retrieve TOML value as logical
 subroutine get_value_bool(self, val, stat, origin)
@@ -22008,6 +20904,7 @@ subroutine get_value_bool(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_bool
 
+
 !> Retrieve TOML value as datetime
 subroutine get_value_datetime(self, val, stat, origin)
 
@@ -22037,6 +20934,7 @@ subroutine get_value_datetime(self, val, stat, origin)
    if (present(stat)) stat = info
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_datetime
+
 
 !> Retrieve TOML value as deferred-length character
 subroutine get_value_string(self, val, stat, origin)
@@ -22068,6 +20966,7 @@ subroutine get_value_string(self, val, stat, origin)
    if (present(origin)) origin = self%origin_value
 end subroutine get_value_string
 
+
 !> Set TOML value to single precision float
 subroutine set_value_float_sp(self, val, stat, origin)
 
@@ -22089,6 +20988,7 @@ subroutine set_value_float_sp(self, val, stat, origin)
    self%origin_value = 0
    if (present(origin)) origin = self%origin
 end subroutine set_value_float_sp
+
 
 !> Set TOML value to double precision float
 subroutine set_value_float_dp(self, val, stat, origin)
@@ -22112,6 +21012,7 @@ subroutine set_value_float_dp(self, val, stat, origin)
    if (present(origin)) origin = self%origin
 end subroutine set_value_float_dp
 
+
 !> Set TOML value to one byte integer
 subroutine set_value_integer_i1(self, val, stat, origin)
 
@@ -22133,6 +21034,7 @@ subroutine set_value_integer_i1(self, val, stat, origin)
    self%origin_value = 0
    if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i1
+
 
 !> Set TOML value to two byte integer
 subroutine set_value_integer_i2(self, val, stat, origin)
@@ -22156,6 +21058,7 @@ subroutine set_value_integer_i2(self, val, stat, origin)
    if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i2
 
+
 !> Set TOML value to four byte integer
 subroutine set_value_integer_i4(self, val, stat, origin)
 
@@ -22177,6 +21080,7 @@ subroutine set_value_integer_i4(self, val, stat, origin)
    self%origin_value = 0
    if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i4
+
 
 !> Set TOML value to eight byte integer
 subroutine set_value_integer_i8(self, val, stat, origin)
@@ -22200,6 +21104,7 @@ subroutine set_value_integer_i8(self, val, stat, origin)
    if (present(origin)) origin = self%origin
 end subroutine set_value_integer_i8
 
+
 !> Set TOML value to logical
 subroutine set_value_bool(self, val, stat, origin)
 
@@ -22221,6 +21126,7 @@ subroutine set_value_bool(self, val, stat, origin)
    self%origin_value = 0
    if (present(origin)) origin = self%origin
 end subroutine set_value_bool
+
 
 !> Set TOML value to datetime
 subroutine set_value_datetime(self, val, stat, origin)
@@ -22244,6 +21150,7 @@ subroutine set_value_datetime(self, val, stat, origin)
    if (present(origin)) origin = self%origin
 end subroutine set_value_datetime
 
+
 !> Set TOML value to deferred-length character
 subroutine set_value_string(self, val, stat, origin)
 
@@ -22266,7 +21173,9 @@ subroutine set_value_string(self, val, stat, origin)
    if (present(origin)) origin = self%origin
 end subroutine set_value_string
 
+
 end module tomlf_build_keyval
+
 
 !>>>>> build/dependencies/jonquil/src/jonquil/ser.f90
 ! This file is part of jonquil.
@@ -22296,6 +21205,7 @@ module jonquil_ser
    public :: json_serializer, json_ser_config
    public :: json_dumps, json_dump, json_serialize
 
+
    interface json_dumps
       module procedure :: json_dump_to_string
    end interface json_dumps
@@ -22304,6 +21214,7 @@ module jonquil_ser
       module procedure :: json_dump_to_file
       module procedure :: json_dump_to_unit
    end interface json_dump
+
 
    !> Configuration for JSON serializer
    type :: json_ser_config
@@ -22321,6 +21232,7 @@ module jonquil_ser
       character(len=:), allocatable :: indent
 
    end type json_ser_config
+
 
    !> Serializer to produduce a JSON document from a TOML datastructure
    type, extends(toml_visitor) :: json_serializer
@@ -22341,7 +21253,9 @@ module jonquil_ser
 
    end type json_serializer
 
+
 contains
+
 
 !> Serialize a JSON value to a string and return it.
 !>
@@ -22363,6 +21277,7 @@ function json_serialize(val, config) result(string)
       error stop error%message
    end if
 end function json_serialize
+
 
 !> Create a string representing the JSON value
 subroutine json_dump_to_string(val, string, error, config)
@@ -22386,6 +21301,7 @@ subroutine json_dump_to_string(val, string, error, config)
    call val%accept(ser)
    string = ser%output
 end subroutine json_dump_to_string
+
 
 !> Write string representation of JSON value to a connected formatted unit
 subroutine json_dump_to_unit(val, io, error, config)
@@ -22414,6 +21330,7 @@ subroutine json_dump_to_unit(val, io, error, config)
       return
    end if
 end subroutine json_dump_to_unit
+
 
 !> Write string representation of JSON value to a file
 subroutine json_dump_to_file(val, filename, error, config)
@@ -22446,6 +21363,7 @@ subroutine json_dump_to_file(val, filename, error, config)
    end if
 end subroutine json_dump_to_file
 
+
 !> Visit a TOML value
 subroutine visit(self, val)
 
@@ -22467,6 +21385,7 @@ subroutine visit(self, val)
    end select
 
 end subroutine visit
+
 
 !> Visit a TOML key-value pair
 subroutine visit_keyval(visitor, keyval)
@@ -22548,6 +21467,7 @@ subroutine visit_keyval(visitor, keyval)
 
 end subroutine visit_keyval
 
+
 !> Visit a TOML array
 subroutine visit_array(visitor, array)
 
@@ -22581,6 +21501,7 @@ subroutine visit_array(visitor, array)
    visitor%output = visitor%output // "]"
 
 end subroutine visit_array
+
 
 !> Visit a TOML table
 subroutine visit_table(visitor, table)
@@ -22626,6 +21547,7 @@ subroutine visit_table(visitor, table)
 
 end subroutine visit_table
 
+
 !> Produce indentations for emitted JSON documents
 subroutine indent(self)
 
@@ -22642,6 +21564,7 @@ subroutine indent(self)
    end if
 
 end subroutine indent
+
 
 !> Transform a TOML raw value to a JSON compatible escaped string
 subroutine escape_string(raw, escaped)
@@ -22670,7 +21593,9 @@ subroutine escape_string(raw, escaped)
 
 end subroutine escape_string
 
+
 end module jonquil_ser
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/de.f90
 ! This file is part of toml-f.
@@ -22703,6 +21628,7 @@ module tomlf_de
    public :: toml_load, toml_loads
    public :: toml_context, toml_parser_config, toml_level
 
+
    !> Parse a TOML document.
    !>
    !> This interface is deprecated in favor of [[toml_load]] and [[toml_loads]]
@@ -22722,7 +21648,9 @@ module tomlf_de
       module procedure :: toml_load_string
    end interface toml_loads
 
+
 contains
+
 
 !> Parse a TOML input from a given IO unit.
 !>
@@ -22820,6 +21748,7 @@ end subroutine toml_load_string
 
 end module tomlf_de
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf/build/array.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -22871,6 +21800,7 @@ module tomlf_build_array
 
    public :: get_value, set_value
 
+
    !> Setter functions to manipulate TOML arrays
    interface set_value
       module procedure :: set_elem_value_string
@@ -22891,6 +21821,7 @@ module tomlf_build_array
       module procedure :: set_array_value_bool
       module procedure :: set_array_value_datetime
    end interface set_value
+
 
    !> Getter functions to manipulate TOML arrays
    interface get_value
@@ -22916,7 +21847,9 @@ module tomlf_build_array
       module procedure :: get_array_value_datetime
    end interface get_value
 
+
 contains
+
 
 subroutine get_elem_table(array, pos, ptr, stat, origin)
 
@@ -22960,6 +21893,7 @@ subroutine get_elem_table(array, pos, ptr, stat, origin)
 
 end subroutine get_elem_table
 
+
 subroutine get_elem_array(array, pos, ptr, stat, origin)
 
    !> Instance of the TOML array
@@ -23001,6 +21935,7 @@ subroutine get_elem_array(array, pos, ptr, stat, origin)
    end if
 
 end subroutine get_elem_array
+
 
 subroutine get_elem_keyval(array, pos, ptr, stat, origin)
 
@@ -23044,6 +21979,7 @@ subroutine get_elem_keyval(array, pos, ptr, stat, origin)
 
 end subroutine get_elem_keyval
 
+
 !> Retrieve TOML value as deferred-length character
 subroutine get_elem_value_string(array, pos, val, stat, origin)
 
@@ -23073,6 +22009,7 @@ subroutine get_elem_value_string(array, pos, val, stat, origin)
    end if
 
 end subroutine get_elem_value_string
+
 
 !> Retrieve TOML value as single precision floating point number
 subroutine get_elem_value_float_sp(array, pos, val, stat, origin)
@@ -23104,6 +22041,7 @@ subroutine get_elem_value_float_sp(array, pos, val, stat, origin)
 
 end subroutine get_elem_value_float_sp
 
+
 !> Retrieve TOML value as double precision floating point number
 subroutine get_elem_value_float_dp(array, pos, val, stat, origin)
 
@@ -23133,6 +22071,7 @@ subroutine get_elem_value_float_dp(array, pos, val, stat, origin)
    end if
 
 end subroutine get_elem_value_float_dp
+
 
 !> Retrieve TOML value as integer value
 subroutine get_elem_value_int_i1(array, pos, val, stat, origin)
@@ -23164,6 +22103,7 @@ subroutine get_elem_value_int_i1(array, pos, val, stat, origin)
 
 end subroutine get_elem_value_int_i1
 
+
 !> Retrieve TOML value as integer value
 subroutine get_elem_value_int_i2(array, pos, val, stat, origin)
 
@@ -23193,6 +22133,7 @@ subroutine get_elem_value_int_i2(array, pos, val, stat, origin)
    end if
 
 end subroutine get_elem_value_int_i2
+
 
 !> Retrieve TOML value as integer value
 subroutine get_elem_value_int_i4(array, pos, val, stat, origin)
@@ -23224,6 +22165,7 @@ subroutine get_elem_value_int_i4(array, pos, val, stat, origin)
 
 end subroutine get_elem_value_int_i4
 
+
 !> Retrieve TOML value as integer value
 subroutine get_elem_value_int_i8(array, pos, val, stat, origin)
 
@@ -23253,6 +22195,7 @@ subroutine get_elem_value_int_i8(array, pos, val, stat, origin)
    end if
 
 end subroutine get_elem_value_int_i8
+
 
 !> Retrieve TOML value as boolean
 subroutine get_elem_value_bool(array, pos, val, stat, origin)
@@ -23284,6 +22227,7 @@ subroutine get_elem_value_bool(array, pos, val, stat, origin)
 
 end subroutine get_elem_value_bool
 
+
 !> Retrieve TOML value as datetime
 subroutine get_elem_value_datetime(array, pos, val, stat, origin)
 
@@ -23313,6 +22257,7 @@ subroutine get_elem_value_datetime(array, pos, val, stat, origin)
    end if
 
 end subroutine get_elem_value_datetime
+
 
 !> Retrieve TOML value as deferred-length character
 subroutine set_elem_value_string(array, pos, val, stat, origin)
@@ -23350,6 +22295,7 @@ subroutine set_elem_value_string(array, pos, val, stat, origin)
 
 end subroutine set_elem_value_string
 
+
 !> Retrieve TOML value as single precision floating point number
 subroutine set_elem_value_float_sp(array, pos, val, stat, origin)
 
@@ -23385,6 +22331,7 @@ subroutine set_elem_value_float_sp(array, pos, val, stat, origin)
    end if
 
 end subroutine set_elem_value_float_sp
+
 
 !> Retrieve TOML value as double precision floating point number
 subroutine set_elem_value_float_dp(array, pos, val, stat, origin)
@@ -23422,6 +22369,7 @@ subroutine set_elem_value_float_dp(array, pos, val, stat, origin)
 
 end subroutine set_elem_value_float_dp
 
+
 !> Retrieve TOML value as integer value
 subroutine set_elem_value_int_i1(array, pos, val, stat, origin)
 
@@ -23457,6 +22405,7 @@ subroutine set_elem_value_int_i1(array, pos, val, stat, origin)
    end if
 
 end subroutine set_elem_value_int_i1
+
 
 !> Retrieve TOML value as integer value
 subroutine set_elem_value_int_i2(array, pos, val, stat, origin)
@@ -23494,6 +22443,7 @@ subroutine set_elem_value_int_i2(array, pos, val, stat, origin)
 
 end subroutine set_elem_value_int_i2
 
+
 !> Retrieve TOML value as integer value
 subroutine set_elem_value_int_i4(array, pos, val, stat, origin)
 
@@ -23529,6 +22479,7 @@ subroutine set_elem_value_int_i4(array, pos, val, stat, origin)
    end if
 
 end subroutine set_elem_value_int_i4
+
 
 !> Retrieve TOML value as integer value
 subroutine set_elem_value_int_i8(array, pos, val, stat, origin)
@@ -23566,6 +22517,7 @@ subroutine set_elem_value_int_i8(array, pos, val, stat, origin)
 
 end subroutine set_elem_value_int_i8
 
+
 !> Retrieve TOML value as boolean value
 subroutine set_elem_value_bool(array, pos, val, stat, origin)
 
@@ -23601,6 +22553,7 @@ subroutine set_elem_value_bool(array, pos, val, stat, origin)
    end if
 
 end subroutine set_elem_value_bool
+
 
 !> Retrieve TOML value as datetime value
 subroutine set_elem_value_datetime(array, pos, val, stat, origin)
@@ -23638,6 +22591,7 @@ subroutine set_elem_value_datetime(array, pos, val, stat, origin)
 
 end subroutine set_elem_value_datetime
 
+
 !> Retrieve TOML value as single precision floating point number
 subroutine get_array_value_float_sp(array, val, stat, origin)
 
@@ -23666,6 +22620,7 @@ subroutine get_array_value_float_sp(array, val, stat, origin)
    if (present(origin) .and. info == 0) origin = array%origin
 
 end subroutine get_array_value_float_sp
+
 
 !> Retrieve TOML value as double precision floating point number
 subroutine get_array_value_float_dp(array, val, stat, origin)
@@ -23696,6 +22651,7 @@ subroutine get_array_value_float_dp(array, val, stat, origin)
 
 end subroutine get_array_value_float_dp
 
+
 !> Retrieve TOML value as integer value
 subroutine get_array_value_int_i1(array, val, stat, origin)
 
@@ -23724,6 +22680,7 @@ subroutine get_array_value_int_i1(array, val, stat, origin)
    if (present(origin) .and. info == 0) origin = array%origin
 
 end subroutine get_array_value_int_i1
+
 
 !> Retrieve TOML value as integer value
 subroutine get_array_value_int_i2(array, val, stat, origin)
@@ -23754,6 +22711,7 @@ subroutine get_array_value_int_i2(array, val, stat, origin)
 
 end subroutine get_array_value_int_i2
 
+
 !> Retrieve TOML value as integer value
 subroutine get_array_value_int_i4(array, val, stat, origin)
 
@@ -23782,6 +22740,7 @@ subroutine get_array_value_int_i4(array, val, stat, origin)
    if (present(origin) .and. info == 0) origin = array%origin
 
 end subroutine get_array_value_int_i4
+
 
 !> Retrieve TOML value as integer value
 subroutine get_array_value_int_i8(array, val, stat, origin)
@@ -23812,6 +22771,7 @@ subroutine get_array_value_int_i8(array, val, stat, origin)
 
 end subroutine get_array_value_int_i8
 
+
 !> Retrieve TOML value as boolean
 subroutine get_array_value_bool(array, val, stat, origin)
 
@@ -23840,6 +22800,7 @@ subroutine get_array_value_bool(array, val, stat, origin)
    if (present(origin) .and. info == 0) origin = array%origin
 
 end subroutine get_array_value_bool
+
 
 !> Retrieve TOML value as datetime
 subroutine get_array_value_datetime(array, val, stat, origin)
@@ -23870,6 +22831,7 @@ subroutine get_array_value_datetime(array, val, stat, origin)
 
 end subroutine get_array_value_datetime
 
+
 !> Retrieve TOML value as single precision floating point number
 subroutine set_array_value_float_sp(array, val, stat, origin)
 
@@ -23898,6 +22860,7 @@ subroutine set_array_value_float_sp(array, val, stat, origin)
    if (present(origin)) origin = array%origin
 
 end subroutine set_array_value_float_sp
+
 
 !> Retrieve TOML value as double precision floating point number
 subroutine set_array_value_float_dp(array, val, stat, origin)
@@ -23928,6 +22891,7 @@ subroutine set_array_value_float_dp(array, val, stat, origin)
 
 end subroutine set_array_value_float_dp
 
+
 !> Retrieve TOML value as integer value
 subroutine set_array_value_int_i1(array, val, stat, origin)
 
@@ -23956,6 +22920,7 @@ subroutine set_array_value_int_i1(array, val, stat, origin)
    if (present(origin)) origin = array%origin
 
 end subroutine set_array_value_int_i1
+
 
 !> Retrieve TOML value as integer value
 subroutine set_array_value_int_i2(array, val, stat, origin)
@@ -23986,6 +22951,7 @@ subroutine set_array_value_int_i2(array, val, stat, origin)
 
 end subroutine set_array_value_int_i2
 
+
 !> Retrieve TOML value as integer value
 subroutine set_array_value_int_i4(array, val, stat, origin)
 
@@ -24014,6 +22980,7 @@ subroutine set_array_value_int_i4(array, val, stat, origin)
    if (present(origin)) origin = array%origin
 
 end subroutine set_array_value_int_i4
+
 
 !> Retrieve TOML value as integer value
 subroutine set_array_value_int_i8(array, val, stat, origin)
@@ -24044,6 +23011,7 @@ subroutine set_array_value_int_i8(array, val, stat, origin)
 
 end subroutine set_array_value_int_i8
 
+
 !> Retrieve TOML value as boolean value
 subroutine set_array_value_bool(array, val, stat, origin)
 
@@ -24072,6 +23040,7 @@ subroutine set_array_value_bool(array, val, stat, origin)
    if (present(origin)) origin = array%origin
 
 end subroutine set_array_value_bool
+
 
 !> Retrieve TOML value as datetime value
 subroutine set_array_value_datetime(array, val, stat, origin)
@@ -24102,7 +23071,9 @@ subroutine set_array_value_datetime(array, val, stat, origin)
 
 end subroutine set_array_value_datetime
 
+
 end module tomlf_build_array
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/table.f90
 ! This file is part of toml-f.
@@ -24151,6 +23122,7 @@ module tomlf_build_table
 
    public :: get_value, set_value
 
+
    !> Setter functions to manipulate TOML tables
    interface set_value
       module procedure :: set_child_value_float_sp
@@ -24172,6 +23144,7 @@ module tomlf_build_table
       module procedure :: set_key_value_datetime
       module procedure :: set_key_value_string
    end interface set_value
+
 
    !> Getter functions to manipulate TOML tables
    interface get_value
@@ -24201,7 +23174,9 @@ module tomlf_build_table
       module procedure :: get_key_value_string
    end interface get_value
 
+
 contains
+
 
 subroutine get_key_table(table, key, ptr, requested, stat, origin)
 
@@ -24227,6 +23202,7 @@ subroutine get_key_table(table, key, ptr, requested, stat, origin)
 
 end subroutine get_key_table
 
+
 subroutine get_key_array(table, key, ptr, requested, stat, origin)
 
    !> Instance of the TOML table
@@ -24251,6 +23227,7 @@ subroutine get_key_array(table, key, ptr, requested, stat, origin)
 
 end subroutine get_key_array
 
+
 subroutine get_key_keyval(table, key, ptr, requested, stat, origin)
 
    !> Instance of the TOML table
@@ -24274,6 +23251,7 @@ subroutine get_key_keyval(table, key, ptr, requested, stat, origin)
    call get_value(table, key%key, ptr, requested, stat, origin)
 
 end subroutine get_key_keyval
+
 
 !> Retrieve TOML value as single precision float (might lose accuracy)
 subroutine get_key_value_float_sp(table, key, val, default, stat, origin)
@@ -24300,6 +23278,7 @@ subroutine get_key_value_float_sp(table, key, val, default, stat, origin)
 
 end subroutine get_key_value_float_sp
 
+
 !> Retrieve TOML value as double precision float
 subroutine get_key_value_float_dp(table, key, val, default, stat, origin)
 
@@ -24324,6 +23303,7 @@ subroutine get_key_value_float_dp(table, key, val, default, stat, origin)
    call get_value(table, key%key, val, default, stat, origin)
 
 end subroutine get_key_value_float_dp
+
 
 !> Retrieve TOML value as one byte integer (might loose precision)
 subroutine get_key_value_integer_i1(table, key, val, default, stat, origin)
@@ -24350,6 +23330,7 @@ subroutine get_key_value_integer_i1(table, key, val, default, stat, origin)
 
 end subroutine get_key_value_integer_i1
 
+
 !> Retrieve TOML value as two byte integer (might loose precision)
 subroutine get_key_value_integer_i2(table, key, val, default, stat, origin)
 
@@ -24374,6 +23355,7 @@ subroutine get_key_value_integer_i2(table, key, val, default, stat, origin)
    call get_value(table, key%key, val, default, stat, origin)
 
 end subroutine get_key_value_integer_i2
+
 
 !> Retrieve TOML value as four byte integer (might loose precision)
 subroutine get_key_value_integer_i4(table, key, val, default, stat, origin)
@@ -24400,6 +23382,7 @@ subroutine get_key_value_integer_i4(table, key, val, default, stat, origin)
 
 end subroutine get_key_value_integer_i4
 
+
 !> Retrieve TOML value as eight byte integer
 subroutine get_key_value_integer_i8(table, key, val, default, stat, origin)
 
@@ -24424,6 +23407,7 @@ subroutine get_key_value_integer_i8(table, key, val, default, stat, origin)
    call get_value(table, key%key, val, default, stat, origin)
 
 end subroutine get_key_value_integer_i8
+
 
 !> Retrieve TOML value as logical
 subroutine get_key_value_bool(table, key, val, default, stat, origin)
@@ -24450,6 +23434,7 @@ subroutine get_key_value_bool(table, key, val, default, stat, origin)
 
 end subroutine get_key_value_bool
 
+
 !> Retrieve TOML value as datetime
 subroutine get_key_value_datetime(table, key, val, default, stat, origin)
 
@@ -24474,6 +23459,7 @@ subroutine get_key_value_datetime(table, key, val, default, stat, origin)
    call get_value(table, key%key, val, default, stat, origin)
 
 end subroutine get_key_value_datetime
+
 
 !> Retrieve TOML value as deferred-length character
 subroutine get_key_value_string(table, key, val, default, stat, origin)
@@ -24500,6 +23486,7 @@ subroutine get_key_value_string(table, key, val, default, stat, origin)
 
 end subroutine get_key_value_string
 
+
 !> Set TOML value to single precision float
 subroutine set_key_value_float_sp(table, key, val, stat, origin)
 
@@ -24521,6 +23508,7 @@ subroutine set_key_value_float_sp(table, key, val, stat, origin)
    call set_value(table, key%key, val, stat, origin)
 
 end subroutine set_key_value_float_sp
+
 
 !> Set TOML value to double precision float
 subroutine set_key_value_float_dp(table, key, val, stat, origin)
@@ -24544,6 +23532,7 @@ subroutine set_key_value_float_dp(table, key, val, stat, origin)
 
 end subroutine set_key_value_float_dp
 
+
 !> Set TOML value to one byte integer
 subroutine set_key_value_integer_i1(table, key, val, stat, origin)
 
@@ -24565,6 +23554,7 @@ subroutine set_key_value_integer_i1(table, key, val, stat, origin)
    call set_value(table, key%key, val, stat, origin)
 
 end subroutine set_key_value_integer_i1
+
 
 !> Set TOML value to two byte integer
 subroutine set_key_value_integer_i2(table, key, val, stat, origin)
@@ -24588,6 +23578,7 @@ subroutine set_key_value_integer_i2(table, key, val, stat, origin)
 
 end subroutine set_key_value_integer_i2
 
+
 !> Set TOML value to four byte integer
 subroutine set_key_value_integer_i4(table, key, val, stat, origin)
 
@@ -24609,6 +23600,7 @@ subroutine set_key_value_integer_i4(table, key, val, stat, origin)
    call set_value(table, key%key, val, stat, origin)
 
 end subroutine set_key_value_integer_i4
+
 
 !> Set TOML value to eight byte integer
 subroutine set_key_value_integer_i8(table, key, val, stat, origin)
@@ -24632,6 +23624,7 @@ subroutine set_key_value_integer_i8(table, key, val, stat, origin)
 
 end subroutine set_key_value_integer_i8
 
+
 !> Set TOML value to logical
 subroutine set_key_value_bool(table, key, val, stat, origin)
 
@@ -24653,6 +23646,7 @@ subroutine set_key_value_bool(table, key, val, stat, origin)
    call set_value(table, key%key, val, stat, origin)
 
 end subroutine set_key_value_bool
+
 
 !> Set TOML value to datetime
 subroutine set_key_value_datetime(table, key, val, stat, origin)
@@ -24676,6 +23670,7 @@ subroutine set_key_value_datetime(table, key, val, stat, origin)
 
 end subroutine set_key_value_datetime
 
+
 !> Set TOML value to deferred-length character
 subroutine set_key_value_string(table, key, val, stat, origin)
 
@@ -24697,6 +23692,7 @@ subroutine set_key_value_string(table, key, val, stat, origin)
    call set_value(table, key%key, val, stat, origin)
 
 end subroutine set_key_value_string
+
 
 subroutine get_child_table(table, key, ptr, requested, stat, origin)
 
@@ -24754,6 +23750,7 @@ subroutine get_child_table(table, key, ptr, requested, stat, origin)
 
 end subroutine get_child_table
 
+
 subroutine get_child_array(table, key, ptr, requested, stat, origin)
 
    !> Instance of the TOML table
@@ -24809,6 +23806,7 @@ subroutine get_child_array(table, key, ptr, requested, stat, origin)
    end if
 
 end subroutine get_child_array
+
 
 subroutine get_child_keyval(table, key, ptr, requested, stat, origin)
 
@@ -24866,6 +23864,7 @@ subroutine get_child_keyval(table, key, ptr, requested, stat, origin)
 
 end subroutine get_child_keyval
 
+
 !> Retrieve TOML value as single precision float (might lose accuracy)
 subroutine get_child_value_float_sp(table, key, val, default, stat, origin)
 
@@ -24907,6 +23906,7 @@ subroutine get_child_value_float_sp(table, key, val, default, stat, origin)
    end if
 
 end subroutine get_child_value_float_sp
+
 
 !> Retrieve TOML value as double precision float
 subroutine get_child_value_float_dp(table, key, val, default, stat, origin)
@@ -24950,6 +23950,7 @@ subroutine get_child_value_float_dp(table, key, val, default, stat, origin)
 
 end subroutine get_child_value_float_dp
 
+
 !> Retrieve TOML value as one byte integer (might loose precision)
 subroutine get_child_value_integer_i1(table, key, val, default, stat, origin)
 
@@ -24991,6 +23992,7 @@ subroutine get_child_value_integer_i1(table, key, val, default, stat, origin)
    end if
 
 end subroutine get_child_value_integer_i1
+
 
 !> Retrieve TOML value as two byte integer (might loose precision)
 subroutine get_child_value_integer_i2(table, key, val, default, stat, origin)
@@ -25034,6 +24036,7 @@ subroutine get_child_value_integer_i2(table, key, val, default, stat, origin)
 
 end subroutine get_child_value_integer_i2
 
+
 !> Retrieve TOML value as four byte integer (might loose precision)
 subroutine get_child_value_integer_i4(table, key, val, default, stat, origin)
 
@@ -25075,6 +24078,7 @@ subroutine get_child_value_integer_i4(table, key, val, default, stat, origin)
    end if
 
 end subroutine get_child_value_integer_i4
+
 
 !> Retrieve TOML value as eight byte integer
 subroutine get_child_value_integer_i8(table, key, val, default, stat, origin)
@@ -25118,6 +24122,7 @@ subroutine get_child_value_integer_i8(table, key, val, default, stat, origin)
 
 end subroutine get_child_value_integer_i8
 
+
 !> Retrieve TOML value as logical
 subroutine get_child_value_bool(table, key, val, default, stat, origin)
 
@@ -25159,6 +24164,7 @@ subroutine get_child_value_bool(table, key, val, default, stat, origin)
    end if
 
 end subroutine get_child_value_bool
+
 
 !> Retrieve TOML value as datetime
 subroutine get_child_value_datetime(table, key, val, default, stat, origin)
@@ -25202,6 +24208,7 @@ subroutine get_child_value_datetime(table, key, val, default, stat, origin)
 
 end subroutine get_child_value_datetime
 
+
 !> Retrieve TOML value as deferred-length character
 subroutine get_child_value_string(table, key, val, default, stat, origin)
 
@@ -25244,6 +24251,7 @@ subroutine get_child_value_string(table, key, val, default, stat, origin)
 
 end subroutine get_child_value_string
 
+
 !> Set TOML value to single precision float
 subroutine set_child_value_float_sp(table, key, val, stat, origin)
 
@@ -25275,6 +24283,7 @@ subroutine set_child_value_float_sp(table, key, val, stat, origin)
    end if
 
 end subroutine set_child_value_float_sp
+
 
 !> Set TOML value to double precision float
 subroutine set_child_value_float_dp(table, key, val, stat, origin)
@@ -25308,6 +24317,7 @@ subroutine set_child_value_float_dp(table, key, val, stat, origin)
 
 end subroutine set_child_value_float_dp
 
+
 !> Set TOML value to one byte integer
 subroutine set_child_value_integer_i1(table, key, val, stat, origin)
 
@@ -25339,6 +24349,7 @@ subroutine set_child_value_integer_i1(table, key, val, stat, origin)
    end if
 
 end subroutine set_child_value_integer_i1
+
 
 !> Set TOML value to two byte integer
 subroutine set_child_value_integer_i2(table, key, val, stat, origin)
@@ -25372,6 +24383,7 @@ subroutine set_child_value_integer_i2(table, key, val, stat, origin)
 
 end subroutine set_child_value_integer_i2
 
+
 !> Set TOML value to four byte integer
 subroutine set_child_value_integer_i4(table, key, val, stat, origin)
 
@@ -25403,6 +24415,7 @@ subroutine set_child_value_integer_i4(table, key, val, stat, origin)
    end if
 
 end subroutine set_child_value_integer_i4
+
 
 !> Set TOML value to eight byte integer
 subroutine set_child_value_integer_i8(table, key, val, stat, origin)
@@ -25436,6 +24449,7 @@ subroutine set_child_value_integer_i8(table, key, val, stat, origin)
 
 end subroutine set_child_value_integer_i8
 
+
 !> Set TOML value to logical
 subroutine set_child_value_bool(table, key, val, stat, origin)
 
@@ -25467,6 +24481,7 @@ subroutine set_child_value_bool(table, key, val, stat, origin)
    end if
 
 end subroutine set_child_value_bool
+
 
 !> Set TOML value to datetime
 subroutine set_child_value_datetime(table, key, val, stat, origin)
@@ -25500,6 +24515,7 @@ subroutine set_child_value_datetime(table, key, val, stat, origin)
 
 end subroutine set_child_value_datetime
 
+
 !> Set TOML value to deferred-length character
 subroutine set_child_value_string(table, key, val, stat, origin)
 
@@ -25532,7 +24548,9 @@ subroutine set_child_value_string(table, key, val, stat, origin)
 
 end subroutine set_child_value_string
 
+
 end module tomlf_build_table
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build/path.f90
 ! This file is part of toml-f.
@@ -25561,6 +24579,7 @@ module tomlf_build_path
 
    public :: toml_path, get_value, set_value
 
+
    !> Setter functions to manipulate TOML tables
    interface set_value
       module procedure :: set_path_value_float_sp
@@ -25573,6 +24592,7 @@ module tomlf_build_path
       module procedure :: set_path_value_datetime
       module procedure :: set_path_value_string
    end interface set_value
+
 
    !> Getter functions to manipulate TOML tables
    interface get_value
@@ -25590,11 +24610,13 @@ module tomlf_build_path
       module procedure :: get_path_value_string
    end interface get_value
 
+
    !> Wrapper for storing key paths
    type :: toml_path
       !> Path components
       type(toml_key), allocatable :: path(:)
    end type toml_path
+
 
    !> Convenience constructors for building key paths from strings instead of keys
    interface toml_path
@@ -25603,7 +24625,9 @@ module tomlf_build_path
       module procedure :: new_path4
    end interface toml_path
 
+
 contains
+
 
 !> Create a new path with two components
 pure function new_path2(key1, key2) result(path)
@@ -25620,6 +24644,7 @@ pure function new_path2(key1, key2) result(path)
    allocate(path%path(2))
    path%path(:) = [toml_key(key1), toml_key(key2)]
 end function new_path2
+
 
 !> Create a new path with three components
 pure function new_path3(key1, key2, key3) result(path)
@@ -25639,6 +24664,7 @@ pure function new_path3(key1, key2, key3) result(path)
    allocate(path%path(3))
    path%path(:) = [toml_key(key1), toml_key(key2), toml_key(key3)]
 end function new_path3
+
 
 !> Create a new path with three components
 pure function new_path4(key1, key2, key3, key4) result(path)
@@ -25661,6 +24687,7 @@ pure function new_path4(key1, key2, key3, key4) result(path)
    allocate(path%path(4))
    path%path(:) = [toml_key(key1), toml_key(key2), toml_key(key3), toml_key(key4)]
 end function new_path4
+
 
 subroutine get_path_table(table, path, ptr, requested, stat, origin)
 
@@ -25697,6 +24724,7 @@ subroutine get_path_table(table, path, ptr, requested, stat, origin)
    end if
 end subroutine get_path_table
 
+
 subroutine get_path_array(table, path, ptr, requested, stat, origin)
 
    !> Instance of the TOML table
@@ -25731,6 +24759,7 @@ subroutine get_path_array(table, path, ptr, requested, stat, origin)
       if (.not.is_requested .and. present(stat)) stat = toml_stat%success
    end if
 end subroutine get_path_array
+
 
 subroutine get_path_keyval(table, path, ptr, requested, stat, origin)
 
@@ -25767,6 +24796,7 @@ subroutine get_path_keyval(table, path, ptr, requested, stat, origin)
    end if
 end subroutine get_path_keyval
 
+
 !> Retrieve TOML value as single precision float (might lose accuracy)
 subroutine get_path_value_float_sp(table, path, val, default, stat, origin)
 
@@ -25795,6 +24825,7 @@ subroutine get_path_value_float_sp(table, path, val, default, stat, origin)
       call get_value(child, path%path(size(path%path)), val, default, stat, origin)
    end if
 end subroutine get_path_value_float_sp
+
 
 !> Retrieve TOML value as double precision float
 subroutine get_path_value_float_dp(table, path, val, default, stat, origin)
@@ -25825,6 +24856,7 @@ subroutine get_path_value_float_dp(table, path, val, default, stat, origin)
    end if
 end subroutine get_path_value_float_dp
 
+
 !> Retrieve TOML value as one byte integer (might loose precision)
 subroutine get_path_value_integer_i1(table, path, val, default, stat, origin)
 
@@ -25853,6 +24885,7 @@ subroutine get_path_value_integer_i1(table, path, val, default, stat, origin)
       call get_value(child, path%path(size(path%path)), val, default, stat, origin)
    end if
 end subroutine get_path_value_integer_i1
+
 
 !> Retrieve TOML value as two byte integer (might loose precision)
 subroutine get_path_value_integer_i2(table, path, val, default, stat, origin)
@@ -25883,6 +24916,7 @@ subroutine get_path_value_integer_i2(table, path, val, default, stat, origin)
    end if
 end subroutine get_path_value_integer_i2
 
+
 !> Retrieve TOML value as four byte integer (might loose precision)
 subroutine get_path_value_integer_i4(table, path, val, default, stat, origin)
 
@@ -25911,6 +24945,7 @@ subroutine get_path_value_integer_i4(table, path, val, default, stat, origin)
       call get_value(child, path%path(size(path%path)), val, default, stat, origin)
    end if
 end subroutine get_path_value_integer_i4
+
 
 !> Retrieve TOML value as eight byte integer
 subroutine get_path_value_integer_i8(table, path, val, default, stat, origin)
@@ -25941,6 +24976,7 @@ subroutine get_path_value_integer_i8(table, path, val, default, stat, origin)
    end if
 end subroutine get_path_value_integer_i8
 
+
 !> Retrieve TOML value as logical
 subroutine get_path_value_bool(table, path, val, default, stat, origin)
 
@@ -25969,6 +25005,7 @@ subroutine get_path_value_bool(table, path, val, default, stat, origin)
       call get_value(child, path%path(size(path%path)), val, default, stat, origin)
    end if
 end subroutine get_path_value_bool
+
 
 !> Retrieve TOML value as datetime
 subroutine get_path_value_datetime(table, path, val, default, stat, origin)
@@ -25999,6 +25036,7 @@ subroutine get_path_value_datetime(table, path, val, default, stat, origin)
    end if
 end subroutine get_path_value_datetime
 
+
 !> Retrieve TOML value as deferred-length character
 subroutine get_path_value_string(table, path, val, default, stat, origin)
 
@@ -26028,6 +25066,7 @@ subroutine get_path_value_string(table, path, val, default, stat, origin)
    end if
 end subroutine get_path_value_string
 
+
 !> Set TOML value to single precision float
 subroutine set_path_value_float_sp(table, path, val, stat, origin)
 
@@ -26053,6 +25092,7 @@ subroutine set_path_value_float_sp(table, path, val, stat, origin)
       call set_value(child, path%path(size(path%path)), val, stat, origin)
    end if
 end subroutine set_path_value_float_sp
+
 
 !> Set TOML value to double precision float
 subroutine set_path_value_float_dp(table, path, val, stat, origin)
@@ -26080,6 +25120,7 @@ subroutine set_path_value_float_dp(table, path, val, stat, origin)
    end if
 end subroutine set_path_value_float_dp
 
+
 !> Set TOML value to one byte integer
 subroutine set_path_value_integer_i1(table, path, val, stat, origin)
 
@@ -26105,6 +25146,7 @@ subroutine set_path_value_integer_i1(table, path, val, stat, origin)
       call set_value(child, path%path(size(path%path)), val, stat, origin)
    end if
 end subroutine set_path_value_integer_i1
+
 
 !> Set TOML value to two byte integer
 subroutine set_path_value_integer_i2(table, path, val, stat, origin)
@@ -26132,6 +25174,7 @@ subroutine set_path_value_integer_i2(table, path, val, stat, origin)
    end if
 end subroutine set_path_value_integer_i2
 
+
 !> Set TOML value to four byte integer
 subroutine set_path_value_integer_i4(table, path, val, stat, origin)
 
@@ -26157,6 +25200,7 @@ subroutine set_path_value_integer_i4(table, path, val, stat, origin)
       call set_value(child, path%path(size(path%path)), val, stat, origin)
    end if
 end subroutine set_path_value_integer_i4
+
 
 !> Set TOML value to eight byte integer
 subroutine set_path_value_integer_i8(table, path, val, stat, origin)
@@ -26184,6 +25228,7 @@ subroutine set_path_value_integer_i8(table, path, val, stat, origin)
    end if
 end subroutine set_path_value_integer_i8
 
+
 !> Set TOML value to logical
 subroutine set_path_value_bool(table, path, val, stat, origin)
 
@@ -26209,6 +25254,7 @@ subroutine set_path_value_bool(table, path, val, stat, origin)
       call set_value(child, path%path(size(path%path)), val, stat, origin)
    end if
 end subroutine set_path_value_bool
+
 
 !> Set TOML value to datetime
 subroutine set_path_value_datetime(table, path, val, stat, origin)
@@ -26236,6 +25282,7 @@ subroutine set_path_value_datetime(table, path, val, stat, origin)
    end if
 end subroutine set_path_value_datetime
 
+
 !> Set TOML value to deferred-length character
 subroutine set_path_value_string(table, path, val, stat, origin)
 
@@ -26261,6 +25308,7 @@ subroutine set_path_value_string(table, path, val, stat, origin)
       call set_value(child, path%path(size(path%path)), val, stat, origin)
    end if
 end subroutine set_path_value_string
+
 
 subroutine walk_path(table, path, ptr, requested, stat, origin)
 
@@ -26305,7 +25353,9 @@ subroutine walk_path(table, path, ptr, requested, stat, origin)
    ptr => current
 end subroutine walk_path
 
+
 end module tomlf_build_path
+
 
 !>>>>> build/dependencies/toml-f/src/tomlf/build.f90
 ! This file is part of toml-f.
@@ -26340,6 +25390,7 @@ module tomlf_build
 
 end module tomlf_build
 
+
 !>>>>> build/dependencies/toml-f/src/tomlf.f90
 ! This file is part of toml-f.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -26373,6 +25424,7 @@ module tomlf
 
 end module tomlf
 
+
 !>>>>> build/dependencies/jonquil/src/jonquil/parser.f90
 ! This file is part of jonquil.
 ! SPDX-Identifier: Apache-2.0 OR MIT
@@ -26403,6 +25455,7 @@ module jonquil_parser
    private
 
    public :: json_load, json_loads
+
 
    !> Load a TOML data structure from the provided source
    interface json_load
@@ -26646,39 +25699,6 @@ end subroutine prune_value
 
 end module jonquil_parser
 
-!>>>>> build/dependencies/jonquil/src/jonquil.f90
-! This file is part of jonquil.
-! SPDX-Identifier: Apache-2.0 OR MIT
-!
-! Licensed under either of Apache License, Version 2.0 or MIT license
-! at your option; you may not use this file except in compliance with
-! the License.
-!
-! Unless required by applicable law or agreed to in writing, software
-! distributed under the License is distributed on an "AS IS" BASIS,
-! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-! See the License for the specific language governing permissions and
-! limitations under the License.
-
-!> Minimal public API for Jonquil
-module jonquil
-   use tomlf, only : get_value, set_value, json_path => toml_path, &
-      & json_context => toml_context, json_parser_config => toml_parser_config, &
-      & json_level => toml_level, json_error => toml_error, json_stat => toml_stat, &
-      & json_terminal => toml_terminal, json_object => toml_table, json_array => toml_array, &
-      & json_keyval => toml_keyval, json_key => toml_key, json_value => toml_value, &
-      & new_object => new_table, add_object => add_table, add_array, add_keyval, sort, len
-   use tomlf_type, only : cast_to_object => cast_to_table, cast_to_array, cast_to_keyval
-   use tomlf_version, only : tomlf_version_string, tomlf_version_compact, get_tomlf_version
-   use jonquil_version, only : jonquil_version_string, jonquil_version_compact, &
-      & get_jonquil_version
-   use jonquil_parser, only : json_load, json_loads
-   use jonquil_ser, only : json_serializer, json_serialize, json_dump, json_dumps, &
-      & json_ser_config
-   implicit none
-   public
-
-end module jonquil
 
 !>>>>> ././src/fpm/toml.f90
 !># Interface to TOML processing library
@@ -26697,292 +25717,18 @@ end module jonquil
 !> [TOML-Fortran](https://toml-f.github.io/toml-f) developer pages.
 module fpm_toml
     use fpm_error, only: error_t, fatal_error, file_not_found_error
-    use fpm_strings, only: string_t, str_ends_with, lower
+    use fpm_strings, only: string_t
     use tomlf, only: toml_table, toml_array, toml_key, toml_stat, get_value, &
         & set_value, toml_parse, toml_error, new_table, add_table, add_array, &
-        & toml_serialize, len, toml_load, toml_value
-    use tomlf_de_parser, only: parse
-    use jonquil, only: json_serialize, json_error, json_value, json_object, json_load, &
-                       cast_to_object
-    use iso_fortran_env, only: int64
+        & toml_serialize, len, toml_load
     implicit none
     private
 
     public :: read_package_file, toml_table, toml_array, toml_key, toml_stat, &
               get_value, set_value, get_list, new_table, add_table, add_array, len, &
-              toml_error, toml_serialize, toml_load, check_keys, set_list, set_string, &
-              name_is_json
-
-    !> An abstract interface for any fpm class that should be fully serializable to/from TOML/JSON
-    type, abstract, public :: serializable_t
-
-        contains
-
-        !> Dump to TOML table, unit, file
-        procedure(to_toml), deferred, private :: dump_to_toml
-        procedure, non_overridable, private :: dump_to_file
-        procedure, non_overridable, private :: dump_to_unit
-        generic :: dump => dump_to_toml, dump_to_file, dump_to_unit
-
-        !> Load from TOML table, unit, file
-        procedure(from_toml), deferred, private :: load_from_toml
-        procedure, non_overridable, private :: load_from_file
-        procedure, non_overridable, private :: load_from_unit
-        generic :: load => load_from_toml, load_from_file, load_from_unit
-
-        !> Serializable entities need a way to check that they're equal
-        procedure(is_equal), deferred, private :: serializable_is_same
-        generic :: operator(==) => serializable_is_same
-
-        !> Test load/write roundtrip
-        procedure, non_overridable :: test_serialization
-
-    end type serializable_t
-
-    !> add_table: fpm interface
-    interface add_table
-        module procedure add_table_fpm
-    end interface add_table
-
-    !> set_value: fpm interface
-    interface set_value
-        module procedure set_logical
-        module procedure set_integer
-        module procedure set_integer_64
-    end interface set_value
-
-    interface set_string
-        module procedure set_character
-        module procedure set_string_type
-    end interface set_string
-
-    !> get_value: fpm interface
-    interface get_value
-        module procedure get_logical
-        module procedure get_integer
-        module procedure get_integer_64
-    end interface get_value
-
-    abstract interface
-
-      !> Write object to TOML datastructure
-      subroutine to_toml(self, table, error)
-        import serializable_t,toml_table,error_t
-        implicit none
-
-        !> Instance of the serializable object
-        class(serializable_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-      end subroutine to_toml
-
-      !> Read dependency tree from TOML data structure
-      subroutine from_toml(self, table, error)
-        import serializable_t,toml_table,error_t
-        implicit none
-
-        !> Instance of the serializable object
-        class(serializable_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-      end subroutine from_toml
-
-      !> Compare two serializable objects
-      logical function is_equal(this,that)
-         import serializable_t
-         class(serializable_t), intent(in) :: this,that
-      end function is_equal
-
-    end interface
+              toml_error, toml_serialize, toml_load, check_keys
 
 contains
-
-    !> Test serialization of a serializable object
-    subroutine test_serialization(self, message, error)
-        class(serializable_t), intent(inout) :: self
-        character(len=*), intent(in) :: message
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: iunit, ii
-        class(serializable_t), allocatable :: copy
-        character(len=4), parameter :: formats(2) = ['TOML','JSON']
-
-        all_formats: do ii = 1, 2
-
-            open(newunit=iunit,form='formatted',action='readwrite',status='scratch')
-
-            !> Dump to scratch file
-            call self%dump(iunit, error, json=ii==2)
-            if (allocated(error)) then
-                error%message = formats(ii)//': '//error%message
-                return
-            endif
-
-            !> Load from scratch file
-            rewind(iunit)
-            allocate(copy,mold=self)
-            call copy%load(iunit,error, json=ii==2)
-            if (allocated(error)) then
-                error%message = formats(ii)//': '//error%message
-                return
-            endif
-            close(iunit)
-
-            !> Check same
-            if (.not.(self==copy)) then
-                call fatal_error(error,'serializable object failed '//formats(ii)//&
-                                       ' write/reread test: '//trim(message))
-                return
-            end if
-            deallocate(copy)
-
-        end do all_formats
-
-    end subroutine test_serialization
-
-    !> Write serializable object to a formatted Fortran unit
-    subroutine dump_to_unit(self, unit, error, json)
-        !> Instance of the dependency tree
-        class(serializable_t), intent(inout) :: self
-        !> Formatted unit
-        integer, intent(in) :: unit
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-        !> Optional JSON format requested?
-        logical, optional, intent(in) :: json
-
-        type(toml_table) :: table
-        logical :: is_json
-
-        is_json = .false.; if (present(json)) is_json = json
-
-        table = toml_table()
-        call self%dump(table, error)
-
-        if (is_json) then
-
-!            !> Deactivate JSON serialization for now
-!            call fatal_error(error, 'JSON serialization option is not yet available')
-!            return
-
-            write (unit, '(a)') json_serialize(table)
-        else
-            write (unit, '(a)') toml_serialize(table)
-        end if
-
-        call table%destroy()
-
-    end subroutine dump_to_unit
-
-    !> Write serializable object to file
-    subroutine dump_to_file(self, file, error, json)
-        !> Instance of the dependency tree
-        class(serializable_t), intent(inout) :: self
-        !> File name
-        character(len=*), intent(in) :: file
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-        !> Optional JSON format
-        logical, optional, intent(in) :: json
-
-        integer :: unit
-
-        open (file=file, newunit=unit)
-        call self%dump(unit, error, json)
-        close (unit)
-        if (allocated(error)) return
-
-    end subroutine dump_to_file
-
-    !> Read dependency tree from file
-    subroutine load_from_file(self, file, error, json)
-        !> Instance of the dependency tree
-        class(serializable_t), intent(inout) :: self
-        !> File name
-        character(len=*), intent(in) :: file
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-        !> Optional JSON format
-        logical, optional, intent(in) :: json
-
-        integer :: unit
-        logical :: exist
-
-        inquire (file=file, exist=exist)
-        if (.not. exist) return
-
-        open (file=file, newunit=unit)
-        call self%load(unit, error, json)
-        close (unit)
-    end subroutine load_from_file
-
-    !> Read dependency tree from file
-    subroutine load_from_unit(self, unit, error, json)
-        !> Instance of the dependency tree
-        class(serializable_t), intent(inout) :: self
-        !> File name
-        integer, intent(in) :: unit
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-        !> Optional JSON format
-        logical, optional, intent(in) :: json
-
-        type(toml_error), allocatable :: toml_error
-        type(toml_table), allocatable :: table
-        type(toml_table), pointer     :: jtable
-        class(toml_value), allocatable :: object
-        logical :: is_json
-
-        is_json = .false.; if (present(json)) is_json = json
-
-        if (is_json) then
-
-           !> init JSON interpreter
-           call json_load(object, unit, error=toml_error)
-           if (allocated(toml_error)) then
-              allocate (error)
-              call move_alloc(toml_error%message, error%message)
-              return
-           end if
-
-           jtable => cast_to_object(object)
-           if (.not.associated(jtable)) then
-              call fatal_error(error,'cannot initialize JSON table ')
-              return
-           end if
-
-           !> Read object from TOML table
-           call self%load(jtable, error)
-
-        else
-
-           !> use default TOML parser
-           call toml_load(table, unit, error=toml_error)
-
-           if (allocated(toml_error)) then
-              allocate (error)
-              call move_alloc(toml_error%message, error%message)
-              return
-           end if
-
-           !> Read object from TOML table
-           call self%load(table, error)
-
-        endif
-
-        if (allocated(error)) return
-
-    end subroutine load_from_unit
 
     !> Process the configuration file to a TOML data structure
     subroutine read_package_file(table, manifest, error)
@@ -27066,331 +25812,6 @@ contains
 
     end subroutine get_list
 
-    ! Set string array
-    subroutine set_list(table, key, list, error)
-
-        !> Instance of the string array
-        type(string_t), allocatable, intent(in) :: list(:)
-
-        !> Key to save to
-        character(len=*), intent(in) :: key
-
-        !> Instance of the toml table
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        integer :: stat, ilist
-        type(toml_array), pointer :: children
-        character(len=:), allocatable :: str
-
-        !> Set no key if array is not present
-        if (.not.allocated(list)) return
-
-        !> Check the key is not empty
-        if (len_trim(key)<=0) then
-            call fatal_error(error, 'key is empty dumping string array to TOML table')
-            return
-        end if
-
-        if (size(list)/=1) then ! includes empty list case
-
-            !> String array
-            call add_array(table, key, children, stat)
-            if (stat /= toml_stat%success) then
-                call fatal_error(error, "Cannot set array table in "//key//" field")
-                return
-            end if
-
-            do ilist = 1, size(list)
-                  call set_value(children, ilist, list(ilist)%s, stat=stat)
-                  if (stat /= toml_stat%success) then
-                      call fatal_error(error, "Cannot store array entry in "//key//" field")
-                      return
-                  end if
-            end do
-
-        else
-
-            ! Single value: set string
-            call set_value(table, key, list(1)%s, stat=stat)
-
-            if (stat /= toml_stat%success) &
-            call fatal_error(error, "Cannot store entry in "//key//" field")
-
-            return
-        end if
-
-    end subroutine set_list
-
-    !> Function wrapper to set a character(len=:), allocatable variable to a toml table
-    subroutine set_character(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> List of keys to check.
-        character(len=*), intent(in) :: key
-
-        !> The character variable
-        character(len=:), allocatable, intent(in) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        !> Check the key is not empty
-        if (len_trim(key)<=0) then
-            call fatal_error(error, 'key is empty setting character string to TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-        if (allocated(var)) then
-            call set_value(table, key, var, ierr)
-            if (ierr/=toml_stat%success) then
-                call fatal_error(error,'cannot set character key <'//key//'> in TOML table')
-                if (present(whereAt)) error%message = whereAt//': '//error%message
-                return
-            end if
-        endif
-
-    end subroutine set_character
-
-    !> Function wrapper to set a logical variable to a toml table, returning an fpm error
-    subroutine set_logical(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        logical, intent(in) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call set_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot set logical key <'//key//'> in TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine set_logical
-
-    !> Function wrapper to set a default integer variable to a toml table, returning an fpm error
-    subroutine set_integer(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        integer, intent(in) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call set_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot set integer key <'//key//'> in TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine set_integer
-
-    !> Function wrapper to set a default integer variable to a toml table, returning an fpm error
-    subroutine set_integer_64(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        integer(int64), intent(in) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call set_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot set integer(int64) key <'//key//'> in TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine set_integer_64
-
-    !> Function wrapper to set a character(len=:), allocatable variable to a toml table
-    subroutine set_string_type(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> List of keys to check.
-        character(len=*), intent(in) :: key
-
-        !> The character variable
-        type(string_t), intent(in) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        call set_character(table, key, var%s, error, whereAt)
-
-    end subroutine set_string_type
-
-    !> Function wrapper to add a toml table and return an fpm error
-    subroutine add_table_fpm(table, key, ptr, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Table key
-        character(len=*), intent(in) :: key
-
-        !> The character variable
-        type(toml_table), pointer, intent(out) :: ptr
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        !> Nullify pointer
-        nullify(ptr)
-
-        call add_table(table, key, ptr, ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot add <'//key//'> table in TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine add_table_fpm
-
-    !> Function wrapper to get a logical variable from a toml table, returning an fpm error
-    subroutine get_logical(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        logical, intent(inout) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call get_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot get logical key <'//key//'> from TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine get_logical
-
-    !> Function wrapper to get a default integer variable from a toml table, returning an fpm error
-    subroutine get_integer(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        integer, intent(inout) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call get_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot get integer key <'//key//'> from TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine get_integer
-
-    !> Function wrapper to get a integer(int64) variable from a toml table, returning an fpm error
-    subroutine get_integer_64(table, key, var, error, whereAt)
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> The key
-        character(len=*), intent(in) :: key
-
-        !> The variable
-        integer(int64), intent(inout) :: var
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Optional description
-        character(len=*), intent(in), optional :: whereAt
-
-        integer :: ierr
-
-        call get_value(table, key, var, stat=ierr)
-        if (ierr/=toml_stat%success) then
-            call fatal_error(error,'cannot get integer(int64) key <'//key//'> from TOML table')
-            if (present(whereAt)) error%message = whereAt//': '//error%message
-            return
-        end if
-
-    end subroutine get_integer_64
-
     !> Check if table contains only keys that are part of the list. If a key is
     !> found that is not part of the list, an error is allocated.
     subroutine check_keys(table, valid_keys, error)
@@ -27405,7 +25826,6 @@ contains
         type(error_t), allocatable, intent(out) :: error
 
         type(toml_key), allocatable :: keys(:)
-        type(toml_table), pointer :: child
         character(:), allocatable :: name, value, valid_keys_string
         integer :: ikey, ivalid
 
@@ -27426,43 +25846,293 @@ contains
             end if
 
             ! Check if value can be mapped or else (wrong type) show error message with the error location.
-            ! Right now, it can only be mapped to a string or to a child node, but this can be extended in the future.
+            ! Right now, it can only be mapped to a string, but this can be extended in the future.
             call get_value(table, keys(ikey)%key, value)
             if (.not. allocated(value)) then
-
-                ! If value is not a string, check if it is a child node
-                call get_value(table, keys(ikey)%key, child)
-
-                if (.not.associated(child)) then
-                    allocate (error)
-                    error%message = "'"//name//"' has an invalid '"//keys(ikey)%key//"' entry."
-                    return
-                endif
+                allocate (error)
+                error%message = "'"//name//"' has an invalid '"//keys(ikey)%key//"' entry."
+                return
             end if
         end do
 
     end subroutine check_keys
 
-    !> Choose between JSON or TOML based on a file name
-    logical function name_is_json(filename)
-        character(*), intent(in) :: filename
-
-        character(*), parameter :: json_identifier = ".json"
-
-        name_is_json = .false.
-
-        if (len_trim(filename)<len(json_identifier)) return
-
-        name_is_json = str_ends_with(lower(filename),json_identifier)
-
-    end function name_is_json
-
 end module fpm_toml
+
+
+!>>>>> build/dependencies/jonquil/src/jonquil.f90
+! This file is part of jonquil.
+! SPDX-Identifier: Apache-2.0 OR MIT
+!
+! Licensed under either of Apache License, Version 2.0 or MIT license
+! at your option; you may not use this file except in compliance with
+! the License.
+!
+! Unless required by applicable law or agreed to in writing, software
+! distributed under the License is distributed on an "AS IS" BASIS,
+! WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+! See the License for the specific language governing permissions and
+! limitations under the License.
+
+!> Minimal public API for Jonquil
+module jonquil
+   use tomlf, only : get_value, set_value, json_path => toml_path, &
+      & json_context => toml_context, json_parser_config => toml_parser_config, &
+      & json_level => toml_level, json_error => toml_error, json_stat => toml_stat, &
+      & json_terminal => toml_terminal, json_object => toml_table, json_array => toml_array, &
+      & json_keyval => toml_keyval, json_key => toml_key, json_value => toml_value, &
+      & new_object => new_table, add_object => add_table, add_array, add_keyval, sort, len
+   use tomlf_type, only : cast_to_object => cast_to_table, cast_to_array, cast_to_keyval
+   use tomlf_version, only : tomlf_version_string, tomlf_version_compact, get_tomlf_version
+   use jonquil_version, only : jonquil_version_string, jonquil_version_compact, &
+      & get_jonquil_version
+   use jonquil_parser, only : json_load, json_loads
+   use jonquil_ser, only : json_serializer, json_serialize, json_dump, json_dumps, &
+      & json_ser_config
+   implicit none
+   public
+
+end module jonquil
+
+
+!>>>>> ././src/fpm_settings.f90
+!> Manages global settings which are defined in the global config file.
+module fpm_settings
+  use fpm_filesystem, only: exists, join_path, get_local_prefix, is_absolute_path, mkdir
+  use fpm_environment, only: os_is_unix
+  use fpm_error, only: error_t, fatal_error
+  use fpm_toml, only: toml_table, toml_error, toml_stat, get_value, toml_load, check_keys
+  use fpm_os, only: get_current_directory, change_directory, get_absolute_path, &
+                    convert_to_absolute_path
+  implicit none
+  private
+  public :: fpm_global_settings, get_global_settings, get_registry_settings, official_registry_base_url
+
+  character(*), parameter :: official_registry_base_url = 'https://registry-apis.vercel.app'
+
+  type :: fpm_global_settings
+    !> Path to the global config file excluding the file name.
+    character(len=:), allocatable :: path_to_config_folder
+    !> Name of the global config file. The default is `config.toml`.
+    character(len=:), allocatable :: config_file_name
+    !> Registry configs.
+    type(fpm_registry_settings), allocatable :: registry_settings
+  contains
+    procedure :: has_custom_location, full_path
+  end type
+
+  type :: fpm_registry_settings
+    !> The path to the local registry. If allocated, the local registry
+    !> will be used instead of the remote registry and replaces the
+    !> local cache.
+    character(len=:), allocatable :: path
+    !> The URL to the remote registry. Can be used to get packages
+    !> from the official or a custom registry.
+    character(len=:), allocatable :: url
+    !> The path to the cache folder. If not specified, the default cache
+    !> folders are `~/.local/share/fpm/dependencies` on Unix and
+    !> `%APPDATA%\local\fpm\dependencies` on Windows.
+    !> Cannot be used together with `path`.
+    character(len=:), allocatable :: cache_path
+  end type
+
+contains
+  !> Obtain global settings from the global config file.
+  subroutine get_global_settings(global_settings, error)
+    !> Global settings to be obtained.
+    type(fpm_global_settings), intent(inout) :: global_settings
+    !> Error reading config file.
+    type(error_t), allocatable, intent(out) :: error
+    !> TOML table to be filled with global config settings.
+    type(toml_table), allocatable :: table
+    !> Error parsing to TOML table.
+    type(toml_error), allocatable :: parse_error
+
+    type(toml_table), pointer :: registry_table
+    integer :: stat
+
+    ! Use custom path to the config file if it was specified.
+    if (global_settings%has_custom_location()) then
+      ! Throw error if folder doesn't exist.
+      if (.not. exists(global_settings%path_to_config_folder)) then
+        call fatal_error(error, "Folder not found: '"//global_settings%path_to_config_folder//"'."); return
+      end if
+
+      ! Throw error if the file doesn't exist.
+      if (.not. exists(global_settings%full_path())) then
+        call fatal_error(error, "File not found: '"//global_settings%full_path()//"'."); return
+      end if
+
+      ! Make sure that the path to the global config file is absolute.
+      call convert_to_absolute_path(global_settings%path_to_config_folder, error)
+      if (allocated(error)) return
+    else
+      ! Use default path if it wasn't specified.
+      if (os_is_unix()) then
+        global_settings%path_to_config_folder = join_path(get_local_prefix(), 'share', 'fpm')
+      else
+        global_settings%path_to_config_folder = join_path(get_local_prefix(), 'fpm')
+      end if
+
+      ! Use default file name.
+      global_settings%config_file_name = 'config.toml'
+
+      ! Apply default registry settings and return if config file doesn't exist.
+      if (.not. exists(global_settings%full_path())) then
+        call use_default_registry_settings(global_settings); return
+      end if
+    end if
+
+    ! Load into TOML table.
+    call toml_load(table, global_settings%full_path(), error=parse_error)
+
+    if (allocated(parse_error)) then
+      allocate (error); call move_alloc(parse_error%message, error%message); return
+    end if
+
+    call get_value(table, 'registry', registry_table, requested=.false., stat=stat)
+
+    if (stat /= toml_stat%success) then
+      call fatal_error(error, "Error reading registry from config file '"// &
+      & global_settings%full_path()//"'."); return
+    end if
+
+    ! A registry table was found.
+    if (associated(registry_table)) then
+      call get_registry_settings(registry_table, global_settings, error)
+    else
+      call use_default_registry_settings(global_settings)
+    end if
+
+  end subroutine get_global_settings
+
+  !> Default registry settings are typically applied if the config file doesn't exist or no registry table was found in
+  !> the global config file.
+  subroutine use_default_registry_settings(global_settings)
+    type(fpm_global_settings), intent(inout) :: global_settings
+
+    allocate (global_settings%registry_settings)
+    global_settings%registry_settings%url = official_registry_base_url
+    global_settings%registry_settings%cache_path = join_path(global_settings%path_to_config_folder, &
+    & 'dependencies')
+  end subroutine use_default_registry_settings
+
+  !> Read registry settings from the global config file.
+  subroutine get_registry_settings(table, global_settings, error)
+    !> The [registry] subtable from the global config file.
+    type(toml_table), target, intent(inout) :: table
+    !> The global settings which can be filled with the registry settings.
+    type(fpm_global_settings), intent(inout) :: global_settings
+    !> Error handling.
+    type(error_t), allocatable, intent(out) :: error
+
+    character(:), allocatable :: path, url, cache_path
+    integer :: stat
+
+    !> List of valid keys for the dependency table.
+    character(*), dimension(*), parameter :: valid_keys = [character(10) :: &
+        & 'path', &
+        & 'url', &
+        & 'cache_path' &
+        & ]
+
+    call check_keys(table, valid_keys, error)
+    if (allocated(error)) return
+
+    allocate (global_settings%registry_settings)
+
+    if (table%has_key('path')) then
+      call get_value(table, 'path', path, stat=stat)
+      if (stat /= toml_stat%success) then
+        call fatal_error(error, "Error reading registry path: '"//path//"'."); return
+      end if
+    end if
+
+    if (allocated(path)) then
+      if (is_absolute_path(path)) then
+        global_settings%registry_settings%path = path
+      else
+        ! Get canonical, absolute path on both Unix and Windows.
+        call get_absolute_path(join_path(global_settings%path_to_config_folder, path), &
+        & global_settings%registry_settings%path, error)
+        if (allocated(error)) return
+
+        ! Check if the path to the registry exists.
+        if (.not. exists(global_settings%registry_settings%path)) then
+          call fatal_error(error, "Directory '"//global_settings%registry_settings%path// &
+          & "' doesn't exist."); return
+        end if
+      end if
+    end if
+
+    if (table%has_key('url')) then
+      call get_value(table, 'url', url, stat=stat)
+      if (stat /= toml_stat%success) then
+        call fatal_error(error, "Error reading registry url: '"//url//"'."); return
+      end if
+    end if
+
+    if (allocated(url)) then
+      ! Throw error when both path and url were provided.
+      if (allocated(path)) then
+        call fatal_error(error, 'Do not provide both path and url to the registry.'); return
+      end if
+      global_settings%registry_settings%url = url
+    else if (.not. allocated(path)) then
+      global_settings%registry_settings%url = official_registry_base_url
+    end if
+
+    if (table%has_key('cache_path')) then
+      call get_value(table, 'cache_path', cache_path, stat=stat)
+      if (stat /= toml_stat%success) then
+        call fatal_error(error, "Error reading path to registry cache: '"//cache_path//"'."); return
+      end if
+    end if
+
+    if (allocated(cache_path)) then
+      ! Throw error when both path and cache_path were provided.
+      if (allocated(path)) then
+        call fatal_error(error, "Do not provide both 'path' and 'cache_path'."); return
+      end if
+
+      if (is_absolute_path(cache_path)) then
+        if (.not. exists(cache_path)) call mkdir(cache_path)
+        global_settings%registry_settings%cache_path = cache_path
+      else
+        cache_path = join_path(global_settings%path_to_config_folder, cache_path)
+        if (.not. exists(cache_path)) call mkdir(cache_path)
+        ! Get canonical, absolute path on both Unix and Windows.
+        call get_absolute_path(cache_path, global_settings%registry_settings%cache_path, error)
+        if (allocated(error)) return
+      end if
+    else if (.not. allocated(path)) then
+      global_settings%registry_settings%cache_path = join_path(global_settings%path_to_config_folder, &
+      & 'dependencies')
+    end if
+  end subroutine get_registry_settings
+
+  !> True if the global config file is not at the default location.
+  pure logical function has_custom_location(self)
+    class(fpm_global_settings), intent(in) :: self
+
+    has_custom_location = allocated(self%path_to_config_folder) .and. allocated(self%config_file_name)
+  end function
+
+  !> The full path to the global config file.
+  function full_path(self) result(result)
+    class(fpm_global_settings), intent(in) :: self
+    character(len=:), allocatable :: result
+
+    result = join_path(self%path_to_config_folder, self%config_file_name)
+  end function
+
+end module fpm_settings
+
 
 !>>>>> ././src/fpm/downloader.f90
 module fpm_downloader
   use fpm_error, only: error_t, fatal_error
-  use fpm_filesystem, only: which, run
+  use fpm_filesystem, only: which
   use fpm_versioning, only: version_t
   use jonquil, only: json_object, json_value, json_error, json_load, cast_to_object
   use fpm_strings, only: string_t
@@ -27538,14 +26208,9 @@ contains
   end
 
   !> Perform an http post request with form data.
-  subroutine upload_form(endpoint, form_data, verbose, error)
-    !> Endpoint to upload to.
+  subroutine upload_form(endpoint, form_data, error)
     character(len=*), intent(in) :: endpoint
-    !> Form data to upload.
     type(string_t), intent(in) :: form_data(:)
-    !> Print additional information if true.
-    logical, intent(in) :: verbose
-    !> Error handling.
     type(error_t), allocatable, intent(out) :: error
 
     integer :: stat, i
@@ -27558,8 +26223,8 @@ contains
 
     if (which('curl') /= '') then
       print *, 'Uploading package ...'
-      call run('curl -X POST -H "Content-Type: multipart/form-data" '// &
-      & form_data_str//endpoint, exitstat=stat, echo=verbose)
+      call execute_command_line('curl -X POST -H "Content-Type: multipart/form-data" ' &
+      & //form_data_str//endpoint, exitstat=stat)
     else
       call fatal_error(error, "'curl' not installed."); return
     end if
@@ -27571,11 +26236,8 @@ contains
 
   !> Unpack a tarball to a destination.
   subroutine unpack(tmp_pkg_file, destination, error)
-    !> Path to tarball.
     character(*), intent(in) :: tmp_pkg_file
-    !> Destination to unpack to.
     character(*), intent(in) :: destination
-    !> Error handling.
     type(error_t), allocatable, intent(out) :: error
 
     integer :: stat
@@ -27593,701 +26255,6 @@ contains
   end
 end
 
-!>>>>> ././src/fpm_settings.f90
-!> Manages global settings which are defined in the global config file.
-module fpm_settings
-  use fpm_filesystem, only: exists, join_path, get_local_prefix, is_absolute_path, mkdir
-  use fpm_environment, only: os_is_unix
-  use fpm_error, only: error_t, fatal_error
-  use fpm_toml, only: toml_table, toml_error, toml_stat, get_value, toml_load, check_keys
-  use fpm_os, only: get_current_directory, change_directory, get_absolute_path, convert_to_absolute_path
-
-  implicit none
-  private
-  public :: fpm_global_settings, get_global_settings, get_registry_settings, official_registry_base_url
-
-  character(*), parameter :: official_registry_base_url = 'https://registry-apis.vercel.app'
-  character(*), parameter :: default_config_file_name = 'config.toml'
-
-  type :: fpm_global_settings
-    !> Path to the global config file excluding the file name.
-    character(len=:), allocatable :: path_to_config_folder
-    !> Name of the global config file. The default is `config.toml`.
-    character(len=:), allocatable :: config_file_name
-    !> Registry configs.
-    type(fpm_registry_settings), allocatable :: registry_settings
-  contains
-    procedure :: has_custom_location, full_path, path_to_config_folder_or_empty
-  end type
-
-  type :: fpm_registry_settings
-    !> The path to the local registry. If allocated, the local registry
-    !> will be used instead of the remote registry and replaces the
-    !> local cache.
-    character(len=:), allocatable :: path
-    !> The URL to the remote registry. Can be used to get packages
-    !> from the official or a custom registry.
-    character(len=:), allocatable :: url
-    !> The path to the cache folder. If not specified, the default cache
-    !> folders are `~/.local/share/fpm/dependencies` on Unix and
-    !> `%APPDATA%\local\fpm\dependencies` on Windows.
-    !> Cannot be used together with `path`.
-    character(len=:), allocatable :: cache_path
-  end type
-
-contains
-  !> Obtain global settings from the global config file.
-  subroutine get_global_settings(global_settings, error)
-    !> Global settings to be obtained.
-    type(fpm_global_settings), intent(inout) :: global_settings
-    !> Error reading config file.
-    type(error_t), allocatable, intent(out) :: error
-    !> TOML table to be filled with global config settings.
-    type(toml_table), allocatable :: table
-    !> Error parsing to TOML table.
-    type(toml_error), allocatable :: parse_error
-
-    type(toml_table), pointer :: registry_table
-    integer :: stat
-
-    ! Use custom path to the config file if it was specified.
-    if (global_settings%has_custom_location()) then
-      ! Throw error if folder doesn't exist.
-      if (.not. exists(global_settings%path_to_config_folder)) then
-        call fatal_error(error, "Folder not found: '"//global_settings%path_to_config_folder//"'."); return
-      end if
-
-      ! Throw error if the file doesn't exist.
-      if (.not. exists(global_settings%full_path())) then
-        call fatal_error(error, "File not found: '"//global_settings%full_path()//"'."); return
-      end if
-
-      ! Make sure that the path to the global config file is absolute.
-      call convert_to_absolute_path(global_settings%path_to_config_folder, error)
-      if (allocated(error)) return
-    else
-      ! Use default path if it wasn't specified.
-      if (os_is_unix()) then
-        global_settings%path_to_config_folder = join_path(get_local_prefix(), 'share', 'fpm')
-      else
-        global_settings%path_to_config_folder = join_path(get_local_prefix(), 'fpm')
-      end if
-
-      ! Use default file name.
-      global_settings%config_file_name = default_config_file_name
-
-      ! Apply default registry settings and return if config file doesn't exist.
-      if (.not. exists(global_settings%full_path())) then
-        call use_default_registry_settings(global_settings); return
-      end if
-    end if
-
-    ! Load into TOML table.
-    call toml_load(table, global_settings%full_path(), error=parse_error)
-
-    if (allocated(parse_error)) then
-      allocate (error); call move_alloc(parse_error%message, error%message); return
-    end if
-
-    call get_value(table, 'registry', registry_table, requested=.false., stat=stat)
-
-    if (stat /= toml_stat%success) then
-      call fatal_error(error, "Error reading registry from config file '"// &
-      & global_settings%full_path()//"'."); return
-    end if
-
-    ! A registry table was found.
-    if (associated(registry_table)) then
-      call get_registry_settings(registry_table, global_settings, error)
-    else
-      call use_default_registry_settings(global_settings)
-    end if
-  end
-
-  !> Default registry settings are typically applied if the config file doesn't exist or no registry table was found in
-  !> the global config file.
-  subroutine use_default_registry_settings(global_settings)
-    type(fpm_global_settings), intent(inout) :: global_settings
-
-    allocate (global_settings%registry_settings)
-    global_settings%registry_settings%url = official_registry_base_url
-    global_settings%registry_settings%cache_path = join_path(global_settings%path_to_config_folder_or_empty(), &
-    & 'dependencies')
-  end
-
-  !> Read registry settings from the global config file.
-  subroutine get_registry_settings(table, global_settings, error)
-    !> The [registry] subtable from the global config file.
-    type(toml_table), target, intent(inout) :: table
-    !> The global settings which can be filled with the registry settings.
-    type(fpm_global_settings), intent(inout) :: global_settings
-    !> Error handling.
-    type(error_t), allocatable, intent(out) :: error
-
-    character(:), allocatable :: path, url, cache_path
-    integer :: stat
-
-    !> List of valid keys for the dependency table.
-    character(*), dimension(*), parameter :: valid_keys = [character(10) :: &
-        & 'path', &
-        & 'url', &
-        & 'cache_path' &
-        & ]
-
-    call check_keys(table, valid_keys, error)
-    if (allocated(error)) return
-
-    allocate (global_settings%registry_settings)
-
-    if (table%has_key('path')) then
-      call get_value(table, 'path', path, stat=stat)
-      if (stat /= toml_stat%success) then
-        call fatal_error(error, "Error reading registry path: '"//path//"'."); return
-      end if
-    end if
-
-    if (allocated(path)) then
-      if (is_absolute_path(path)) then
-        global_settings%registry_settings%path = path
-      else
-        ! Get canonical, absolute path on both Unix and Windows.
-        call get_absolute_path(join_path(global_settings%path_to_config_folder_or_empty(), path), &
-        & global_settings%registry_settings%path, error)
-        if (allocated(error)) return
-
-        ! Check if the path to the registry exists.
-        if (.not. exists(global_settings%registry_settings%path)) then
-          call fatal_error(error, "Directory '"//global_settings%registry_settings%path// &
-          & "' doesn't exist."); return
-        end if
-      end if
-    end if
-
-    if (table%has_key('url')) then
-      call get_value(table, 'url', url, stat=stat)
-      if (stat /= toml_stat%success) then
-        call fatal_error(error, "Error reading registry url: '"//url//"'."); return
-      end if
-    end if
-
-    if (allocated(url)) then
-      ! Throw error when both path and url were provided.
-      if (allocated(path)) then
-        call fatal_error(error, 'Do not provide both path and url to the registry.'); return
-      end if
-      global_settings%registry_settings%url = url
-    else if (.not. allocated(path)) then
-      global_settings%registry_settings%url = official_registry_base_url
-    end if
-
-    if (table%has_key('cache_path')) then
-      call get_value(table, 'cache_path', cache_path, stat=stat)
-      if (stat /= toml_stat%success) then
-        call fatal_error(error, "Error reading path to registry cache: '"//cache_path//"'."); return
-      end if
-    end if
-
-    if (allocated(cache_path)) then
-      ! Throw error when both path and cache_path were provided.
-      if (allocated(path)) then
-        call fatal_error(error, "Do not provide both 'path' and 'cache_path'."); return
-      end if
-
-      if (is_absolute_path(cache_path)) then
-        if (.not. exists(cache_path)) call mkdir(cache_path)
-        global_settings%registry_settings%cache_path = cache_path
-      else
-        cache_path = join_path(global_settings%path_to_config_folder_or_empty(), cache_path)
-        if (.not. exists(cache_path)) call mkdir(cache_path)
-        ! Get canonical, absolute path on both Unix and Windows.
-        call get_absolute_path(cache_path, global_settings%registry_settings%cache_path, error)
-        if (allocated(error)) return
-      end if
-    else if (.not. allocated(path)) then
-      global_settings%registry_settings%cache_path = &
-        join_path(global_settings%path_to_config_folder_or_empty(), 'dependencies')
-    end if
-  end
-
-  !> True if the global config file is not at the default location.
-  elemental logical function has_custom_location(self)
-    class(fpm_global_settings), intent(in) :: self
-
-    has_custom_location = allocated(self%path_to_config_folder) .and. allocated(self%config_file_name)
-    if (.not. has_custom_location) return
-    has_custom_location = len_trim(self%path_to_config_folder) > 0 .and. len_trim(self%config_file_name) > 0
-  end
-
-  !> The full path to the global config file.
-  function full_path(self) result(result)
-    class(fpm_global_settings), intent(in) :: self
-    character(len=:), allocatable :: result
-
-    result = join_path(self%path_to_config_folder_or_empty(), self%config_file_name)
-  end
-
-  !> The path to the global config directory.
-  pure function path_to_config_folder_or_empty(self)
-    class(fpm_global_settings), intent(in) :: self
-    character(len=:), allocatable :: path_to_config_folder_or_empty
-
-    if (allocated(self%path_to_config_folder)) then
-      path_to_config_folder_or_empty = self%path_to_config_folder
-    else
-      path_to_config_folder_or_empty = ""
-    end if
-  end
-end
-
-!>>>>> ././src/fpm/git.f90
-!> Implementation for interacting with git repositories.
-module fpm_git
-    use fpm_error, only: error_t, fatal_error
-    use fpm_filesystem, only : get_temp_filename, getline, join_path, execute_and_read_output, run
-    use fpm_toml, only: serializable_t, toml_table, get_value, set_value, toml_stat, set_string
-    implicit none
-
-    public :: git_target_t, git_target_default, git_target_branch, git_target_tag, git_target_revision, git_revision, &
-            & git_archive, git_matches_manifest, operator(==), compressed_package_name
-
-    !> Name of the compressed package that is generated temporarily.
-    character(len=*), parameter :: compressed_package_name = 'compressed_package'
-
-    !> Possible git target
-    type :: enum_descriptor
-
-        !> Default target
-        integer :: default = 200
-
-        !> Branch in git repository
-        integer :: branch = 201
-
-        !> Tag in git repository
-        integer :: tag = 202
-
-        !> Commit hash
-        integer :: revision = 203
-
-        !> Invalid descriptor
-        integer :: error = -999
-
-    end type enum_descriptor
-
-    !> Actual enumerator for descriptors
-    type(enum_descriptor), parameter :: git_descriptor = enum_descriptor()
-
-    !> Description of an git target
-    type, extends(serializable_t) :: git_target_t
-
-        !> Kind of the git target
-        integer :: descriptor = git_descriptor%default
-
-        !> Target URL of the git repository
-        character(len=:), allocatable :: url
-
-        !> Additional descriptor of the git object
-        character(len=:), allocatable :: object
-
-    contains
-
-        !> Fetch and checkout in local directory
-        procedure :: checkout
-
-        !> Show information on instance
-        procedure :: info
-
-        !> Serialization interface
-        procedure :: serializable_is_same => git_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
-    end type git_target_t
-
-    interface operator(==)
-        module procedure git_target_eq
-    end interface
-
-    !> Common output format for writing to the command line
-    character(len=*), parameter :: out_fmt = '("#", *(1x, g0))'
-
-contains
-
-    !> Default target
-    function git_target_default(url) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%default
-        self%url = url
-
-    end function git_target_default
-
-    !> Target a branch in the git repository
-    function git_target_branch(url, branch) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Name of the branch of interest
-        character(len=*), intent(in) :: branch
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%branch
-        self%url = url
-        self%object = branch
-
-    end function git_target_branch
-
-    !> Target a specific git revision
-    function git_target_revision(url, sha1) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Commit hash of interest
-        character(len=*), intent(in) :: sha1
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%revision
-        self%url = url
-        self%object = sha1
-
-    end function git_target_revision
-
-    !> Target a git tag
-    function git_target_tag(url, tag) result(self)
-
-        !> Target URL of the git repository
-        character(len=*), intent(in) :: url
-
-        !> Tag name of interest
-        character(len=*), intent(in) :: tag
-
-        !> New git target
-        type(git_target_t) :: self
-
-        self%descriptor = git_descriptor%tag
-        self%url = url
-        self%object = tag
-
-    end function git_target_tag
-
-    !> Check that two git targets are equal
-    logical function git_target_eq(this,that) result(is_equal)
-
-        !> Two input git targets
-        type(git_target_t), intent(in) :: this,that
-
-        is_equal = this%descriptor == that%descriptor .and. &
-                   this%url        == that%url        .and. &
-                   this%object     == that%object
-
-    end function git_target_eq
-
-    !> Check that two git targets are equal
-    logical function git_is_same(this,that)
-        class(git_target_t), intent(in) :: this
-        class(serializable_t), intent(in) :: that
-
-        git_is_same = .false.
-
-        select type (other=>that)
-           type is (git_target_t)
-
-              if (.not.(this%descriptor==other%descriptor)) return
-              if (.not.(this%url==other%url)) return
-              if (.not.(this%object==other%object)) return
-
-           class default
-              ! Not the same type
-              return
-        end select
-
-        !> All checks passed!
-        git_is_same = .true.
-
-    end function git_is_same
-
-    !> Check that a cached dependency matches a manifest request
-    logical function git_matches_manifest(cached,manifest,verbosity,iunit)
-
-        !> Two input git targets
-        type(git_target_t), intent(in) :: cached,manifest
-
-        integer, intent(in) :: verbosity,iunit
-
-        git_matches_manifest = cached%url == manifest%url
-        if (.not.git_matches_manifest) then
-            if (verbosity>1) write(iunit,out_fmt) "GIT URL has changed: ",cached%url," vs. ", manifest%url
-            return
-        endif
-
-        !> The manifest dependency only contains partial information (what's requested),
-        !> while the cached dependency always stores a commit hash because it's built
-        !> after the repo is available (saved as git_descriptor%revision==revision).
-        !> So, comparing against the descriptor is not reliable
-        git_matches_manifest = allocated(cached%object) .eqv. allocated(manifest%object)
-        if (git_matches_manifest .and. allocated(cached%object)) &
-        git_matches_manifest = cached%object == manifest%object
-        if (.not.git_matches_manifest) then
-            if (verbosity>1) write(iunit,out_fmt) "GIT OBJECT has changed: ",cached%object," vs. ", manifest%object
-        end if
-
-    end function git_matches_manifest
-
-    subroutine checkout(self, local_path, error)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat
-        character(len=:), allocatable :: object, workdir
-
-        if (allocated(self%object)) then
-            object = self%object
-        else
-            object = 'HEAD'
-        end if
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-
-        call execute_command_line("git init "//local_path, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while initiating git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" fetch --depth=1 "// &
-                                  self%url//" "//object, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while fetching git repository for remote dependency')
-            return
-        end if
-
-        call execute_command_line("git "//workdir//" checkout -qf FETCH_HEAD", exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error,'Error while checking out git repository for remote dependency')
-            return
-        end if
-
-    end subroutine checkout
-
-    subroutine git_revision(local_path, object, error)
-
-        !> Local path to checkout in
-        character(*), intent(in) :: local_path
-
-        !> Git object reference
-        character(len=:), allocatable, intent(out) :: object
-
-        !> Error
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat, unit, istart, iend
-        character(len=:), allocatable :: temp_file, line, iomsg, workdir
-        character(len=*), parameter :: hexdigits = '0123456789abcdef'
-
-        workdir = "--work-tree="//local_path//" --git-dir="//join_path(local_path, ".git")
-        allocate(temp_file, source=get_temp_filename())
-        line = "git "//workdir//" log -n 1 > "//temp_file
-        call execute_command_line(line, exitstat=stat)
-
-        if (stat /= 0) then
-            call fatal_error(error, "Error while retrieving commit information")
-            return
-        end if
-
-        open(file=temp_file, newunit=unit)
-        call getline(unit, line, stat, iomsg)
-
-        if (stat /= 0) then
-            call fatal_error(error, iomsg)
-            return
-        end if
-        close(unit, status="delete")
-
-        ! Tokenize:
-        ! commit 0123456789abcdef (HEAD, ...)
-        istart = scan(line, ' ') + 1
-        iend = verify(line(istart:), hexdigits) + istart - 1
-        if (iend < istart) iend = len(line)
-        object = line(istart:iend)
-
-    end subroutine git_revision
-
-    !> Show information on git target
-    subroutine info(self, unit, verbosity)
-
-        !> Instance of the git target
-        class(git_target_t), intent(in) :: self
-
-        !> Unit for IO
-        integer, intent(in) :: unit
-
-        !> Verbosity of the printout
-        integer, intent(in), optional :: verbosity
-
-        integer :: pr
-        character(len=*), parameter :: fmt = '("#", 1x, a, t30, a)'
-
-        if (present(verbosity)) then
-            pr = verbosity
-        else
-            pr = 1
-        end if
-
-        if (pr < 1) return
-
-        write(unit, fmt) "Git target"
-        if (allocated(self%url)) then
-            write(unit, fmt) "- URL", self%url
-        end if
-        if (allocated(self%object)) then
-            select case(self%descriptor)
-            case default
-                write(unit, fmt) "- object", self%object
-            case(git_descriptor%tag)
-                write(unit, fmt) "- tag", self%object
-            case(git_descriptor%branch)
-                write(unit, fmt) "- branch", self%object
-            case(git_descriptor%revision)
-                write(unit, fmt) "- sha1", self%object
-            end select
-        end if
-
-    end subroutine info
-
-    !> Dump dependency to toml table
-    subroutine dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(git_target_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: ierr
-
-        call set_string(table, "descriptor", descriptor_name(self%descriptor), error, 'git_target_t')
-        if (allocated(error)) return
-        call set_string(table, "url", self%url, error, 'git_target_t')
-        if (allocated(error)) return
-        call set_string(table, "object", self%object, error, 'git_target_t')
-        if (allocated(error)) return
-
-    end subroutine dump_to_toml
-
-    !> Read dependency from toml table (no checks made at this stage)
-    subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(git_target_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        character(len=:), allocatable :: descriptor_name
-
-        call get_value(table, "descriptor", descriptor_name)
-        self%descriptor = parse_descriptor(descriptor_name)
-
-        if (self%descriptor==git_descriptor%error) then
-            call fatal_error(error,"invalid descriptor ID <"//descriptor_name//"> in TOML entry")
-            return
-        end if
-
-        !> Target URL of the git repository
-        call get_value(table, "url", self%url)
-
-        !> Additional descriptor of the git object
-        call get_value(table,"object", self%object)
-
-    end subroutine load_from_toml
-
-    !> Parse git descriptor identifier from a string
-    pure integer function parse_descriptor(name)
-        character(len=*), intent(in) :: name
-
-        select case (name)
-           case ("default");  parse_descriptor = git_descriptor%default
-           case ("branch");   parse_descriptor = git_descriptor%branch
-           case ("tag");      parse_descriptor = git_descriptor%tag
-           case ("revision"); parse_descriptor = git_descriptor%revision
-           case default;      parse_descriptor = git_descriptor%error
-        end select
-
-    end function parse_descriptor
-
-    !> Code git descriptor to a string
-    pure function descriptor_name(descriptor) result(name)
-       integer, intent(in) :: descriptor
-       character(len=:), allocatable :: name
-
-       select case (descriptor)
-          case (git_descriptor%default);   name = "default"
-          case (git_descriptor%branch);    name = "branch"
-          case (git_descriptor%tag);       name = "tag"
-          case (git_descriptor%revision);  name = "revision"
-          case default;                    name = "ERROR"
-       end select
-
-    end function descriptor_name
-
-  !> Archive a folder using `git archive`.
-  subroutine git_archive(source, destination, ref, verbose, error)
-    !> Directory to archive.
-    character(*), intent(in) :: source
-    !> Destination of the archive.
-    character(*), intent(in) :: destination
-    !> (Symbolic) Reference to be archived.
-    character(*), intent(in) :: ref
-    !> Print additional information if true.
-    logical, intent(in) :: verbose
-    !> Error handling.
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: stat
-    character(len=:), allocatable :: cmd_output, archive_format
-
-    call execute_and_read_output('git archive -l', cmd_output, error, verbose)
-    if (allocated(error)) return
-
-    if (index(cmd_output, 'tar.gz') /= 0) then
-      archive_format = 'tar.gz'
-    else
-      call fatal_error(error, "Cannot find a suitable archive format for 'git archive'."); return
-    end if
-
-    call run('git archive '//ref//' --format='//archive_format//' -o '//destination, echo=verbose, exitstat=stat)
-    if (stat /= 0) then
-      call fatal_error(error, "Error packing '"//source//"'."); return
-    end if
-  end
-
-end module fpm_git
 
 !>>>>> ././src/fpm/manifest/build.f90
 !> Implementation of the build configuration data.
@@ -28303,25 +26270,24 @@ end module fpm_git
 !>```
 module fpm_manifest_build
     use fpm_error, only : error_t, syntax_error, fatal_error
-    use fpm_strings, only : string_t, len_trim, is_valid_module_prefix, operator(==)
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list, serializable_t, &
-                         set_value, set_string, set_list
+    use fpm_strings, only : string_t, len_trim, is_valid_module_prefix
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
     implicit none
     private
 
     public :: build_config_t, new_build_config
 
     !> Configuration data for build
-    type, extends(serializable_t) :: build_config_t
+    type :: build_config_t
 
         !> Automatic discovery of executables
-        logical :: auto_executables = .true.
+        logical :: auto_executables
 
         !> Automatic discovery of examples
-        logical :: auto_examples = .true.
+        logical :: auto_examples
 
         !> Automatic discovery of tests
-        logical :: auto_tests = .true.
+        logical :: auto_tests
 
         !> Enforcing of package module names
         logical :: module_naming = .false.
@@ -28338,16 +26304,11 @@ module fpm_manifest_build
         !> Print information on this instance
         procedure :: info
 
-        !> Serialization interface
-        procedure :: serializable_is_same => build_conf_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
     end type build_config_t
 
-    character(*), parameter, private :: class_name = 'build_config_t'
 
 contains
+
 
     !> Construct a new build configuration from a TOML data structure
     subroutine new_build_config(self, table, package_name, error)
@@ -28395,8 +26356,9 @@ contains
 
         if (stat == toml_stat%success) then
 
-            ! Boolean value found. Set no custom prefix. This also falls back to key not provided
-            if (allocated(self%module_prefix%s)) deallocate(self%module_prefix%s)
+            ! Boolean value found. Set no custom prefix. This also falls back to
+            ! key not provided
+            self%module_prefix = string_t("")
 
         else
 
@@ -28464,6 +26426,7 @@ contains
 
     end subroutine check
 
+
     !> Write information on build configuration instance
     subroutine info(self, unit, verbosity)
 
@@ -28507,112 +26470,8 @@ contains
 
     end subroutine info
 
-    !> Check that two dependency trees are equal
-    logical function build_conf_is_same(this,that)
-      class(build_config_t), intent(in) :: this
-      class(serializable_t), intent(in) :: that
-
-      build_conf_is_same = .false.
-
-      select type (other=>that)
-         type is (build_config_t)
-
-             if (this%auto_executables.neqv.other%auto_executables) return
-             if (this%auto_examples.neqv.other%auto_examples) return
-             if (this%auto_tests.neqv.other%auto_tests) return
-             if (this%module_naming.neqv.other%module_naming) return
-             if (.not.this%module_prefix==other%module_prefix) return
-             if (.not.this%link==other%link) return
-             if (.not.this%external_modules==other%external_modules) return
-
-         class default
-            ! Not the same type
-            return
-      end select
-
-      !> All checks passed!
-      build_conf_is_same = .true.
-
-    end function build_conf_is_same
-
-    !> Dump build config to toml table
-    subroutine dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(build_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call set_value(table, "auto-executables", self%auto_executables, error, class_name)
-        if (allocated(error)) return
-        call set_value(table, "auto-tests", self%auto_tests, error, class_name)
-        if (allocated(error)) return
-        call set_value(table, "auto-examples", self%auto_examples, error, class_name)
-        if (allocated(error)) return
-
-        ! Module naming can either contain a boolean value, or the prefix
-        has_prefix: if (self%module_naming .and. len_trim(self%module_prefix)>0) then
-            call set_string(table, "module-naming", self%module_prefix, error, class_name)
-        else
-            call set_value (table, "module-naming", self%module_naming, error, class_name)
-        end if has_prefix
-        if (allocated(error)) return
-
-        call set_list(table, "link", self%link, error)
-        if (allocated(error)) return
-        call set_list(table, "external-modules", self%external_modules, error)
-        if (allocated(error)) return
-
-    end subroutine dump_to_toml
-
-    !> Read build config from toml table (no checks made at this stage)
-    subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(build_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat
-
-        call get_value(table, "auto-executables", self%auto_executables, error, class_name)
-        if (allocated(error)) return
-        call get_value(table, "auto-tests", self%auto_tests, error, class_name)
-        if (allocated(error)) return
-        call get_value(table, "auto-examples", self%auto_examples, error, class_name)
-        if (allocated(error)) return
-
-        !> Module naming: fist, attempt boolean value first
-        call get_value(table, "module-naming", self%module_naming, .false., stat=stat)
-        if (stat == toml_stat%success) then
-            ! Boolean value found. Set no custom prefix. This also falls back to key not provided
-            if (allocated(self%module_prefix%s)) deallocate(self%module_prefix%s)
-        else
-            !> Value found, but not a boolean. Attempt to read a prefix string
-            call get_value(table, "module-naming", self%module_prefix%s)
-            if (.not.allocated(self%module_prefix%s)) then
-               call syntax_error(error,"Could not read value for 'module-naming' in fpm.toml, expecting logical or a string")
-               return
-            end if
-            self%module_naming = .true.
-        end if
-
-        call get_list(table, "link", self%link, error)
-        if (allocated(error)) return
-        call get_list(table, "external-modules", self%external_modules, error)
-        if (allocated(error)) return
-
-    end subroutine load_from_toml
-
 end module fpm_manifest_build
+
 
 !>>>>> ././src/fpm/manifest/install.f90
 !> Implementation of the installation configuration.
@@ -28624,31 +26483,24 @@ end module fpm_manifest_build
 !>```
 module fpm_manifest_install
   use fpm_error, only : error_t, fatal_error, syntax_error
-  use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, set_value, serializable_t
+  use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
   implicit none
   private
 
   public :: install_config_t, new_install_config
 
   !> Configuration data for installation
-  type, extends(serializable_t) :: install_config_t
+  type :: install_config_t
 
     !> Install library with this project
-    logical :: library = .false.
+    logical :: library
 
   contains
 
     !> Print information on this instance
     procedure :: info
 
-    !> Serialization interface
-    procedure :: serializable_is_same => install_conf_same
-    procedure :: dump_to_toml
-    procedure :: load_from_toml
-
   end type install_config_t
-
-  character(*), parameter, private :: class_name = 'install_config_t'
 
 contains
 
@@ -28670,6 +26522,7 @@ contains
     call get_value(table, "library", self%library, .false.)
 
   end subroutine new_install_config
+
 
   !> Check local schema for allowed entries
   subroutine check(table, error)
@@ -28728,279 +26581,8 @@ contains
 
   end subroutine info
 
-  logical function install_conf_same(this,that)
-    class(install_config_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    install_conf_same = .false.
-
-    select type (other=>that)
-       type is (install_config_t)
-          if (this%library.neqv.other%library) return
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    install_conf_same = .true.
-
-  end function install_conf_same
-
-  !> Dump install config to toml table
-  subroutine dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(install_config_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call set_value(table, "library", self%library, error, class_name)
-
-  end subroutine dump_to_toml
-
-  !> Read install config from toml table (no checks made at this stage)
-  subroutine load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(install_config_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: stat
-
-    call get_value(table, "library", self%library, error, class_name)
-    if (allocated(error)) return
-
-  end subroutine load_from_toml
-
 end module fpm_manifest_install
 
-!>>>>> ././src/fpm/manifest/meta.f90
-!> Implementation of the metapackage configuration data.
-!>
-!> A metapackage table can currently have the following fields
-!>
-!>```toml
-!>[metapackages]
-!>fpm = "0.1.0"
-!>openmp = bool
-!>stdlib = bool
-!>```
-module fpm_manifest_metapackages
-    use fpm_error, only: error_t, fatal_error, syntax_error
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
-    use fpm_environment
-    implicit none
-    private
-
-    public :: metapackage_config_t, new_meta_config, is_meta_package
-    public :: metapackage_request_t, new_meta_request
-
-    !> Configuration data for a single metapackage request
-    type :: metapackage_request_t
-
-        !> Request flag
-        logical :: on = .false.
-
-        !> Metapackage name
-        character(len=:), allocatable :: name
-
-        !> Version Specification string
-        character(len=:), allocatable :: version
-
-    end type metapackage_request_t
-
-    !> Configuration data for metapackages
-    type :: metapackage_config_t
-
-        !> Request MPI support
-        type(metapackage_request_t) :: mpi
-
-        !> Request OpenMP support
-        type(metapackage_request_t) :: openmp
-
-        !> Request stdlib support
-        type(metapackage_request_t) :: stdlib
-
-        !> fortran-lang minpack
-        type(metapackage_request_t) :: minpack
-
-    end type metapackage_config_t
-
-contains
-
-    !> Destroy a metapackage request
-    elemental subroutine request_destroy(self)
-
-        !> Instance of the request
-        class(metapackage_request_t), intent(inout) :: self
-
-        self%on = .false.
-        if (allocated(self%version)) deallocate(self%version)
-        if (allocated(self%name)) deallocate(self%name)
-
-    end subroutine request_destroy
-
-    !> Parse version string of a metapackage request
-    subroutine request_parse(self, version_request, error)
-
-        ! Instance of this metapackage
-        type(metapackage_request_t), intent(inout) :: self
-
-        ! Parse version request
-        character(len=*), intent(in) :: version_request
-
-        ! Error message
-        type(error_t), allocatable, intent(out) :: error
-
-        ! wildcard = use any versions
-        if (version_request=="*") then
-
-            ! Any version is OK
-            self%on = .true.
-            self%version = version_request
-
-        else
-
-            call fatal_error(error,'Value <'//version_request//'> for metapackage '//self%name//&
-                                   'is not currently supported. Try "*" instead. ')
-            return
-
-        end if
-
-    end subroutine request_parse
-
-    !> Construct a new metapackage request from the dependencies table
-    subroutine new_meta_request(self, key, table, meta_allowed, error)
-
-        type(metapackage_request_t), intent(out) :: self
-
-        !> The package name
-        character(len=*), intent(in) :: key
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> List of keys allowed to be metapackages
-        logical, intent(in), optional :: meta_allowed(:)
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat,i
-        character(len=:), allocatable :: value
-        logical, allocatable :: allow_meta(:)
-        type(toml_key), allocatable :: keys(:)
-
-        call request_destroy(self)
-
-        !> Set name
-        self%name = key
-        if (.not.is_meta_package(key)) then
-            call fatal_error(error,"Error reading fpm.toml: <"//key//"> is not a valid metapackage name")
-            return
-        end if
-
-        !> The toml table is not checked here because it already passed
-        !> the "new_dependencies" check
-
-        call table%get_keys(keys)
-
-        !> Set list of entries that are allowed to be metapackages
-        if (present(meta_allowed)) then
-            if (size(meta_allowed)/=size(keys)) then
-                 call fatal_error(error,"Internal error: list of metapackage-enable entries does not match table size")
-                 return
-            end if
-            allow_meta = meta_allowed
-        else
-            allocate(allow_meta(size(keys)),source=.true.)
-        endif
-
-        do i=1,size(keys)
-
-            ! Skip standard dependencies
-            if (.not.allow_meta(i)) cycle
-
-            if (keys(i)%key==key) then
-                call get_value(table, key, value)
-                if (.not. allocated(value)) then
-                    call syntax_error(error, "Could not retrieve version string for metapackage key <"//key//">. Check syntax")
-                    return
-                else
-                    call request_parse(self, value, error)
-                    return
-                endif
-            end if
-        end do
-
-        ! Key is not present, metapackage not requested
-        return
-
-    end subroutine new_meta_request
-
-    !> Construct a new build configuration from a TOML data structure
-    subroutine new_meta_config(self, table, meta_allowed, error)
-
-        !> Instance of the build configuration
-        type(metapackage_config_t), intent(out) :: self
-
-        !> Instance of the TOML data structure
-        type(toml_table), intent(inout) :: table
-
-        !> List of keys allowed to be metapackages
-        logical, intent(in) :: meta_allowed(:)
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: stat
-
-        !> The toml table is not checked here because it already passed
-        !> the "new_dependencies" check
-        call new_meta_request(self%openmp, "openmp", table, meta_allowed, error)
-        if (allocated(error)) return
-
-        call new_meta_request(self%stdlib, "stdlib", table, meta_allowed, error)
-        if (allocated(error)) return
-
-        call new_meta_request(self%minpack, "minpack", table, meta_allowed, error)
-        if (allocated(error)) return
-
-        call new_meta_request(self%mpi, "mpi", table, meta_allowed, error)
-        if (allocated(error)) return
-
-    end subroutine new_meta_config
-
-    !> Check local schema for allowed entries
-    logical function is_meta_package(key)
-
-        !> Instance of the TOML data structure
-        character(*), intent(in) :: key
-
-        select case (key)
-
-            !> Supported metapackages
-            case ("openmp","stdlib","mpi","minpack")
-                is_meta_package = .true.
-
-            case default
-                is_meta_package = .false.
-
-        end select
-
-    end function is_meta_package
-
-end module fpm_manifest_metapackages
 
 !>>>>> ././src/fpm/manifest/profiles.f90
 !> Implementation of the meta data for compiler flag profiles.
@@ -29048,11 +26630,10 @@ end module fpm_manifest_metapackages
 !>
 module fpm_manifest_profile
     use fpm_error, only : error_t, syntax_error, fatal_error, fpm_stop
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, serializable_t, set_value, &
-                         set_string, add_table
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
     use fpm_strings, only: lower
     use fpm_environment, only: get_os_type, OS_UNKNOWN, OS_LINUX, OS_MACOS, OS_WINDOWS, &
-                             OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD, OS_NAME
+                             OS_CYGWIN, OS_SOLARIS, OS_FREEBSD, OS_OPENBSD
     use fpm_filesystem, only: join_path
     implicit none
     public :: profile_config_t, new_profile, new_profiles, get_default_profiles, &
@@ -29064,7 +26645,7 @@ module fpm_manifest_profile
     character(len=:), allocatable :: path
 
     !> Type storing file name - file scope compiler flags pairs
-    type, extends(serializable_t) :: file_scope_flag
+    type :: file_scope_flag
 
       !> Name of the file
       character(len=:), allocatable :: file_name
@@ -29072,17 +26653,10 @@ module fpm_manifest_profile
       !> File scope flags
       character(len=:), allocatable :: flags
 
-      contains
-
-          !> Serialization interface
-          procedure :: serializable_is_same => file_scope_same
-          procedure :: dump_to_toml => file_scope_dump
-          procedure :: load_from_toml => file_scope_load
-
     end type file_scope_flag
 
     !> Configuration meta data for a profile
-    type, extends(serializable_t) :: profile_config_t
+    type :: profile_config_t
       !> Name of the profile
       character(len=:), allocatable :: profile_name
 
@@ -29090,7 +26664,7 @@ module fpm_manifest_profile
       character(len=:), allocatable :: compiler
 
       !> Value repesenting OS
-      integer :: os_type = OS_ALL
+      integer :: os_type
 
       !> Fortran compiler flags
       character(len=:), allocatable :: flags
@@ -29108,17 +26682,12 @@ module fpm_manifest_profile
       type(file_scope_flag), allocatable :: file_scope_flags(:)
 
       !> Is this profile one of the built-in ones?
-      logical :: is_built_in = .false.
+      logical :: is_built_in
 
       contains
 
         !> Print information on this instance
         procedure :: info
-
-        !> Serialization interface
-        procedure :: serializable_is_same => profile_same
-        procedure :: dump_to_toml => profile_dump
-        procedure :: load_from_toml => profile_load
 
     end type profile_config_t
 
@@ -29239,8 +26808,7 @@ module fpm_manifest_profile
 
         select case (os_name)
           case ("linux");   os_type = OS_LINUX
-          case ("macos");   os_type = OS_MACOS
-          case ("windows"); os_type = OS_WINDOWS
+          case ("macos");   os_type = OS_WINDOWS
           case ("cygwin");  os_type = OS_CYGWIN
           case ("solaris"); os_type = OS_SOLARIS
           case ("freebsd"); os_type = OS_FREEBSD
@@ -29250,22 +26818,6 @@ module fpm_manifest_profile
         end select
 
       end subroutine match_os_type
-
-      !> Match lowercase string with name of OS to os_type enum
-      function os_type_name(os_type)
-
-        !> Name of operating system
-        character(len=:), allocatable :: os_type_name
-
-        !> Enum representing type of OS
-        integer, intent(in) :: os_type
-
-        select case (os_type)
-          case (OS_ALL); os_type_name = "all"
-          case default; os_type_name = lower(OS_NAME(os_type))
-        end select
-
-      end function os_type_name
 
       subroutine validate_profile_table(profile_name, compiler_name, key_list, table, error, os_valid)
 
@@ -29478,6 +27030,7 @@ module fpm_manifest_profile
           end if
         end do
       end subroutine traverse_oss_for_size
+
 
       !> Traverse operating system tables to obtain profiles
       subroutine traverse_oss(profile_name, compiler_name, os_list, table, profiles, profindex, error)
@@ -29753,25 +27306,25 @@ module fpm_manifest_profile
                 & 'ifort', &
                 & OS_ALL, &
                 & flags = ' -fp-model precise -pc64 -align all -error-limit 1 -reentrancy&
-                          & threaded -nogen-interfaces -assume byterecl -standard-semantics', &
+                          & threaded -nogen-interfaces -assume byterecl', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'ifort', &
                 & OS_WINDOWS, &
                 & flags = ' /fp:precise /align:all /error-limit:1 /reentrancy:threaded&
-                          & /nogen-interfaces /assume:byterecl /standard-semantics', &
+                          & /nogen-interfaces /assume:byterecl', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'ifx', &
                 & OS_ALL, &
                 & flags = ' -fp-model=precise -pc64 -align all -error-limit 1 -reentrancy&
-                          & threaded -nogen-interfaces -assume byterecl -standard-semantics', &
+                          & threaded -nogen-interfaces -assume byterecl', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'ifx', &
                 & OS_WINDOWS, &
                 & flags = ' /fp:precise /align:all /error-limit:1 /reentrancy:threaded&
-                          & /nogen-interfaces /assume:byterecl /standard-semantics', &
+                          & /nogen-interfaces /assume:byterecl', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 &'nagfor', &
@@ -29809,28 +27362,28 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'ifort', &
                 & OS_ALL, &
-                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -standard-semantics -traceback', &
+                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifort', &
                 & OS_WINDOWS, &
                 & flags = ' /warn:all /check:all /error-limit:1&
-                          & /Od /Z7 /assume:byterecl /standard-semantics /traceback', &
+                          & /Od /Z7 /assume:byterecl /traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_ALL, &
-                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -standard-semantics -traceback', &
+                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_WINDOWS, &
-                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl /standard-semantics', &
+                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_WINDOWS, &
-                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl /standard-semantics', &
+                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'lfortran', &
@@ -29870,7 +27423,7 @@ module fpm_manifest_profile
             write(unit, fmt) "- compiler", self%compiler
         end if
 
-        write(unit, fmt) "- os", os_type_name(self%os_type)
+        write(unit, fmt) "- os", self%os_type
 
         if (allocated(self%flags)) then
             write(unit, fmt) "- compiler flags", self%flags
@@ -29988,257 +27541,8 @@ module fpm_manifest_profile
           end do
         end if
       end subroutine find_profile
-
-      logical function file_scope_same(this,that)
-          class(file_scope_flag), intent(in) :: this
-          class(serializable_t), intent(in) :: that
-
-          file_scope_same = .false.
-
-          select type (other=>that)
-             type is (file_scope_flag)
-                if (allocated(this%file_name).neqv.allocated(other%file_name)) return
-                if (allocated(this%file_name)) then
-                    if (.not.(this%file_name==other%file_name)) return
-                endif
-                if (allocated(this%flags).neqv.allocated(other%flags)) return
-                if (allocated(this%flags)) then
-                    if (.not.(this%flags==other%flags)) return
-                endif
-
-             class default
-                ! Not the same type
-                return
-          end select
-
-          !> All checks passed!
-          file_scope_same = .true.
-
-    end function file_scope_same
-
-    !> Dump to toml table
-    subroutine file_scope_dump(self, table, error)
-
-       !> Instance of the serializable object
-       class(file_scope_flag), intent(inout) :: self
-
-       !> Data structure
-       type(toml_table), intent(inout) :: table
-
-       !> Error handling
-       type(error_t), allocatable, intent(out) :: error
-
-       call set_string(table, "file-name", self%file_name, error)
-       if (allocated(error)) return
-       call set_string(table, "flags", self%flags, error)
-       if (allocated(error)) return
-
-     end subroutine file_scope_dump
-
-     !> Read from toml table (no checks made at this stage)
-     subroutine file_scope_load(self, table, error)
-
-        !> Instance of the serializable object
-        class(file_scope_flag), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call get_value(table, "file-name", self%file_name)
-        call get_value(table, "flags", self%flags)
-
-     end subroutine file_scope_load
-
-      logical function profile_same(this,that)
-          class(profile_config_t), intent(in) :: this
-          class(serializable_t), intent(in) :: that
-
-          integer :: ii
-
-          profile_same = .false.
-
-          select type (other=>that)
-             type is (profile_config_t)
-                if (allocated(this%profile_name).neqv.allocated(other%profile_name)) return
-                if (allocated(this%profile_name)) then
-                    if (.not.(this%profile_name==other%profile_name)) return
-                endif
-                if (allocated(this%compiler).neqv.allocated(other%compiler)) return
-                if (allocated(this%compiler)) then
-                    if (.not.(this%compiler==other%compiler)) return
-                endif
-                if (this%os_type/=other%os_type) return
-                if (allocated(this%flags).neqv.allocated(other%flags)) return
-                if (allocated(this%flags)) then
-                    if (.not.(this%flags==other%flags)) return
-                endif
-                if (allocated(this%c_flags).neqv.allocated(other%c_flags)) return
-                if (allocated(this%c_flags)) then
-                    if (.not.(this%c_flags==other%c_flags)) return
-                endif
-                if (allocated(this%cxx_flags).neqv.allocated(other%cxx_flags)) return
-                if (allocated(this%cxx_flags)) then
-                    if (.not.(this%cxx_flags==other%cxx_flags)) return
-                endif
-                if (allocated(this%link_time_flags).neqv.allocated(other%link_time_flags)) return
-                if (allocated(this%link_time_flags)) then
-                    if (.not.(this%link_time_flags==other%link_time_flags)) return
-                endif
-
-                if (allocated(this%file_scope_flags).neqv.allocated(other%file_scope_flags)) return
-                if (allocated(this%file_scope_flags)) then
-                    if (.not.size(this%file_scope_flags)==size(other%file_scope_flags)) return
-                    do ii=1,size(this%file_scope_flags)
-                        print *, 'check ii-th file scope: ',ii
-                       if (.not.this%file_scope_flags(ii)==other%file_scope_flags(ii)) return
-                    end do
-                endif
-
-                if (this%is_built_in.neqv.other%is_built_in) return
-
-             class default
-                ! Not the same type
-                return
-          end select
-
-          !> All checks passed!
-          profile_same = .true.
-
-    end function profile_same
-
-    !> Dump to toml table
-    subroutine profile_dump(self, table, error)
-
-       !> Instance of the serializable object
-       class(profile_config_t), intent(inout) :: self
-
-       !> Data structure
-       type(toml_table), intent(inout) :: table
-
-       !> Error handling
-       type(error_t), allocatable, intent(out) :: error
-
-       !> Local variables
-       integer :: ierr, ii
-       type(toml_table), pointer :: ptr_deps, ptr
-       character(len=30) :: unnamed
-
-       call set_string(table, "profile-name", self%profile_name, error)
-       if (allocated(error)) return
-       call set_string(table, "compiler", self%compiler, error)
-       if (allocated(error)) return
-       call set_string(table,"os-type",os_type_name(self%os_type), error, 'profile_config_t')
-       if (allocated(error)) return
-       call set_string(table, "flags", self%flags, error)
-       if (allocated(error)) return
-       call set_string(table, "c-flags", self%c_flags, error)
-       if (allocated(error)) return
-       call set_string(table, "cxx-flags", self%cxx_flags, error)
-       if (allocated(error)) return
-       call set_string(table, "link-time-flags", self%link_time_flags, error)
-       if (allocated(error)) return
-
-       if (allocated(self%file_scope_flags)) then
-
-           ! Create dependency table
-           call add_table(table, "file-scope-flags", ptr_deps)
-           if (.not. associated(ptr_deps)) then
-              call fatal_error(error, "profile_config_t cannot create file scope table ")
-              return
-           end if
-
-           do ii = 1, size(self%file_scope_flags)
-              associate (dep => self%file_scope_flags(ii))
-
-                 !> Because files need a name, fallback if this has no name
-                 if (len_trim(dep%file_name)==0) then
-                    write(unnamed,1) ii
-                    call add_table(ptr_deps, trim(unnamed), ptr)
-                 else
-                    call add_table(ptr_deps, dep%file_name, ptr)
-                 end if
-                 if (.not. associated(ptr)) then
-                    call fatal_error(error, "profile_config_t cannot create entry for file "//dep%file_name)
-                    return
-                 end if
-                 call dep%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-              end associate
-           end do
-
-       endif
-
-       call set_value(table, "is-built-in", self%is_built_in, error, 'profile_config_t')
-       if (allocated(error)) return
-
-       1 format('UNNAMED_FILE_',i0)
-
-     end subroutine profile_dump
-
-     !> Read from toml table (no checks made at this stage)
-     subroutine profile_load(self, table, error)
-
-        !> Instance of the serializable object
-        class(profile_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        character(len=:), allocatable :: flag
-        integer :: ii, jj
-        type(toml_table), pointer :: ptr_dep, ptr
-        type(toml_key), allocatable :: keys(:),dep_keys(:)
-
-        call table%get_keys(keys)
-
-        call get_value(table, "profile-name", self%profile_name)
-        call get_value(table, "compiler", self%compiler)
-        call get_value(table,"os-type",flag)
-        call match_os_type(flag, self%os_type)
-        call get_value(table, "flags", self%flags)
-        call get_value(table, "c-flags", self%c_flags)
-        call get_value(table, "cxx-flags", self%cxx_flags)
-        call get_value(table, "link-time-flags", self%link_time_flags)
-        call get_value(table, "is-built-in", self%is_built_in, error, 'profile_config_t')
-        if (allocated(error)) return
-
-        if (allocated(self%file_scope_flags)) deallocate(self%file_scope_flags)
-        sub_deps: do ii = 1, size(keys)
-
-           select case (keys(ii)%key)
-              case ("file-scope-flags")
-
-               call get_value(table, keys(ii), ptr)
-               if (.not.associated(ptr)) then
-                  call fatal_error(error,'profile_config_t: error retrieving file_scope_flags table')
-                  return
-               end if
-
-               !> Read all packages
-               call ptr%get_keys(dep_keys)
-               allocate(self%file_scope_flags(size(dep_keys)))
-
-               do jj = 1, size(dep_keys)
-
-                   call get_value(ptr, dep_keys(jj), ptr_dep)
-                   call self%file_scope_flags(jj)%load_from_toml(ptr_dep, error)
-                   if (allocated(error)) return
-
-               end do
-
-           end select
-        end do sub_deps
-
-     end subroutine profile_load
-
 end module fpm_manifest_profile
+
 
 !>>>>> ././src/fpm/manifest/library.f90
 !> Implementation of the meta data for libraries.
@@ -30253,16 +27557,16 @@ end module fpm_manifest_profile
 !>```
 module fpm_manifest_library
     use fpm_error, only : error_t, syntax_error
-    use fpm_strings, only: string_t, string_cat, operator(==)
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list, serializable_t, set_value, &
-                          set_list, set_string, get_value, get_list
+    use fpm_strings, only: string_t, string_cat
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
     implicit none
     private
 
     public :: library_config_t, new_library
 
+
     !> Configuration meta data for a library
-    type, extends(serializable_t) :: library_config_t
+    type :: library_config_t
 
         !> Source path prefix
         character(len=:), allocatable :: source_dir
@@ -30278,16 +27582,11 @@ module fpm_manifest_library
         !> Print information on this instance
         procedure :: info
 
-        !> Serialization interface
-        procedure :: serializable_is_same => library_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
     end type library_config_t
 
-    character(*), parameter, private :: class_name = 'library_config_t'
 
 contains
+
 
     !> Construct a new library configuration from a TOML data structure
     subroutine new_library(self, table, error)
@@ -30316,6 +27615,7 @@ contains
         end if
 
     end subroutine new_library
+
 
     !> Check local schema for allowed entries
     subroutine check(table, error)
@@ -30347,6 +27647,7 @@ contains
         end do
 
     end subroutine check
+
 
     !> Write information on instance
     subroutine info(self, unit, verbosity)
@@ -30384,103 +27685,32 @@ contains
 
     end subroutine info
 
-    logical function library_is_same(this,that)
-       class(library_config_t), intent(in) :: this
-       class(serializable_t), intent(in) :: that
-
-        library_is_same = .false.
-
-        select type (other=>that)
-           type is (library_config_t)
-              if (.not.this%include_dir==other%include_dir) return
-              if (.not.allocated(this%source_dir).eqv.allocated(other%source_dir)) return
-              if (.not.this%source_dir==other%source_dir) return
-              if (.not.allocated(this%build_script).eqv.allocated(other%build_script)) return
-              if (.not.this%build_script==other%build_script) return
-           class default
-              ! Not the same type
-              return
-        end select
-
-        !> All checks passed!
-        library_is_same = .true.
-
-    end function library_is_same
-
-    !> Dump install config to toml table
-    subroutine dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(library_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call set_string(table, "source-dir", self%source_dir, error, class_name)
-        if (allocated(error)) return
-        call set_string(table, "build-script", self%build_script, error, class_name)
-        if (allocated(error)) return
-        call set_list(table, "include-dir", self%include_dir, error)
-        if (allocated(error)) return
-
-    end subroutine dump_to_toml
-
-    !> Read install config from toml table (no checks made at this stage)
-    subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(library_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call get_value(table, "source-dir", self%source_dir)
-        if (allocated(error)) return
-        call get_value(table, "build-script", self%build_script)
-        if (allocated(error)) return
-        call get_list(table, "include-dir", self%include_dir, error)
-
-    end subroutine load_from_toml
 
 end module fpm_manifest_library
+
 
 !>>>>> ././src/fpm/manifest/fortran.f90
 module fpm_manifest_fortran
     use fpm_error, only : error_t, syntax_error, fatal_error
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, serializable_t, set_value, set_string
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value
     implicit none
     private
 
     public :: fortran_config_t, new_fortran_config
 
     !> Configuration data for Fortran
-    type, extends(serializable_t) :: fortran_config_t
+    type :: fortran_config_t
 
         !> Enable default implicit typing
-        logical :: implicit_typing = .false.
+        logical :: implicit_typing
 
         !> Enable implicit external interfaces
-        logical :: implicit_external = .false.
+        logical :: implicit_external
 
         !> Form to use for all Fortran sources
         character(:), allocatable :: source_form
 
-        contains
-
-            !> Serialization interface
-            procedure :: serializable_is_same => fortran_is_same
-            procedure :: dump_to_toml
-            procedure :: load_from_toml
-
     end type fortran_config_t
-
-    character(len=*), parameter, private :: class_name = 'fortran_config_t'
 
 contains
 
@@ -30564,70 +27794,8 @@ contains
 
     end subroutine check
 
-  logical function fortran_is_same(this,that)
-    class(fortran_config_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    fortran_is_same = .false.
-
-    select type (other=>that)
-       type is (fortran_config_t)
-          if (this%implicit_typing.neqv.other%implicit_typing) return
-          if (this%implicit_external.neqv.other%implicit_external) return
-          if (.not.allocated(this%source_form).eqv.allocated(other%source_form)) return
-          if (.not.this%source_form==other%source_form) return
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    fortran_is_same = .true.
-
-  end function fortran_is_same
-
-  !> Dump install config to toml table
-  subroutine dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fortran_config_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call set_value(table, "implicit-typing", self%implicit_typing, error, class_name)
-    if (allocated(error)) return
-    call set_value(table, "implicit-external", self%implicit_external, error, class_name)
-    if (allocated(error)) return
-    call set_string(table, "source-form", self%source_form, error, class_name)
-    if (allocated(error)) return
-
-  end subroutine dump_to_toml
-
-  !> Read install config from toml table (no checks made at this stage)
-  subroutine load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fortran_config_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call get_value(table, "implicit-typing", self%implicit_typing, error, class_name)
-    if (allocated(error)) return
-    call get_value(table, "implicit-external", self%implicit_external, error, class_name)
-    if (allocated(error)) return
-    call get_value(table, "source-form", self%source_form)
-
-  end subroutine load_from_toml
-
 end module fpm_manifest_fortran
+
 
 !>>>>> ././src/fpm/manifest/preprocess.f90
 !> Implementation of the meta data for preprocessing.
@@ -30644,17 +27812,15 @@ end module fpm_manifest_fortran
 
 module fpm_manifest_preprocess
    use fpm_error, only : error_t, syntax_error
-   use fpm_strings, only : string_t, operator(==)
-   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list, serializable_t, set_value, set_list, &
-                        set_string
-   use,intrinsic :: iso_fortran_env, only : stderr=>error_unit
+   use fpm_strings, only : string_t
+   use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
    implicit none
    private
 
-   public :: preprocess_config_t, new_preprocess_config, new_preprocessors, operator(==)
+   public :: preprocess_config_t, new_preprocess_config, new_preprocessors
 
    !> Configuration meta data for a preprocessor
-   type, extends(serializable_t) :: preprocess_config_t
+   type :: preprocess_config_t
 
       !> Name of the preprocessor
       character(len=:), allocatable :: name
@@ -30673,26 +27839,7 @@ module fpm_manifest_preprocess
       !> Print information on this instance
       procedure :: info
 
-      !> Serialization interface
-      procedure :: serializable_is_same => preprocess_is_same
-      procedure :: dump_to_toml
-      procedure :: load_from_toml
-
-      !> Operations
-      procedure :: destroy
-      procedure :: add_config
-
-      !> Properties
-      procedure :: is_cpp
-      procedure :: is_fypp
-
    end type preprocess_config_t
-
-   character(*), parameter, private :: class_name = 'preprocess_config_t'
-
-   interface operator(==)
-       module procedure preprocess_is_same
-   end interface
 
 contains
 
@@ -30834,148 +27981,8 @@ contains
 
    end subroutine info
 
-   logical function preprocess_is_same(this,that)
-      class(preprocess_config_t), intent(in) :: this
-      class(serializable_t), intent(in) :: that
-
-      integer :: istr
-
-      preprocess_is_same = .false.
-
-      select type (other=>that)
-         type is (preprocess_config_t)
-            if (allocated(this%name).neqv.allocated(other%name)) return
-            if (allocated(this%name)) then
-                if (.not.(this%name==other%name)) return
-            endif
-
-            if (.not.(this%suffixes==other%suffixes)) return
-            if (.not.(this%directories==other%directories)) return
-            if (.not.(this%macros==other%macros)) return
-
-         class default
-            ! Not the same type
-            return
-      end select
-
-      !> All checks passed!
-      preprocess_is_same = .true.
-
-    end function preprocess_is_same
-
-    !> Dump install config to toml table
-    subroutine dump_to_toml(self, table, error)
-
-       !> Instance of the serializable object
-       class(preprocess_config_t), intent(inout) :: self
-
-       !> Data structure
-       type(toml_table), intent(inout) :: table
-
-       !> Error handling
-       type(error_t), allocatable, intent(out) :: error
-
-       call set_string(table, "name", self%name, error)
-       if (allocated(error)) return
-       call set_list(table, "suffixes", self%suffixes, error)
-       if (allocated(error)) return
-       call set_list(table, "directories", self%directories, error)
-       if (allocated(error)) return
-       call set_list(table, "macros", self%macros, error)
-       if (allocated(error)) return
-
-     end subroutine dump_to_toml
-
-     !> Read install config from toml table (no checks made at this stage)
-     subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(preprocess_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        call get_value(table, "name", self%name)
-        call get_list(table, "suffixes", self%suffixes, error)
-        if (allocated(error)) return
-        call get_list(table, "directories", self%directories, error)
-        if (allocated(error)) return
-        call get_list(table, "macros", self%macros, error)
-        if (allocated(error)) return
-
-     end subroutine load_from_toml
-
-    !> Clean preprocessor structure
-    elemental subroutine destroy(this)
-       class(preprocess_config_t), intent(inout) :: this
-
-       if (allocated(this%name))deallocate(this%name)
-       if (allocated(this%suffixes))deallocate(this%suffixes)
-       if (allocated(this%directories))deallocate(this%directories)
-       if (allocated(this%macros))deallocate(this%macros)
-
-    end subroutine destroy
-
-    !> Add preprocessor settings
-    subroutine add_config(this,that)
-       class(preprocess_config_t), intent(inout) :: this
-        type(preprocess_config_t), intent(in) :: that
-
-        if (.not.that%is_cpp()) then
-            write(stderr, '(a)') 'Warning: Preprocessor ' // that%name // &
-                                 ' is not supported; will ignore it'
-            return
-        end if
-
-        if (.not.allocated(this%name)) this%name = that%name
-
-        ! Add macros
-        if (allocated(that%macros)) then
-            if (allocated(this%macros)) then
-                this%macros = [this%macros, that%macros]
-            else
-                allocate(this%macros, source = that%macros)
-            end if
-        endif
-
-        ! Add suffixes
-        if (allocated(that%suffixes)) then
-            if (allocated(this%suffixes)) then
-                this%suffixes = [this%suffixes, that%suffixes]
-            else
-                allocate(this%suffixes, source = that%suffixes)
-            end if
-        endif
-
-        ! Add directories
-        if (allocated(that%directories)) then
-            if (allocated(this%directories)) then
-                this%directories = [this%directories, that%directories]
-            else
-                allocate(this%directories, source = that%directories)
-            end if
-        endif
-
-    end subroutine add_config
-
-    ! Check cpp
-    logical function is_cpp(this)
-       class(preprocess_config_t), intent(in) :: this
-       is_cpp = .false.
-       if (allocated(this%name)) is_cpp = this%name == "cpp"
-    end function is_cpp
-
-    ! Check cpp
-    logical function is_fypp(this)
-       class(preprocess_config_t), intent(in) :: this
-       is_fypp = .false.
-       if (allocated(this%name)) is_fypp = this%name == "fypp"
-    end function is_fypp
-
 end module fpm_manifest_preprocess
+
 
 !>>>>> ././src/fpm/manifest/dependency.f90
 !> Implementation of the meta data for dependencies.
@@ -31003,26 +28010,20 @@ end module fpm_manifest_preprocess
 !> Resolving a dependency will result in obtaining a new package configuration
 !> data for the respective project.
 module fpm_manifest_dependency
-    use fpm_error, only: error_t, syntax_error, fatal_error
+    use fpm_error, only: error_t, syntax_error
     use fpm_git, only: git_target_t, git_target_tag, git_target_branch, &
         & git_target_revision, git_target_default, operator(==), git_matches_manifest
-    use fpm_toml, only: toml_table, toml_key, toml_stat, get_value, check_keys, serializable_t, add_table, &
-        & set_value, set_string
-    use fpm_filesystem, only: windows_path, join_path
+    use fpm_toml, only: toml_table, toml_key, toml_stat, get_value, check_keys
+    use fpm_filesystem, only: windows_path
     use fpm_environment, only: get_os_type, OS_WINDOWS
-    use fpm_manifest_metapackages, only: metapackage_config_t, is_meta_package, new_meta_config, &
-            metapackage_request_t, new_meta_request
     use fpm_versioning, only: version_t, new_version
-    use fpm_strings, only: string_t
-    use fpm_manifest_preprocess
     implicit none
     private
 
-    public :: dependency_config_t, new_dependency, new_dependencies, manifest_has_changed, &
-        & dependency_destroy, resize
+    public :: dependency_config_t, new_dependency, new_dependencies, manifest_has_changed
 
     !> Configuration meta data for a dependency
-    type, extends(serializable_t) :: dependency_config_t
+    type :: dependency_config_t
 
         !> Name of the dependency
         character(len=:), allocatable :: name
@@ -31039,9 +28040,6 @@ module fpm_manifest_dependency
         !> The latest version is used if not specified.
         type(version_t), allocatable :: requested_version
 
-        !> Requested macros for the dependency
-        type(preprocess_config_t), allocatable :: preprocess(:)
-
         !> Git descriptor
         type(git_target_t), allocatable :: git
 
@@ -31050,19 +28048,10 @@ module fpm_manifest_dependency
         !> Print information on this instance
         procedure :: info
 
-        !> Serialization interface
-        procedure :: serializable_is_same => dependency_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
     end type dependency_config_t
 
     !> Common output format for writing to the command line
     character(len=*), parameter :: out_fmt = '("#", *(1x, g0))'
-
-    interface resize
-        module procedure resize_dependency_config
-    end interface resize
 
 contains
 
@@ -31083,32 +28072,16 @@ contains
 
         character(len=:), allocatable :: uri, value, requested_version
 
-        type(toml_table), pointer :: child
-
         call check(table, error)
         if (allocated(error)) return
 
         call table%get_key(self%name)
         call get_value(table, "namespace", self%namespace)
 
-        call get_value(table, "v", requested_version)
-        if (allocated(requested_version)) then
-            if (.not. allocated(self%requested_version)) allocate (self%requested_version)
-            call new_version(self%requested_version, requested_version, error)
-            if (allocated(error)) return
-        end if
-
-        !> Get optional preprocessor directives
-        call get_value(table, "preprocess", child, requested=.false.)
-        if (associated(child)) then
-            call new_preprocessors(self%preprocess, child, error)
-            if (allocated(error)) return
-        endif
-
         call get_value(table, "path", uri)
         if (allocated(uri)) then
             if (get_os_type() == OS_WINDOWS) uri = windows_path(uri)
-            if (present(root)) uri = join_path(root,uri)  ! Relative to the fpm.toml it’s written in
+            if (present(root)) uri = root//uri  ! Relative to the fpm.toml it   s written in
             call move_alloc(uri, self%path)
             return
         end if
@@ -31140,6 +28113,14 @@ contains
             return
         end if
 
+        call get_value(table, "v", requested_version)
+
+        if (allocated(requested_version)) then
+            if (.not. allocated(self%requested_version)) allocate (self%requested_version)
+            call new_version(self%requested_version, requested_version, error)
+            if (allocated(error)) return
+        end if
+
     end subroutine new_dependency
 
     !> Check local schema for allowed entries
@@ -31153,7 +28134,6 @@ contains
 
         character(len=:), allocatable :: name
         type(toml_key), allocatable :: list(:)
-        type(toml_table), pointer :: child
 
         !> List of valid keys for the dependency table.
         character(*), dimension(*), parameter :: valid_keys = [character(24) :: &
@@ -31163,8 +28143,7 @@ contains
               "git", &
               "tag", &
               "branch", &
-              "rev", &
-              "preprocess" &
+              "rev" &
             & ]
 
         call table%get_key(name)
@@ -31208,28 +28187,13 @@ contains
             return
         end if
 
-        ! Check preprocess key
-        if (table%has_key('preprocess')) then
-
-            call get_value(table, 'preprocess', child)
-
-            if (.not.associated(child)) then
-                call syntax_error(error, "Dependency '"//name//"' has invalid 'preprocess' entry")
-                return
-            end if
-
-        end if
-
     end subroutine check
 
     !> Construct new dependency array from a TOML data structure
-    subroutine new_dependencies(deps, table, root, meta, error)
+    subroutine new_dependencies(deps, table, root, error)
 
         !> Instance of the dependency configuration
         type(dependency_config_t), allocatable, intent(out) :: deps(:)
-
-        !> (optional) metapackages
-        type(metapackage_config_t), optional, intent(out) :: meta
 
         !> Instance of the TOML data structure
         type(toml_table), intent(inout) :: table
@@ -31242,66 +28206,22 @@ contains
 
         type(toml_table), pointer :: node
         type(toml_key), allocatable :: list(:)
-        type(dependency_config_t), allocatable :: all_deps(:)
-        type(metapackage_request_t) :: meta_request
-        logical, allocatable :: is_meta(:)
-        logical :: metapackages_allowed
-        integer :: idep, stat, ndep
+        integer :: idep, stat
 
         call table%get_keys(list)
         ! An empty table is okay
         if (size(list) < 1) return
 
-        !> Flag dependencies that should be treated as metapackages
-        metapackages_allowed = present(meta)
-        allocate(is_meta(size(list)),source=.false.)
-        allocate(all_deps(size(list)))
-
-        !> Parse all meta- and non-metapackage dependencies
+        allocate (deps(size(list)))
         do idep = 1, size(list)
-
-            ! Check if this is a standard dependency node
             call get_value(table, list(idep)%key, node, stat=stat)
-            is_standard_dependency: if (stat /= toml_stat%success) then
-
-                ! See if it can be a valid metapackage name
-                call new_meta_request(meta_request, list(idep)%key, table, error=error)
-
-                !> Neither a standard dep nor a metapackage
-                if (allocated(error)) then
-                   call syntax_error(error, "Dependency "//list(idep)%key//" is not a valid metapackage or a table entry")
-                   return
-                endif
-
-                !> Valid meta dependency
-                is_meta(idep) = .true.
-
-            else
-
-                ! Parse as a standard dependency
-                is_meta(idep) = .false.
-
-                call new_dependency(all_deps(idep), node, root, error)
-                if (allocated(error)) return
-
-            end if is_standard_dependency
-
+            if (stat /= toml_stat%success) then
+                call syntax_error(error, "Dependency "//list(idep)%key//" must be a table entry")
+                exit
+            end if
+            call new_dependency(deps(idep), node, root, error)
+            if (allocated(error)) exit
         end do
-
-        ! Non-meta dependencies
-        ndep = count(.not.is_meta)
-
-        ! Finalize standard dependencies
-        allocate(deps(ndep))
-        ndep = 0
-        do idep = 1, size(list)
-            if (is_meta(idep)) cycle
-            ndep = ndep+1
-            deps(ndep) = all_deps(idep)
-        end do
-
-        ! Finalize meta dependencies
-        if (metapackages_allowed) call new_meta_config(meta,table,is_meta,error)
 
     end subroutine new_dependencies
 
@@ -31368,171 +28288,9 @@ contains
 
     end function manifest_has_changed
 
-    !> Clean memory
-    elemental subroutine dependency_destroy(self)
-        class(dependency_config_t), intent(inout) :: self
-
-        if (allocated(self%name)) deallocate(self%name)
-        if (allocated(self%path)) deallocate(self%path)
-        if (allocated(self%namespace)) deallocate(self%namespace)
-        if (allocated(self%requested_version)) deallocate(self%requested_version)
-        if (allocated(self%git)) deallocate(self%git)
-
-    end subroutine dependency_destroy
-
-    !> Check that two dependency configs are equal
-    logical function dependency_is_same(this,that)
-        class(dependency_config_t), intent(in) :: this
-        class(serializable_t), intent(in) :: that
-
-        dependency_is_same = .false.
-
-        select type (other=>that)
-           type is (dependency_config_t)
-
-              if (.not.(this%name==other%name)) return
-              if (.not.(this%path==other%path)) return
-              if (.not.(this%namespace==other%namespace)) return
-              if (.not.(allocated(this%requested_version).eqv.allocated(other%requested_version))) return
-              if (allocated(this%requested_version)) then
-                if (.not.(this%requested_version==other%requested_version)) return
-              endif
-
-              if (.not.(allocated(this%git).eqv.allocated(other%git))) return
-              if (allocated(this%git)) then
-                if (.not.(this%git==other%git)) return
-              endif
-
-           class default
-              ! Not the same type
-              return
-        end select
-
-        !> All checks passed!
-        dependency_is_same = .true.
-
-    end function dependency_is_same
-
-    !> Dump dependency to toml table
-    subroutine dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(toml_table), pointer :: ptr
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: ierr
-
-        call set_string(table, "name", self%name, error, 'dependency_config_t')
-        if (allocated(error)) return
-        call set_string(table, "path", self%path, error, 'dependency_config_t')
-        if (allocated(error)) return
-        call set_string(table, "namespace", self%namespace, error, 'dependency_config_t')
-        if (allocated(error)) return
-        if (allocated(self%requested_version)) then
-             call set_string(table, "requested_version", self%requested_version%s(), error, 'dependency_config_t')
-             if (allocated(error)) return
-        endif
-
-        if (allocated(self%git)) then
-            call add_table(table, "git", ptr, error)
-            if (allocated(error)) return
-            call self%git%dump_to_toml(ptr, error)
-            if (allocated(error)) return
-        endif
-
-    end subroutine dump_to_toml
-
-    !> Read dependency from toml table (no checks made at this stage)
-    subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        type(toml_key), allocatable :: list(:)
-        type(toml_table), pointer :: ptr
-        character(len=:), allocatable :: requested_version
-        integer :: ierr,ii
-
-        call dependency_destroy(self)
-
-        call get_value(table, "name", self%name)
-        call get_value(table, "path", self%path)
-        call get_value(table, "namespace", self%namespace)
-        call get_value(table, "requested_version", requested_version)
-        if (allocated(requested_version)) then
-            allocate(self%requested_version)
-            call new_version(self%requested_version, requested_version, error)
-            if (allocated(error)) then
-                error%message = 'dependency_config_t: version error from TOML table - '//error%message
-                return
-            endif
-        end if
-
-        call table%get_keys(list)
-        add_git: do ii = 1, size(list)
-            if (list(ii)%key=="git") then
-               call get_value(table, list(ii)%key, ptr, stat=ierr)
-               if (ierr /= toml_stat%success) then
-                   call fatal_error(error,'dependency_config_t: cannot retrieve git from TOML table')
-                   exit
-               endif
-               allocate(self%git)
-               call self%git%load_from_toml(ptr, error)
-               if (allocated(error)) return
-               exit add_git
-            end if
-        end do add_git
-
-    end subroutine load_from_toml
-
-    !> Reallocate a list of dependencies
-    pure subroutine resize_dependency_config(var, n)
-        !> Instance of the array to be resized
-        type(dependency_config_t), allocatable, intent(inout) :: var(:)
-        !> Dimension of the final array size
-        integer, intent(in), optional :: n
-
-        type(dependency_config_t), allocatable :: tmp(:)
-        integer :: this_size, new_size
-        integer, parameter :: initial_size = 16
-
-        if (allocated(var)) then
-          this_size = size(var, 1)
-          call move_alloc(var, tmp)
-        else
-          this_size = initial_size
-        end if
-
-        if (present(n)) then
-          new_size = n
-        else
-          new_size = this_size + this_size/2 + 1
-        end if
-
-        allocate (var(new_size))
-
-        if (allocated(tmp)) then
-          this_size = min(size(tmp, 1), size(var, 1))
-          var(:this_size) = tmp(:this_size)
-          deallocate (tmp)
-        end if
-
-    end subroutine resize_dependency_config
 
 end module fpm_manifest_dependency
+
 
 !>>>>> ././src/fpm/manifest/executable.f90
 !> Implementation of the meta data for an executables.
@@ -31548,18 +28306,18 @@ end module fpm_manifest_dependency
 !>[executable.dependencies]
 !>```
 module fpm_manifest_executable
-    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies, resize
-    use fpm_error, only : error_t, syntax_error, bad_name_error, fatal_error
-    use fpm_strings, only : string_t, operator(==)
-    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list, serializable_t, add_table, &
-                          set_string, set_list
+    use fpm_manifest_dependency, only : dependency_config_t, new_dependencies
+    use fpm_error, only : error_t, syntax_error, bad_name_error
+    use fpm_strings, only : string_t
+    use fpm_toml, only : toml_table, toml_key, toml_stat, get_value, get_list
     implicit none
     private
 
     public :: executable_config_t, new_executable
 
+
     !> Configuation meta data for an executable
-    type, extends(serializable_t) :: executable_config_t
+    type :: executable_config_t
 
         !> Name of the resulting executable
         character(len=:), allocatable :: name
@@ -31581,16 +28339,11 @@ module fpm_manifest_executable
         !> Print information on this instance
         procedure :: info
 
-        !> Serialization interface
-        procedure :: serializable_is_same => exe_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
     end type executable_config_t
 
-    character(*), parameter, private :: class_name = 'executable_config_t'
 
 contains
+
 
     !> Construct a new executable configuration from a TOML data structure
     subroutine new_executable(self, table, error)
@@ -31630,6 +28383,7 @@ contains
         if (allocated(error)) return
 
     end subroutine new_executable
+
 
     !> Check local schema for allowed entries
     subroutine check(table, error)
@@ -31674,6 +28428,7 @@ contains
         end if
 
     end subroutine check
+
 
     !> Write information on instance
     subroutine info(self, unit, verbosity)
@@ -31725,158 +28480,9 @@ contains
 
     end subroutine info
 
-    logical function exe_is_same(this,that)
-        class(executable_config_t), intent(in) :: this
-        class(serializable_t), intent(in) :: that
-
-        integer :: ii
-
-        exe_is_same = .false.
-
-        select type (other=>that)
-           type is (executable_config_t)
-              if (.not.this%link==other%link) return
-              if (.not.allocated(this%name).eqv.allocated(other%name)) return
-              if (.not.this%name==other%name) return
-              if (.not.allocated(this%source_dir).eqv.allocated(other%source_dir)) return
-              if (.not.this%source_dir==other%source_dir) return
-              if (.not.allocated(this%main).eqv.allocated(other%main)) return
-              if (.not.this%main==other%main) return
-              if (.not.allocated(this%dependency).eqv.allocated(other%dependency)) return
-              if (allocated(this%dependency)) then
-                 if (.not.(size(this%dependency)==size(other%dependency))) return
-                 do ii = 1, size(this%dependency)
-                    if (.not.(this%dependency(ii)==other%dependency(ii))) return
-                 end do
-              end if
-           class default
-              ! Not the same type
-              return
-        end select
-
-        !> All checks passed!
-        exe_is_same = .true.
-
-    end function exe_is_same
-
-    !> Dump install config to toml table
-    subroutine dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(executable_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        integer :: ierr, ii
-        type(toml_table), pointer :: ptr_deps,ptr
-        character(27) :: unnamed
-
-        call set_string(table, "name", self%name, error)
-        if (allocated(error)) return
-        call set_string(table, "source-dir", self%source_dir, error)
-        if (allocated(error)) return
-        call set_string(table, "main", self%main, error)
-        if (allocated(error)) return
-
-        if (allocated(self%dependency)) then
-
-           ! Create dependency table
-           call add_table(table, "dependencies", ptr_deps)
-           if (.not. associated(ptr_deps)) then
-              call fatal_error(error, class_name//" cannot create dependency table ")
-              return
-           end if
-
-           do ii = 1, size(self%dependency)
-              associate (dep => self%dependency(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(dep%name)==0) then
-                    write(unnamed,1) ii
-                    call add_table(ptr_deps, trim(unnamed), ptr)
-                 else
-                    call add_table(ptr_deps, dep%name, ptr)
-                 end if
-                 if (.not. associated(ptr)) then
-                    call fatal_error(error, class_name//" cannot create entry for dependency "//dep%name)
-                    return
-                 end if
-                 call dep%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-              end associate
-           end do
-
-        endif
-
-        call set_list(table, "link", self%link, error)
-        if (allocated(error)) return
-
-        1 format('UNNAMED_DEPENDENCY_',i0)
-
-    end subroutine dump_to_toml
-
-    !> Read install config from toml table (no checks made at this stage)
-    subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(executable_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        type(toml_key), allocatable :: keys(:),dep_keys(:)
-        type(toml_table), pointer :: ptr_deps,ptr
-        integer :: ii, jj, ierr
-
-        call table%get_keys(keys)
-
-        call get_value(table, "name", self%name)
-        if (allocated(error)) return
-        call get_value(table, "source-dir", self%source_dir)
-        if (allocated(error)) return
-        call get_value(table, "main", self%main)
-        if (allocated(error)) return
-        call get_list(table, "link", self%link, error)
-
-        find_deps_table: do ii = 1, size(keys)
-            if (keys(ii)%key=="dependencies") then
-
-               call get_value(table, keys(ii), ptr_deps)
-               if (.not.associated(ptr_deps)) then
-                  call fatal_error(error,class_name//': error retrieving dependency table from TOML table')
-                  return
-               end if
-
-               !> Read all dependencies
-               call ptr_deps%get_keys(dep_keys)
-               call resize(self%dependency, size(dep_keys))
-
-               do jj = 1, size(dep_keys)
-
-                   call get_value(ptr_deps, dep_keys(jj), ptr)
-                   call self%dependency(jj)%load_from_toml(ptr, error)
-                   if (allocated(error)) return
-
-               end do
-
-               exit find_deps_table
-
-            endif
-        end do find_deps_table
-
-    end subroutine load_from_toml
 
 end module fpm_manifest_executable
+
 
 !>>>>> ././src/fpm/manifest/test.f90
 !> Implementation of the meta data for a test.
@@ -31905,6 +28511,7 @@ module fpm_manifest_test
 
     public :: test_config_t, new_test
 
+
     !> Configuation meta data for an test
     type, extends(executable_config_t) :: test_config_t
 
@@ -31915,7 +28522,9 @@ module fpm_manifest_test
 
     end type test_config_t
 
+
 contains
+
 
     !> Construct a new test configuration from a TOML data structure
     subroutine new_test(self, table, error)
@@ -31955,6 +28564,7 @@ contains
         if (allocated(error)) return
 
     end subroutine new_test
+
 
     !> Check local schema for allowed entries
     subroutine check(table, error)
@@ -31999,6 +28609,7 @@ contains
         end if
 
     end subroutine check
+
 
     !> Write information on instance
     subroutine info(self, unit, verbosity)
@@ -32050,7 +28661,9 @@ contains
 
     end subroutine info
 
+
 end module fpm_manifest_test
+
 
 !>>>>> ././src/fpm/manifest/example.f90
 !> Implementation of the meta data for an example.
@@ -32079,6 +28692,7 @@ module fpm_manifest_example
 
     public :: example_config_t, new_example
 
+
     !> Configuation meta data for an example
     type, extends(executable_config_t) :: example_config_t
 
@@ -32089,7 +28703,9 @@ module fpm_manifest_example
 
     end type example_config_t
 
+
 contains
+
 
     !> Construct a new example configuration from a TOML data structure
     subroutine new_example(self, table, error)
@@ -32129,6 +28745,7 @@ contains
         if (allocated(error)) return
 
     end subroutine new_example
+
 
     !> Check local schema for allowed entries
     subroutine check(table, error)
@@ -32173,6 +28790,7 @@ contains
         end if
 
     end subroutine check
+
 
     !> Write information on instance
     subroutine info(self, unit, verbosity)
@@ -32224,7 +28842,9 @@ contains
 
     end subroutine info
 
+
 end module fpm_manifest_example
+
 
 !>>>>> ././src/fpm/manifest/package.f90
 !> Define the package data containing the meta data from the configuration file.
@@ -32273,24 +28893,24 @@ module fpm_manifest_package
     use fpm_manifest_install, only: install_config_t, new_install_config
     use fpm_manifest_test, only : test_config_t, new_test
     use fpm_manifest_preprocess, only : preprocess_config_t, new_preprocessors
-    use fpm_manifest_metapackages, only: metapackage_config_t, new_meta_config
     use fpm_filesystem, only : exists, getline, join_path
     use fpm_error, only : error_t, fatal_error, syntax_error, bad_name_error
-    use fpm_toml, only : toml_table, toml_array, toml_key, toml_stat, get_value, len, &
-                         serializable_t, set_value, set_string, set_list, add_table
+    use fpm_toml, only : toml_table, toml_array, toml_key, toml_stat, get_value, len
     use fpm_versioning, only : version_t, new_version
     implicit none
     private
 
     public :: package_config_t, new_package
 
+
     interface unique_programs
         module procedure :: unique_programs1
         module procedure :: unique_programs2
     end interface unique_programs
 
+
     !> Package meta data
-    type, extends(serializable_t) :: package_config_t
+    type :: package_config_t
 
         !> Name of the package
         character(len=:), allocatable :: name
@@ -32301,9 +28921,6 @@ module fpm_manifest_package
         !> Build configuration data
         type(build_config_t) :: build
 
-        !> Metapackage data
-        type(metapackage_config_t) :: meta
-
         !> Installation configuration data
         type(install_config_t) :: install
 
@@ -32312,15 +28929,6 @@ module fpm_manifest_package
 
         !> License meta data
         character(len=:), allocatable :: license
-
-        !> Author meta data
-        character(len=:), allocatable :: author
-
-        !> Maintainer meta data
-        character(len=:), allocatable :: maintainer
-
-        !> Copyright meta data
-        character(len=:), allocatable :: copyright
 
         !> Library meta data
         type(library_config_t), allocatable :: library
@@ -32351,16 +28959,11 @@ module fpm_manifest_package
         !> Print information on this instance
         procedure :: info
 
-        !> Serialization interface
-        procedure :: serializable_is_same => manifest_is_same
-        procedure :: dump_to_toml
-        procedure :: load_from_toml
-
     end type package_config_t
 
-    character(len=*), parameter, private :: class_name = 'package_config_t'
 
 contains
+
 
     !> Construct a new package configuration from a TOML data structure
     subroutine new_package(self, table, root, error)
@@ -32399,9 +29002,6 @@ contains
         endif
 
         call get_value(table, "license", self%license)
-        call get_value(table, "author", self%author)
-        call get_value(table, "maintainer", self%maintainer)
-        call get_value(table, "copyright", self%copyright)
 
         if (len(self%name) <= 0) then
             call syntax_error(error, "Package name must be a non-empty string")
@@ -32463,13 +29063,13 @@ contains
 
         call get_value(table, "dependencies", child, requested=.false.)
         if (associated(child)) then
-            call new_dependencies(self%dependency, child, root, self%meta, error)
+            call new_dependencies(self%dependency, child, root, error)
             if (allocated(error)) return
         end if
 
         call get_value(table, "dev-dependencies", child, requested=.false.)
         if (associated(child)) then
-            call new_dependencies(self%dev_dependency, child, root, error=error)
+            call new_dependencies(self%dev_dependency, child, root, error)
             if (allocated(error)) return
         end if
 
@@ -32558,6 +29158,7 @@ contains
         end if
     end subroutine new_package
 
+
     !> Check local schema for allowed entries
     subroutine check(table, error)
 
@@ -32604,6 +29205,7 @@ contains
         end if
 
     end subroutine check
+
 
     !> Write information on instance
     subroutine info(self, unit, verbosity)
@@ -32699,6 +29301,7 @@ contains
 
     end subroutine info
 
+
     !> Check whether or not the names in a set of executables are unique
     subroutine unique_programs1(executable, error)
 
@@ -32723,6 +29326,7 @@ contains
         if (allocated(error)) return
 
     end subroutine unique_programs1
+
 
     !> Check whether or not the names in a set of executables are unique
     subroutine unique_programs2(executable_i, executable_j, error)
@@ -32752,558 +29356,9 @@ contains
 
     end subroutine unique_programs2
 
-   logical function manifest_is_same(this,that)
-      class(package_config_t), intent(in) :: this
-      class(serializable_t), intent(in) :: that
-
-      integer :: ii
-
-      manifest_is_same = .false.
-
-      select type (other=>that)
-         type is (package_config_t)
-
-            if (.not.this%name==other%name) return
-            if (.not.this%version==other%version) return
-            if (.not.this%build==other%build) return
-            if (.not.this%install==other%install) return
-            if (.not.this%fortran==other%fortran) return
-            if (.not.this%license==other%license) return
-            if (.not.this%author==other%author) return
-            if (.not.this%maintainer==other%maintainer) return
-            if (.not.this%copyright==other%copyright) return
-            if (allocated(this%library).neqv.allocated(other%library)) return
-            if (allocated(this%library)) then
-                if (.not.this%library==other%library) return
-            endif
-            if (allocated(this%executable).neqv.allocated(other%executable)) return
-            if (allocated(this%executable)) then
-                if (.not.size(this%executable)==size(other%executable)) return
-                do ii=1,size(this%executable)
-                    if (.not.this%executable(ii)==other%executable(ii)) return
-                end do
-            end if
-            if (allocated(this%dependency).neqv.allocated(other%dependency)) return
-            if (allocated(this%dependency)) then
-                if (.not.size(this%dependency)==size(other%dependency)) return
-                do ii=1,size(this%dependency)
-                    if (.not.this%dependency(ii)==other%dependency(ii)) return
-                end do
-            end if
-            if (allocated(this%dev_dependency).neqv.allocated(other%dev_dependency)) return
-            if (allocated(this%dev_dependency)) then
-                if (.not.size(this%dev_dependency)==size(other%dev_dependency)) return
-                do ii=1,size(this%dev_dependency)
-                    if (.not.this%dev_dependency(ii)==other%dev_dependency(ii)) return
-                end do
-            end if
-            if (allocated(this%profiles).neqv.allocated(other%profiles)) return
-            if (allocated(this%profiles)) then
-                if (.not.size(this%profiles)==size(other%profiles)) return
-                do ii=1,size(this%profiles)
-                    if (.not.this%profiles(ii)==other%profiles(ii)) return
-                end do
-            end if
-            if (allocated(this%example).neqv.allocated(other%example)) return
-            if (allocated(this%example)) then
-                if (.not.size(this%example)==size(other%example)) return
-                do ii=1,size(this%example)
-                    if (.not.this%example(ii)==other%example(ii)) return
-                end do
-            end if
-            if (allocated(this%preprocess).neqv.allocated(other%preprocess)) return
-            if (allocated(this%preprocess)) then
-                if (.not.size(this%preprocess)==size(other%preprocess)) return
-                do ii=1,size(this%preprocess)
-                    if (.not.this%preprocess(ii)==other%preprocess(ii)) return
-                end do
-            end if
-            if (allocated(this%test).neqv.allocated(other%test)) return
-            if (allocated(this%test)) then
-                if (.not.size(this%test)==size(other%test)) return
-                do ii=1,size(this%test)
-                    if (.not.this%test(ii)==other%test(ii)) return
-                end do
-            end if
-
-         class default
-            ! Not the same type
-            return
-      end select
-
-      !> All checks passed!
-      manifest_is_same = .true.
-
-    end function manifest_is_same
-
-    !> Dump manifest to toml table
-    subroutine dump_to_toml(self, table, error)
-
-       !> Instance of the serializable object
-       class(package_config_t), intent(inout) :: self
-
-       !> Data structure
-       type(toml_table), intent(inout) :: table
-
-       !> Error handling
-       type(error_t), allocatable, intent(out) :: error
-
-       integer :: ierr, ii
-       type(toml_table), pointer :: ptr,ptr_pkg
-       character(30) :: unnamed
-       character(128) :: profile_name
-
-       call set_string(table, "name", self%name, error, class_name)
-       if (allocated(error)) return
-       call set_string(table, "version", self%version%s(), error, class_name)
-       if (allocated(error)) return
-       call set_string(table, "license", self%license, error, class_name)
-       if (allocated(error)) return
-       call set_string(table, "author", self%author, error, class_name)
-       if (allocated(error)) return
-       call set_string(table, "maintainer", self%maintainer, error, class_name)
-       if (allocated(error)) return
-       call set_string(table, "copyright", self%copyright, error, class_name)
-       if (allocated(error)) return
-
-       call add_table(table, "build", ptr, error, class_name)
-       if (allocated(error)) return
-       call self%build%dump_to_toml(ptr, error)
-       if (allocated(error)) return
-
-       call add_table(table, "fortran", ptr, error, class_name)
-       if (allocated(error)) return
-       call self%fortran%dump_to_toml(ptr, error)
-       if (allocated(error)) return
-
-       call add_table(table, "install", ptr, error, class_name)
-       if (allocated(error)) return
-       call self%install%dump_to_toml(ptr, error)
-       if (allocated(error)) return
-
-       if (allocated(self%library)) then
-           call add_table(table, "library", ptr, error, class_name)
-           if (allocated(error)) return
-           call self%library%dump_to_toml(ptr, error)
-           if (allocated(error)) return
-       end if
-
-       if (allocated(self%executable)) then
-
-           call add_table(table, "executable", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'executable' table ")
-              return
-           end if
-
-           do ii = 1, size(self%executable)
-
-              associate (pkg => self%executable(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'EXECUTABLE',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(executable)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(executable)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%dependency)) then
-
-           call add_table(table, "dependencies", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'dependencies' table ")
-              return
-           end if
-
-           do ii = 1, size(self%dependency)
-
-              associate (pkg => self%dependency(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'DEPENDENCY',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(dependencies)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(dependencies)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%dev_dependency)) then
-
-           call add_table(table, "dev-dependencies", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'dev-dependencies' table ")
-              return
-           end if
-
-           do ii = 1, size(self%dev_dependency)
-
-              associate (pkg => self%dev_dependency(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'DEV-DEPENDENCY',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(dev-dependencies)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(dev-dependencies)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%profiles)) then
-
-           call add_table(table, "profiles", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'profiles' table ")
-              return
-           end if
-
-           do ii = 1, size(self%profiles)
-
-              associate (pkg => self%profiles(ii))
-
-                 !> Duplicate profile names are possible, as multiple profiles are possible with the
-                 !> same name, same compiler, etc. So, use a unique name here
-                 write(profile_name,2) ii
-                 call add_table(ptr_pkg, trim(profile_name), ptr, error, class_name//'(profiles)')
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%example)) then
-
-           call add_table(table, "example", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'example' table ")
-              return
-           end if
-
-           do ii = 1, size(self%example)
-
-              associate (pkg => self%example(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'EXAMPLE',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(example)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(example)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%test)) then
-
-           call add_table(table, "test", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'test' table ")
-              return
-           end if
-
-           do ii = 1, size(self%test)
-
-              associate (pkg => self%test(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'TEST',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(test)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(test)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       if (allocated(self%preprocess)) then
-
-           call add_table(table, "preprocess", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, class_name//" cannot create 'preprocess' table ")
-              return
-           end if
-
-           do ii = 1, size(self%preprocess)
-
-              associate (pkg => self%preprocess(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) 'PREPROCESS',ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, class_name//'(preprocess)')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, class_name//'(preprocess)')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-       end if
-
-       1 format('UNNAMED_',a,'_',i0)
-       2 format('PROFILE_',i0)
-
-     end subroutine dump_to_toml
-
-     !> Read manifest from toml table (no checks made at this stage)
-     subroutine load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(package_config_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        type(toml_key), allocatable :: keys(:),pkg_keys(:)
-        integer :: ierr, ii, jj
-        character(len=:), allocatable :: flag
-        type(toml_table), pointer :: ptr,ptr_pkg
-
-        call table%get_keys(keys)
-
-        call get_value(table, "name", self%name)
-        call get_value(table, "license", self%license)
-        call get_value(table, "author", self%author)
-        call get_value(table, "maintainer", self%maintainer)
-        call get_value(table, "copyright", self%copyright)
-        call get_value(table, "version", flag)
-        call new_version(self%version, flag, error)
-        if (allocated(error)) then
-           error%message = class_name//': version error from TOML table - '//error%message
-           return
-        endif
-
-        if (allocated(self%library)) deallocate(self%library)
-        if (allocated(self%executable)) deallocate(self%executable)
-        if (allocated(self%dependency)) deallocate(self%dependency)
-        if (allocated(self%dev_dependency)) deallocate(self%dev_dependency)
-        if (allocated(self%profiles)) deallocate(self%profiles)
-        if (allocated(self%example)) deallocate(self%example)
-        if (allocated(self%test)) deallocate(self%test)
-        if (allocated(self%preprocess)) deallocate(self%preprocess)
-        sub_deps: do ii = 1, size(keys)
-
-           select case (keys(ii)%key)
-              case ("build")
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving '//keys(ii)%key//' table')
-                      return
-                   end if
-                   call self%build%load_from_toml(ptr, error)
-                   if (allocated(error)) return
-
-              case ("install")
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving '//keys(ii)%key//' table')
-                      return
-                   end if
-                   call self%install%load_from_toml(ptr, error)
-
-              case ("fortran")
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving '//keys(ii)%key//' table')
-                      return
-                   end if
-                   call self%fortran%load_from_toml(ptr, error)
-
-              case ("library")
-
-                   allocate(self%library)
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving '//keys(ii)%key//' table')
-                      return
-                   end if
-                   call self%library%load_from_toml(ptr, error)
-
-              case ("executable")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving executable table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%executable(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%executable(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("dependencies")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving dependency table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%dependency(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%dependency(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("dev-dependencies")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving dev-dependencies table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%dev_dependency(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%dev_dependency(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("profiles")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving profiles table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%profiles(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%profiles(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("example")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving example table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%example(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%example(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("test")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving test table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%test(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%test(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case ("preprocess")
-
-                   call get_value(table, keys(ii), ptr)
-                   if (.not.associated(ptr)) then
-                      call fatal_error(error,class_name//': error retrieving preprocess table')
-                      return
-                   end if
-
-                   !> Read all packages
-                   call ptr%get_keys(pkg_keys)
-                   allocate(self%preprocess(size(pkg_keys)))
-
-                   do jj = 1, size(pkg_keys)
-                      call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                      call self%preprocess(jj)%load_from_toml(ptr_pkg, error)
-                      if (allocated(error)) return
-                   end do
-
-              case default
-                    cycle sub_deps
-           end select
-
-        end do sub_deps
-
-     end subroutine load_from_toml
 
 end module fpm_manifest_package
+
 
 !>>>>> ././src/fpm/manifest.f90
 !> Package configuration data.
@@ -33334,7 +29389,9 @@ module fpm_manifest
     public :: default_example
     public :: package_config_t, dependency_config_t, preprocess_config_t
 
+
 contains
+
 
     !> Populate library in case we find the default src directory
     subroutine default_library(self)
@@ -33346,6 +29403,7 @@ contains
         self%include_dir = [string_t("include")]
 
     end subroutine default_library
+
 
     !> Populate executable in case we find the default app directory
     subroutine default_executable(self, name)
@@ -33392,6 +29450,7 @@ contains
 
     end subroutine default_test
 
+
     !> Obtain package meta data from a configuation file
     subroutine get_package_data(package, file, error, apply_defaults)
 
@@ -33431,6 +29490,7 @@ contains
         end if
 
     end subroutine get_package_data
+
 
     !> Apply package defaults
     subroutine package_defaults(package, root, error)
@@ -33484,7 +29544,9 @@ contains
 
     end subroutine package_defaults
 
+
 end module fpm_manifest
+
 
 !>>>>> ././src/fpm/cmd/new.f90
 module fpm_cmd_new
@@ -33859,7 +29921,7 @@ character(len=:,kind=tfc),allocatable :: littlefile(:)
         &'#M_strings = { path = "M_strings" }                                             ',&
         &'                                                                                ',&
         &'  # This tells fpm that we depend on a crate called M_strings which is found    ',&
-        &'  # in the M_strings folder (relative to the fpm.toml it’s written in).         ',&
+        &'  # in the M_strings folder (relative to the fpm.toml it   s written in).         ',&
         &'  #                                                                             ',&
         &'  # For a more verbose layout use normal tables rather than inline tables       ',&
         &'  # to specify dependencies:                                                    ',&
@@ -34157,6 +30219,7 @@ character(len=*),intent(in) :: filename
 
 end subroutine create_verified_basic_manifest
 
+
 subroutine validate_toml_data(input)
 !> verify a string array is a valid fpm.toml file
 !
@@ -34189,6 +30252,7 @@ end subroutine cmd_new
 
 end module fpm_cmd_new
 
+
 !>>>>> ././src/fpm_compiler.F90
 !># Define compiler command options
 !!
@@ -34220,6 +30284,7 @@ end module fpm_cmd_new
 module fpm_compiler
 use,intrinsic :: iso_fortran_env, only: stderr=>error_unit
 use fpm_environment, only: &
+        get_env, &
         get_os_type, &
         OS_LINUX, &
         OS_MACOS, &
@@ -34233,8 +30298,7 @@ use fpm_filesystem, only: join_path, basename, get_temp_filename, delete_file, u
     & getline, run
 use fpm_strings, only: split, string_cat, string_t, str_ends_with, str_begins_with_str
 use fpm_manifest, only : package_config_t
-use fpm_error, only: error_t, fatal_error
-use fpm_toml, only: serializable_t, toml_table, set_string, set_value, toml_stat, get_value
+use fpm_error, only: error_t
 implicit none
 public :: compiler_t, new_compiler, archiver_t, new_archiver, get_macros
 public :: debug
@@ -34264,8 +30328,9 @@ enum, bind(C)
 end enum
 integer, parameter :: compiler_enum = kind(id_unknown)
 
+
 !> Definition of compiler object
-type, extends(serializable_t) :: compiler_t
+type :: compiler_t
     !> Identifier of the compiler
     integer(compiler_enum) :: id = id_unknown
     !> Path to the Fortran compiler
@@ -34287,8 +30352,6 @@ contains
     procedure :: get_include_flag
     !> Get feature flag
     procedure :: get_feature_flag
-    !> Get flags for the main linking command
-    procedure :: get_main_flags
     !> Compile a Fortran object
     procedure :: compile_fortran
     !> Compile a C object
@@ -34299,24 +30362,13 @@ contains
     procedure :: link
     !> Check whether compiler is recognized
     procedure :: is_unknown
-    !> Check whether this is an Intel compiler
-    procedure :: is_intel
-    !> Check whether this is a GNU compiler
-    procedure :: is_gnu
     !> Enumerate libraries, based on compiler and platform
     procedure :: enumerate_libraries
-
-    !> Serialization interface
-    procedure :: serializable_is_same => compiler_is_same
-    procedure :: dump_to_toml => compiler_dump
-    procedure :: load_from_toml => compiler_load
-    !> Return compiler name
-    procedure :: name => compiler_name
-
 end type compiler_t
 
+
 !> Definition of archiver object
-type, extends(serializable_t) :: archiver_t
+type :: archiver_t
     !> Path to archiver
     character(len=:), allocatable :: ar
     !> Use response files to pass arguments
@@ -34328,13 +30380,8 @@ type, extends(serializable_t) :: archiver_t
 contains
     !> Create static archive
     procedure :: make_archive
-
-    !> Serialization interface
-    procedure :: serializable_is_same => ar_is_same
-    procedure :: dump_to_toml
-    procedure :: load_from_toml
-
 end type archiver_t
+
 
 !> Create debug printout
 interface debug
@@ -34352,7 +30399,6 @@ character(*), parameter :: &
     flag_gnu_check = " -fcheck=bounds -fcheck=array-temps", &
     flag_gnu_limit = " -fmax-errors=1", &
     flag_gnu_external = " -Wimplicit-interface", &
-    flag_gnu_openmp = " -fopenmp", &
     flag_gnu_no_implicit_typing = " -fimplicit-none", &
     flag_gnu_no_implicit_external = " -Werror=implicit-interface", &
     flag_gnu_free_form = " -ffree-form", &
@@ -34364,7 +30410,6 @@ character(*), parameter :: &
     flag_pgi_debug = " -g", &
     flag_pgi_check = " -Mbounds -Mchkptr -Mchkstk", &
     flag_pgi_warn = " -Minform=inform", &
-    flag_pgi_openmp = " -mp", &
     flag_pgi_free_form = " -Mfree", &
     flag_pgi_fixed_form = " -Mfixed"
 
@@ -34376,37 +30421,28 @@ character(*), parameter :: &
     flag_intel_warn = " -warn all", &
     flag_intel_check = " -check all", &
     flag_intel_debug = " -O0 -g", &
-    flag_intel_opt = " -O3", &
     flag_intel_fp = " -fp-model precise -pc64", &
     flag_intel_align = " -align all", &
     flag_intel_limit = " -error-limit 1", &
     flag_intel_pthread = " -reentrancy threaded", &
     flag_intel_nogen = " -nogen-interfaces", &
     flag_intel_byterecl = " -assume byterecl", &
-    flag_intel_openmp = " -qopenmp", &
     flag_intel_free_form = " -free", &
-    flag_intel_fixed_form = " -fixed", &
-    flag_intel_standard_compliance = " -standard-semantics"
-
-character(*), parameter :: &
-    flag_intel_llvm_check = " -check all,nouninit"
+    flag_intel_fixed_form = " -fixed"
 
 character(*), parameter :: &
     flag_intel_backtrace_win = " /traceback", &
     flag_intel_warn_win = " /warn:all", &
     flag_intel_check_win = " /check:all", &
     flag_intel_debug_win = " /Od /Z7", &
-    flag_intel_opt_win = " /O3", &
     flag_intel_fp_win = " /fp:precise", &
     flag_intel_align_win = " /align:all", &
     flag_intel_limit_win = " /error-limit:1", &
     flag_intel_pthread_win = " /reentrancy:threaded", &
     flag_intel_nogen_win = " /nogen-interfaces", &
     flag_intel_byterecl_win = " /assume:byterecl", &
-    flag_intel_openmp_win = " /Qopenmp", &
     flag_intel_free_form_win = " /free", &
-    flag_intel_fixed_form_win = " /fixed", &
-    flag_intel_standard_compliance_win = " /standard-semantics"
+    flag_intel_fixed_form_win = " /fixed"
 
 character(*), parameter :: &
     flag_nag_coarray = " -coarray=single", &
@@ -34415,17 +30451,16 @@ character(*), parameter :: &
     flag_nag_debug = " -g -O0", &
     flag_nag_opt = " -O4", &
     flag_nag_backtrace = " -gline", &
-    flag_nag_openmp = " -openmp", &
     flag_nag_free_form = " -free", &
     flag_nag_fixed_form = " -fixed", &
     flag_nag_no_implicit_typing = " -u"
 
 character(*), parameter :: &
     flag_lfortran_opt = " --fast", &
-    flag_lfortran_openmp = " --openmp", &
     flag_lfortran_implicit_typing = " --implicit-typing", &
     flag_lfortran_implicit_external = " --allow-implicit-interface", &
     flag_lfortran_fixed_form = " --fixed-form"
+
 
 character(*), parameter :: &
     flag_cray_no_implicit_typing = " -dl", &
@@ -34434,6 +30469,7 @@ character(*), parameter :: &
     flag_cray_free_form = " -ffree"
 
 contains
+
 
 function get_default_flags(self, release) result(flags)
     class(compiler_t), intent(in) :: self
@@ -34487,58 +30523,48 @@ subroutine get_release_compile_flags(id, flags)
 
     case(id_intel_classic_nix)
         flags = &
-            flag_intel_opt//&
             flag_intel_fp//&
             flag_intel_align//&
             flag_intel_limit//&
             flag_intel_pthread//&
             flag_intel_nogen//&
-            flag_intel_byterecl//&
-            flag_intel_standard_compliance
+            flag_intel_byterecl
 
     case(id_intel_classic_mac)
         flags = &
-            flag_intel_opt//&
             flag_intel_fp//&
             flag_intel_align//&
             flag_intel_limit//&
             flag_intel_pthread//&
             flag_intel_nogen//&
-            flag_intel_byterecl//&
-            flag_intel_standard_compliance
+            flag_intel_byterecl
 
     case(id_intel_classic_windows)
         flags = &
-            flag_intel_opt_win//&
-            flag_intel_fp_win//&
+            & flag_intel_fp_win//&
             flag_intel_align_win//&
             flag_intel_limit_win//&
             flag_intel_pthread_win//&
             flag_intel_nogen_win//&
-            flag_intel_byterecl_win//&
-            flag_intel_standard_compliance_win
+            flag_intel_byterecl_win
 
     case(id_intel_llvm_nix)
         flags = &
-            flag_intel_opt//&
             flag_intel_fp//&
             flag_intel_align//&
             flag_intel_limit//&
             flag_intel_pthread//&
             flag_intel_nogen//&
-            flag_intel_byterecl//&
-            flag_intel_standard_compliance
+            flag_intel_byterecl
 
     case(id_intel_llvm_windows)
         flags = &
-            flag_intel_opt_win//&
             flag_intel_fp_win//&
             flag_intel_align_win//&
             flag_intel_limit_win//&
             flag_intel_pthread_win//&
             flag_intel_nogen_win//&
-            flag_intel_byterecl_win//&
-            flag_intel_standard_compliance_win
+            flag_intel_byterecl_win
 
     case(id_nag)
         flags = &
@@ -34602,9 +30628,7 @@ subroutine get_debug_compile_flags(id, flags)
             flag_intel_limit//&
             flag_intel_debug//&
             flag_intel_byterecl//&
-            flag_intel_standard_compliance//&
             flag_intel_backtrace
-
     case(id_intel_classic_mac)
         flags = &
             flag_intel_warn//&
@@ -34612,7 +30636,6 @@ subroutine get_debug_compile_flags(id, flags)
             flag_intel_limit//&
             flag_intel_debug//&
             flag_intel_byterecl//&
-            flag_intel_standard_compliance//&
             flag_intel_backtrace
     case(id_intel_classic_windows)
         flags = &
@@ -34621,16 +30644,14 @@ subroutine get_debug_compile_flags(id, flags)
             flag_intel_limit_win//&
             flag_intel_debug_win//&
             flag_intel_byterecl_win//&
-            flag_intel_standard_compliance_win//&
             flag_intel_backtrace_win
     case(id_intel_llvm_nix)
         flags = &
             flag_intel_warn//&
-            flag_intel_llvm_check//&
+            flag_intel_check//&
             flag_intel_limit//&
             flag_intel_debug//&
             flag_intel_byterecl//&
-            flag_intel_standard_compliance//&
             flag_intel_backtrace
     case(id_intel_llvm_windows)
         flags = &
@@ -34638,8 +30659,7 @@ subroutine get_debug_compile_flags(id, flags)
             flag_intel_check_win//&
             flag_intel_limit_win//&
             flag_intel_debug_win//&
-            flag_intel_byterecl_win//&
-            flag_intel_standard_compliance_win
+            flag_intel_byterecl_win
     case(id_nag)
         flags = &
             flag_nag_debug//&
@@ -34686,6 +30706,7 @@ function get_macros(id, macros_list, version) result(macros)
     character(len=:), allocatable :: macros
     character(len=:), allocatable :: macro_definition_symbol
     character(:), allocatable :: valued_macros(:)
+
 
     integer :: i
 
@@ -34796,6 +30817,7 @@ function get_module_flag(self, path) result(flags)
 
 end function get_module_flag
 
+
 function get_feature_flag(self, feature) result(flags)
     class(compiler_t), intent(in) :: self
     character(len=*), intent(in) :: feature
@@ -34897,48 +30919,6 @@ function get_feature_flag(self, feature) result(flags)
     end select
 end function get_feature_flag
 
-!> Get special flags for the main linker
-subroutine get_main_flags(self, language, flags)
-    class(compiler_t), intent(in) :: self
-    character(len=*), intent(in) :: language
-    character(len=:), allocatable, intent(out) :: flags
-
-    flags = ""
-    select case(language)
-
-    case("fortran")
-        flags = ""
-
-    case("c")
-
-        ! If the main program is on a C/C++ source, the Intel Fortran compiler requires option
-        ! -nofor-main to avoid "duplicate main" errors.
-        ! https://stackoverflow.com/questions/36221612/p3dfft-compilation-ifort-compiler-error-multiple-definiton-of-main
-        select case(self%id)
-           case(id_intel_classic_nix, id_intel_classic_mac, id_intel_llvm_nix)
-               flags = '-nofor-main'
-           case(id_intel_classic_windows,id_intel_llvm_windows)
-               flags = '/nofor-main'
-           case (id_pgi,id_nvhpc)
-               flags = '-Mnomain'
-        end select
-
-    case("c++","cpp","cxx")
-
-        select case(self%id)
-           case(id_intel_classic_nix, id_intel_classic_mac, id_intel_llvm_nix)
-               flags = '-nofor-main'
-           case(id_intel_classic_windows,id_intel_llvm_windows)
-               flags = '/nofor-main'
-           case (id_pgi,id_nvhpc)
-               flags = '-Mnomain'
-        end select
-
-    case default
-        error stop "Unknown language '"//language//'", try "fortran", "c", "c++"'
-    end select
-
-end subroutine get_main_flags
 
 subroutine get_default_c_compiler(f_compiler, c_compiler)
     character(len=*), intent(in) :: f_compiler
@@ -35008,6 +30988,7 @@ subroutine get_default_cxx_compiler(f_compiler, cxx_compiler)
     end select
 
 end subroutine get_default_cxx_compiler
+
 
 function get_compiler_id(compiler) result(id)
     character(len=*), intent(in) :: compiler
@@ -35151,22 +31132,12 @@ function check_compiler(compiler, expected) result(match)
     end if
 end function check_compiler
 
+
 pure function is_unknown(self)
     class(compiler_t), intent(in) :: self
     logical :: is_unknown
     is_unknown = self%id == id_unknown
 end function is_unknown
-
-pure logical function is_intel(self)
-    class(compiler_t), intent(in) :: self
-    is_intel = any(self%id == [id_intel_classic_nix,id_intel_classic_mac,id_intel_classic_windows, &
-                               id_intel_llvm_nix,id_intel_llvm_windows,id_intel_llvm_unknown])
-end function is_intel
-
-pure logical function is_gnu(self)
-    class(compiler_t), intent(in) :: self
-    is_gnu = any(self%id == [id_f95,id_gcc,id_caf])
-end function is_gnu
 
 !>
 !> Enumerate libraries, based on compiler and platform
@@ -35184,6 +31155,7 @@ function enumerate_libraries(self, prefix, libs) result(r)
         r = prefix // " -l" // string_cat(libs," -l")
     end if
 end function enumerate_libraries
+
 
 !> Create new compiler instance
 subroutine new_compiler(self, fc, cc, cxx, echo, verbose)
@@ -35217,6 +31189,7 @@ subroutine new_compiler(self, fc, cc, cxx, echo, verbose)
       call get_default_cxx_compiler(self%fc, self%cxx)
     end if
 end subroutine new_compiler
+
 
 !> Create new archiver instance
 subroutine new_archiver(self, ar, echo, verbose)
@@ -35265,6 +31238,7 @@ subroutine new_archiver(self, ar, echo, verbose)
     self%verbose = verbose
 end subroutine new_archiver
 
+
 !> Compile a Fortran object
 subroutine compile_fortran(self, input, output, args, log_file, stat)
     !> Instance of the compiler object
@@ -35283,6 +31257,7 @@ subroutine compile_fortran(self, input, output, args, log_file, stat)
     call run(self%fc // " -c " // input // " " // args // " -o " // output, &
         & echo=self%echo, verbose=self%verbose, redirect=log_file, exitstat=stat)
 end subroutine compile_fortran
+
 
 !> Compile a C object
 subroutine compile_c(self, input, output, args, log_file, stat)
@@ -35339,6 +31314,7 @@ subroutine link(self, output, args, log_file, stat)
         & verbose=self%verbose, redirect=log_file, exitstat=stat)
 end subroutine link
 
+
 !> Create an archive
 !> @todo For Windows OS, use the local `delete_file_win32` in stead of `delete_file`.
 !> This may be related to a bug in Mingw64-openmp and is expected to be resolved in the future,
@@ -35379,6 +31355,7 @@ subroutine make_archive(self, output, args, log_file, stat)
         end subroutine delete_file_win32
 end subroutine make_archive
 
+
 !> Response files allow to read command line options from files.
 !> Whitespace is used to separate the arguments, we will use newlines
 !> as separator to create readable response files which can be inspected
@@ -35396,6 +31373,7 @@ subroutine write_response_file(name, argv)
     close(io)
 end subroutine write_response_file
 
+
 !> String representation of a compiler object
 pure function debug_compiler(self) result(repr)
     !> Instance of the compiler object
@@ -35405,6 +31383,7 @@ pure function debug_compiler(self) result(repr)
 
     repr = 'fc="'//self%fc//'", cc="'//self%cc//'"'
 end function debug_compiler
+
 
 !> String representation of an archiver object
 pure function debug_archiver(self) result(repr)
@@ -35416,190 +31395,9 @@ pure function debug_archiver(self) result(repr)
     repr = 'ar="'//self%ar//'"'
 end function debug_archiver
 
-!> Check that two archiver_t objects are equal
-logical function ar_is_same(this,that)
-    class(archiver_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    ar_is_same = .false.
-
-    select type (other=>that)
-       type is (archiver_t)
-
-          if (.not.(this%ar==other%ar)) return
-          if (.not.(this%use_response_file.eqv.other%use_response_file)) return
-          if (.not.(this%echo.eqv.other%echo)) return
-          if (.not.(this%verbose.eqv.other%verbose)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    ar_is_same = .true.
-
-end function ar_is_same
-
-!> Dump dependency to toml table
-subroutine dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(archiver_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    !> Path to archiver
-    call set_string(table, "ar", self%ar, error, 'archiver_t')
-    if (allocated(error)) return
-    call set_value(table, "use-response-file", self%use_response_file, error, 'archiver_t')
-    if (allocated(error)) return
-    call set_value(table, "echo", self%echo, error, 'archiver_t')
-    if (allocated(error)) return
-    call set_value(table, "verbose", self%verbose, error, 'archiver_t')
-    if (allocated(error)) return
-
-end subroutine dump_to_toml
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(archiver_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call get_value(table, "ar", self%ar)
-
-    call get_value(table, "use-response-file", self%use_response_file, error, 'archiver_t')
-    if (allocated(error)) return
-    call get_value(table, "echo", self%echo, error, 'archiver_t')
-    if (allocated(error)) return
-    call get_value(table, "verbose", self%verbose, error, 'archiver_t')
-    if (allocated(error)) return
-
-end subroutine load_from_toml
-
-!> Check that two compiler_t objects are equal
-logical function compiler_is_same(this,that)
-    class(compiler_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    compiler_is_same = .false.
-
-    select type (other=>that)
-       type is (compiler_t)
-
-          if (.not.(this%id==other%id)) return
-          if (.not.(this%fc==other%fc)) return
-          if (.not.(this%cc==other%cc)) return
-          if (.not.(this%cxx==other%cxx)) return
-          if (.not.(this%echo.eqv.other%echo)) return
-          if (.not.(this%verbose.eqv.other%verbose)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    compiler_is_same = .true.
-
-end function compiler_is_same
-
-!> Dump dependency to toml table
-subroutine compiler_dump(self, table, error)
-
-    !> Instance of the serializable object
-    class(compiler_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr
-
-    call set_value(table, "id", self%id, error, 'compiler_t')
-    if (allocated(error)) return
-    call set_string(table, "fc", self%fc, error, 'compiler_t')
-    if (allocated(error)) return
-    call set_string(table, "cc", self%cc, error, 'compiler_t')
-    if (allocated(error)) return
-    call set_string(table, "cxx", self%cxx, error, 'compiler_t')
-    if (allocated(error)) return
-    call set_value(table, "echo", self%echo, error, 'compiler_t')
-    if (allocated(error)) return
-    call set_value(table, "verbose", self%verbose, error, 'compiler_t')
-    if (allocated(error)) return
-
-end subroutine compiler_dump
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine compiler_load(self, table, error)
-
-    !> Instance of the serializable object
-    class(compiler_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call get_value(table, "id", self%id, error, 'compiler_t')
-    if (allocated(error)) return
-    call get_value(table, "fc", self%fc)
-    call get_value(table, "cc", self%cc)
-    call get_value(table, "cxx", self%cxx)
-    call get_value(table, "echo", self%echo, error, 'compiler_t')
-    if (allocated(error)) return
-    call get_value(table, "verbose", self%verbose, error, 'compiler_t')
-    if (allocated(error)) return
-
-end subroutine compiler_load
-
-!> Return a compiler name string
-pure function compiler_name(self) result(name)
-   !> Instance of the compiler object
-   class(compiler_t), intent(in) :: self
-   !> Representation as string
-   character(len=:), allocatable :: name
-
-   select case (self%id)
-       case(id_gcc); name = "gfortran"
-       case(id_f95); name = "f95"
-       case(id_caf); name = "caf"
-       case(id_intel_classic_nix);     name = "ifort"
-       case(id_intel_classic_mac);     name = "ifort"
-       case(id_intel_classic_windows); name = "ifort"
-       case(id_intel_llvm_nix);     name = "ifx"
-       case(id_intel_llvm_windows); name = "ifx"
-       case(id_intel_llvm_unknown); name = "ifx"
-       case(id_pgi);       name = "pgfortran"
-       case(id_nvhpc);     name = "nvfortran"
-       case(id_nag);       name = "nagfor"
-       case(id_flang);     name = "flang"
-       case(id_flang_new); name = "flang-new"
-       case(id_f18);       name = "f18"
-       case(id_ibmxl);     name = "xlf90"
-       case(id_cray);      name = "crayftn"
-       case(id_lahey);     name = "lfc"
-       case(id_lfortran);  name = "lFortran"
-       case default;       name = "invalid/unknown"
-   end select
-end function compiler_name
 
 end module fpm_compiler
+
 
 !>>>>> ././src/fpm/dependency.f90
 !> # Dependency management
@@ -35662,16 +31460,13 @@ module fpm_dependency
   use, intrinsic :: iso_fortran_env, only: output_unit
   use fpm_environment, only: get_os_type, OS_WINDOWS, os_is_unix
   use fpm_error, only: error_t, fatal_error
-  use fpm_filesystem, only: exists, join_path, mkdir, canon_path, windows_path, list_files, is_dir, basename, &
-                            os_delete_dir, get_temp_filename
-  use fpm_git, only: git_target_revision, git_target_default, git_revision, operator(==), &
-                     serializable_t
+  use fpm_filesystem, only: exists, join_path, mkdir, canon_path, windows_path, list_files, is_dir, basename, os_delete_dir
+  use fpm_git, only: git_target_revision, git_target_default, git_revision, operator(==)
   use fpm_manifest, only: package_config_t, dependency_config_t, get_package_data
-  use fpm_manifest_dependency, only: manifest_has_changed, dependency_destroy
-  use fpm_manifest_preprocess, only: operator(==)
+  use fpm_manifest_dependency, only: manifest_has_changed
   use fpm_strings, only: string_t, operator(.in.)
   use fpm_toml, only: toml_table, toml_key, toml_error, toml_serialize, &
-                      get_value, set_value, add_table, toml_load, toml_stat, set_string
+                      get_value, set_value, add_table, toml_load, toml_stat
   use fpm_versioning, only: version_t, new_version
   use fpm_settings, only: fpm_global_settings, get_global_settings, official_registry_base_url
   use fpm_downloader, only: downloader_t
@@ -35681,7 +31476,7 @@ module fpm_dependency
   private
 
   public :: dependency_tree_t, new_dependency_tree, dependency_node_t, new_dependency_node, resize, &
-            & check_and_read_pkg_data, destroy_dependency_node
+            & check_and_read_pkg_data
 
   !> Overloaded reallocation interface
   interface resize
@@ -35710,19 +31505,13 @@ module fpm_dependency
     procedure, private :: get_from_local_registry
     !> Print information on this instance
     procedure :: info
-
-    !> Serialization interface
-    procedure :: serializable_is_same => dependency_node_is_same
-    procedure :: dump_to_toml => node_dump_to_toml
-    procedure :: load_from_toml => node_load_from_toml
-
   end type dependency_node_t
 
   !> Respresentation of a projects dependencies
   !>
   !> The dependencies are stored in a simple array for now, this can be replaced
   !> with a binary-search tree or a hash table in the future.
-  type, extends(serializable_t) :: dependency_tree_t
+  type :: dependency_tree_t
     !> Unit for IO
     integer :: unit = output_unit
     !> Verbosity of printout
@@ -35735,9 +31524,7 @@ module fpm_dependency
     type(dependency_node_t), allocatable :: dep(:)
     !> Cache file
     character(len=:), allocatable :: cache
-
   contains
-
     !> Overload procedure to add new dependencies to the tree
     generic :: add => add_project, add_project_dependencies, add_dependencies, &
       add_dependency, add_dependency_node
@@ -35768,33 +31555,27 @@ module fpm_dependency
     !> Depedendncy resolution finished
     procedure :: finished
     !> Reading of dependency tree
-    generic :: load_cache => load_cache_from_file, load_cache_from_unit, load_cache_from_toml
+    generic :: load => load_from_file, load_from_unit, load_from_toml
     !> Read dependency tree from file
-    procedure, private :: load_cache_from_file
+    procedure, private :: load_from_file
     !> Read dependency tree from formatted unit
-    procedure, private :: load_cache_from_unit
+    procedure, private :: load_from_unit
     !> Read dependency tree from TOML data structure
-    procedure, private :: load_cache_from_toml
+    procedure, private :: load_from_toml
     !> Writing of dependency tree
-    generic :: dump_cache => dump_cache_to_file, dump_cache_to_unit, dump_cache_to_toml
+    generic :: dump => dump_to_file, dump_to_unit, dump_to_toml
     !> Write dependency tree to file
-    procedure, private :: dump_cache_to_file
+    procedure, private :: dump_to_file
     !> Write dependency tree to formatted unit
-    procedure, private :: dump_cache_to_unit
+    procedure, private :: dump_to_unit
     !> Write dependency tree to TOML data structure
-    procedure, private :: dump_cache_to_toml
+    procedure, private :: dump_to_toml
     !> Update dependency tree
     generic :: update => update_dependency, update_tree
     !> Update a list of dependencies
     procedure, private :: update_dependency
     !> Update all dependencies in the tree
     procedure, private :: update_tree
-
-    !> Serialization interface
-    procedure :: serializable_is_same => dependency_tree_is_same
-    procedure :: dump_to_toml   => tree_dump_to_toml
-    procedure :: load_from_toml => tree_load_from_toml
-
   end type dependency_tree_t
 
   !> Common output format for writing to the command line
@@ -35814,9 +31595,13 @@ contains
     call resize(self%dep)
     self%dep_dir = join_path("build", "dependencies")
 
-    if (present(verbosity)) self%verbosity = verbosity
+    if (present(verbosity)) then
+      self%verbosity = verbosity
+    end if
 
-    if (present(cache)) self%cache = cache
+    if (present(cache)) then
+      self%cache = cache
+    end if
 
   end subroutine new_dependency_tree
 
@@ -35928,14 +31713,14 @@ contains
     ! After resolving all dependencies, check if we have cached ones to avoid updates
     if (allocated(self%cache)) then
       call new_dependency_tree(cached, verbosity=self%verbosity,cache=self%cache)
-      call cached%load_cache(self%cache, error)
+      call cached%load(self%cache, error)
       if (allocated(error)) return
 
       ! Skip root node
-      do id = 2, cached%ndep
-        cached%dep(id)%cached = .true.
-        call self%add(cached%dep(id), error)
-        if (allocated(error)) return
+      do id=2,cached%ndep
+          cached%dep(id)%cached = .true.
+          call self%add(cached%dep(id), error)
+          if (allocated(error)) return
       end do
     end if
 
@@ -35947,7 +31732,7 @@ contains
     if (allocated(error)) return
 
     if (allocated(self%cache)) then
-      call self%dump_cache(self%cache, error)
+      call self%dump(self%cache, error)
       if (allocated(error)) return
     end if
 
@@ -36010,9 +31795,6 @@ contains
       end if
     end if
 
-    !> Ensure allocation fits
-    call resize(self%dep,self%ndep)
-
   end subroutine add_project_dependencies
 
   !> Add a list of dependencies to the dependency tree
@@ -36036,9 +31818,6 @@ contains
       if (allocated(error)) exit
     end do
     if (allocated(error)) return
-
-    !> Ensure allocation fits ndep
-    call resize(self%dep,self%ndep)
 
   end subroutine add_dependencies
 
@@ -36065,19 +31844,15 @@ contains
       ! the manifest has priority
       if (dependency%cached) then
         if (dependency_has_changed(dependency, self%dep(id), self%verbosity, self%unit)) then
-          if (self%verbosity > 0) write (self%unit, out_fmt) "Dependency change detected:", dependency%name
-          self%dep(id)%update = .true.
+           if (self%verbosity>0) write (self%unit, out_fmt) "Dependency change detected:", dependency%name
+           self%dep(id)%update = .true.
         else
-          ! Store the cached one
-          self%dep(id) = dependency
-          self%dep(id)%update = .false.
-        end if
+           ! Store the cached one
+           self%dep(id) = dependency
+           self%dep(id)%update = .false.
+        endif
       end if
     else
-
-      !> Safety: reallocate if necessary
-      if (size(self%dep)==self%ndep) call resize(self%dep,self%ndep+1)
-
       ! New dependency: add from scratch
       self%ndep = self%ndep + 1
       self%dep(self%ndep) = dependency
@@ -36124,7 +31899,7 @@ contains
 
     associate (dep => self%dep(id))
       if (allocated(dep%git) .and. dep%update) then
-        if (self%verbosity > 0) write (self%unit, out_fmt) "Update:", dep%name
+        if (self%verbosity>0) write (self%unit, out_fmt) "Update:", dep%name
         proj_dir = join_path(self%dep_dir, dep%name)
         call dep%git%checkout(proj_dir, error)
         if (allocated(error)) return
@@ -36264,7 +32039,7 @@ contains
     !> Downloader instance.
     class(downloader_t), optional, intent(in) :: downloader_
 
-    character(:), allocatable :: cache_path, target_url, tmp_file
+    character(:), allocatable :: cache_path, target_url, tmp_pkg_path, tmp_pkg_file
     type(version_t) :: version
     integer :: stat, unit
     type(json_object) :: json
@@ -36293,15 +32068,18 @@ contains
       end if
     end if
 
-    tmp_file = get_temp_filename()
-    open (newunit=unit, file=tmp_file, action='readwrite', iostat=stat)
+    ! Define location of the temporary folder and file.
+    tmp_pkg_path = join_path(global_settings%path_to_config_folder, 'tmp')
+    if (.not. exists(tmp_pkg_path)) call mkdir(tmp_pkg_path)
+    tmp_pkg_file = join_path(tmp_pkg_path, 'package_data.tmp')
+    open (newunit=unit, file=tmp_pkg_file, action='readwrite', iostat=stat)
     if (stat /= 0) then
       call fatal_error(error, "Error creating temporary file for downloading package '"//self%name//"'."); return
     end if
 
     ! Include namespace and package name in the target url and download package data.
     target_url = global_settings%registry_settings%url//'/packages/'//self%namespace//'/'//self%name
-    call downloader%get_pkg_data(target_url, self%requested_version, tmp_file, json, error)
+    call downloader%get_pkg_data(target_url, self%requested_version, tmp_pkg_file, json, error)
     close (unit, status='delete')
     if (allocated(error)) return
 
@@ -36310,7 +32088,7 @@ contains
     if (allocated(error)) return
 
     ! Open new tmp file for downloading the actual package.
-    open (newunit=unit, file=tmp_file, action='readwrite', iostat=stat)
+    open (newunit=unit, file=tmp_pkg_file, action='readwrite', iostat=stat)
     if (stat /= 0) then
       call fatal_error(error, "Error creating temporary file for downloading package '"//self%name//"'."); return
     end if
@@ -36321,13 +32099,13 @@ contains
       if (is_dir(cache_path)) call os_delete_dir(os_is_unix(), cache_path)
       call mkdir(cache_path)
 
-      call downloader%get_file(target_url, tmp_file, error)
+      call downloader%get_file(target_url, tmp_pkg_file, error)
       if (allocated(error)) then
         close (unit, status='delete'); return
       end if
 
       ! Unpack the downloaded package to the final location.
-      call downloader%unpack(tmp_file, cache_path, error)
+      call downloader%unpack(tmp_pkg_file, cache_path, error)
       close (unit, status='delete')
       if (allocated(error)) return
     end if
@@ -36345,45 +32123,40 @@ contains
 
     integer :: code, stat
     type(json_object), pointer :: p, q
-    character(:), allocatable :: version_key, version_str, error_message, namespace, name
-
-    namespace = ""
-    name = "UNNAMED_NODE"
-    if (allocated(node%namespace)) namespace = node%namespace
-    if (allocated(node%name)) name = node%name
+    character(:), allocatable :: version_key, version_str, error_message
 
     if (.not. json%has_key('code')) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No status code."); return
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No status code."); return
     end if
 
     call get_value(json, 'code', code, stat=stat)
     if (stat /= 0) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': "// &
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': "// &
       & "Failed to read status code."); return
     end if
 
     if (code /= 200) then
       if (.not. json%has_key('message')) then
-        call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No error message."); return
+        call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No error message."); return
       end if
 
       call get_value(json, 'message', error_message, stat=stat)
       if (stat /= 0) then
-        call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': "// &
+        call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': "// &
         & "Failed to read error message."); return
       end if
 
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"'. Status code: '"// &
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"'. Status code: '"// &
       & str(code)//"'. Error message: '"//error_message//"'."); return
     end if
 
     if (.not. json%has_key('data')) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No data."); return
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No data."); return
     end if
 
     call get_value(json, 'data', p, stat=stat)
     if (stat /= 0) then
-      call fatal_error(error, "Failed to read package data for '"//join_path(namespace, name)//"'."); return
+      call fatal_error(error, "Failed to read package data for '"//join_path(node%namespace, node%name)//"'."); return
     end if
 
     if (allocated(node%requested_version)) then
@@ -36393,38 +32166,38 @@ contains
     end if
 
     if (.not. p%has_key(version_key)) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No version data."); return
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No version data."); return
     end if
 
     call get_value(p, version_key, q, stat=stat)
     if (stat /= 0) then
-      call fatal_error(error, "Failed to retrieve version data for '"//join_path(namespace, name)//"'."); return
+      call fatal_error(error, "Failed to retrieve version data for '"//join_path(node%namespace, node%name)//"'."); return
     end if
 
     if (.not. q%has_key('download_url')) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No download url."); return
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No download url."); return
     end if
 
     call get_value(q, 'download_url', download_url, stat=stat)
     if (stat /= 0) then
-      call fatal_error(error, "Failed to read download url for '"//join_path(namespace, name)//"'."); return
+      call fatal_error(error, "Failed to read download url for '"//join_path(node%namespace, node%name)//"'."); return
     end if
 
     download_url = official_registry_base_url//download_url
 
     if (.not. q%has_key('version')) then
-      call fatal_error(error, "Failed to download '"//join_path(namespace, name)//"': No version found."); return
+      call fatal_error(error, "Failed to download '"//join_path(node%namespace, node%name)//"': No version found."); return
     end if
 
     call get_value(q, 'version', version_str, stat=stat)
     if (stat /= 0) then
-      call fatal_error(error, "Failed to read version data for '"//join_path(namespace, name)//"'."); return
+      call fatal_error(error, "Failed to read version data for '"//join_path(node%namespace, node%name)//"'."); return
     end if
 
     call new_version(version, version_str, error)
     if (allocated(error)) then
       call fatal_error(error, "'"//version_str//"' is not a valid version for '"// &
-      & join_path(namespace, name)//"'."); return
+      & join_path(node%namespace, node%name)//"'."); return
     end if
   end subroutine
 
@@ -36588,7 +32361,7 @@ contains
   end subroutine register
 
   !> Read dependency tree from file
-  subroutine load_cache_from_file(self, file, error)
+  subroutine load_from_file(self, file, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> File name
@@ -36603,12 +32376,12 @@ contains
     if (.not. exist) return
 
     open (file=file, newunit=unit)
-    call self%load_cache(unit, error)
+    call self%load(unit, error)
     close (unit)
-  end subroutine load_cache_from_file
+  end subroutine load_from_file
 
   !> Read dependency tree from file
-  subroutine load_cache_from_unit(self, unit, error)
+  subroutine load_from_unit(self, unit, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> File name
@@ -36627,13 +32400,13 @@ contains
       return
     end if
 
-    call self%load_cache(table, error)
+    call self%load(table, error)
     if (allocated(error)) return
 
-  end subroutine load_cache_from_unit
+  end subroutine load_from_unit
 
   !> Read dependency tree from TOML data structure
-  subroutine load_cache_from_toml(self, table, error)
+  subroutine load_from_toml(self, table, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> Data structure
@@ -36695,10 +32468,10 @@ contains
     if (allocated(error)) return
 
     self%ndep = size(list)
-  end subroutine load_cache_from_toml
+  end subroutine load_from_toml
 
   !> Write dependency tree to file
-  subroutine dump_cache_to_file(self, file, error)
+  subroutine dump_to_file(self, file, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> File name
@@ -36709,14 +32482,14 @@ contains
     integer :: unit
 
     open (file=file, newunit=unit)
-    call self%dump_cache(unit, error)
+    call self%dump(unit, error)
     close (unit)
     if (allocated(error)) return
 
-  end subroutine dump_cache_to_file
+  end subroutine dump_to_file
 
   !> Write dependency tree to file
-  subroutine dump_cache_to_unit(self, unit, error)
+  subroutine dump_to_unit(self, unit, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> Formatted unit
@@ -36727,14 +32500,14 @@ contains
     type(toml_table) :: table
 
     table = toml_table()
-    call self%dump_cache(table, error)
+    call self%dump(table, error)
 
     write (unit, '(a)') toml_serialize(table)
 
-  end subroutine dump_cache_to_unit
+  end subroutine dump_to_unit
 
   !> Write dependency tree to TOML datastructure
-  subroutine dump_cache_to_toml(self, table, error)
+  subroutine dump_to_toml(self, table, error)
     !> Instance of the dependency tree
     class(dependency_tree_t), intent(inout) :: self
     !> Data structure
@@ -36771,7 +32544,7 @@ contains
     end do
     if (allocated(error)) return
 
-  end subroutine dump_cache_to_toml
+  end subroutine dump_to_toml
 
   !> Reallocate a list of dependencies
   pure subroutine resize_dependency_node(var, n)
@@ -36815,8 +32588,6 @@ contains
     !> Log verbosity
     integer, intent(in) :: verbosity, iunit
 
-    integer :: ip
-
     has_changed = .true.
 
     !> All the following entities must be equal for the dependency to not have changed
@@ -36827,44 +32598,27 @@ contains
     !> may not have it
     if (allocated(cached%version) .and. allocated(manifest%version)) then
       if (cached%version /= manifest%version) then
-        if (verbosity > 1) write (iunit, out_fmt) "VERSION has changed: "//cached%version%s()//" vs. "//manifest%version%s()
-        return
-      end if
+         if (verbosity>1) write(iunit,out_fmt) "VERSION has changed: "//cached%version%s()//" vs. "//manifest%version%s()
+         return
+      endif
     else
-      if (verbosity > 1) write (iunit, out_fmt) "VERSION has changed presence "
+       if (verbosity>1) write(iunit,out_fmt) "VERSION has changed presence "
     end if
     if (allocated(cached%revision) .and. allocated(manifest%revision)) then
       if (cached%revision /= manifest%revision) then
-        if (verbosity > 1) write (iunit, out_fmt) "REVISION has changed: "//cached%revision//" vs. "//manifest%revision
+        if (verbosity>1) write(iunit,out_fmt) "REVISION has changed: "//cached%revision//" vs. "//manifest%revision
         return
-      end if
+      endif
     else
-      if (verbosity > 1) write (iunit, out_fmt) "REVISION has changed presence "
+      if (verbosity>1) write(iunit,out_fmt) "REVISION has changed presence "
     end if
     if (allocated(cached%proj_dir) .and. allocated(manifest%proj_dir)) then
       if (cached%proj_dir /= manifest%proj_dir) then
-        if (verbosity > 1) write (iunit, out_fmt) "PROJECT DIR has changed: "//cached%proj_dir//" vs. "//manifest%proj_dir
+        if (verbosity>1) write(iunit,out_fmt) "PROJECT DIR has changed: "//cached%proj_dir//" vs. "//manifest%proj_dir
         return
-      end if
-    else
-      if (verbosity > 1) write (iunit, out_fmt) "PROJECT DIR has changed presence "
-    end if
-    if (allocated(cached%preprocess) .eqv. allocated(manifest%preprocess)) then
-      if (allocated(cached%preprocess)) then
-          if (size(cached%preprocess) /= size(manifest%preprocess)) then
-            if (verbosity > 1) write (iunit, out_fmt) "PREPROCESS has changed size"
-            return
-          end if
-          do ip=1,size(cached%preprocess)
-             if (.not.(cached%preprocess(ip) == manifest%preprocess(ip))) then
-                if (verbosity > 1) write (iunit, out_fmt) "PREPROCESS config has changed"
-                return
-             end if
-          end do
       endif
     else
-      if (verbosity > 1) write (iunit, out_fmt) "PREPROCESS has changed presence "
-      return
+      if (verbosity>1) write(iunit,out_fmt) "PROJECT DIR has changed presence "
     end if
 
     !> All checks passed: the two dependencies have no differences
@@ -36872,292 +32626,8 @@ contains
 
   end function dependency_has_changed
 
-  !> Check that two dependency nodes are equal
-  logical function dependency_node_is_same(this,that)
-      class(dependency_node_t), intent(in) :: this
-      class(serializable_t), intent(in) :: that
-
-      dependency_node_is_same = .false.
-
-      select type (other=>that)
-         type is (dependency_node_t)
-
-            ! Base class must match
-            if (.not.(this%dependency_config_t==other%dependency_config_t)) return
-
-            ! Extension must match
-            if (.not.(this%done  .eqv.other%done)) return
-            if (.not.(this%update.eqv.other%update)) return
-            if (.not.(this%cached.eqv.other%cached)) return
-            if (.not.(this%proj_dir==other%proj_dir)) return
-            if (.not.(this%revision==other%revision)) return
-
-            if (.not.(allocated(this%version).eqv.allocated(other%version))) return
-               if (allocated(this%version)) then
-              if (.not.(this%version==other%version)) return
-            endif
-
-         class default
-            ! Not the same type
-            return
-      end select
-
-      !> All checks passed!
-      dependency_node_is_same = .true.
-
-  end function dependency_node_is_same
-
-    !> Dump dependency to toml table
-    subroutine node_dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_node_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: ierr
-
-        ! Dump parent class
-        call self%dependency_config_t%dump_to_toml(table, error)
-        if (allocated(error)) return
-
-        if (allocated(self%version)) then
-            call set_string(table, "version", self%version%s(), error,'dependency_node_t')
-            if (allocated(error)) return
-        endif
-        call set_string(table, "proj-dir", self%proj_dir, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call set_string(table, "revision", self%revision, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call set_value(table, "done", self%done, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call set_value(table, "update", self%update, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call set_value(table, "cached", self%cached, error, 'dependency_node_t')
-        if (allocated(error)) return
-
-    end subroutine node_dump_to_toml
-
-    !> Read dependency from toml table (no checks made at this stage)
-    subroutine node_load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_node_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        character(len=:), allocatable :: version
-        integer :: ierr
-
-        call destroy_dependency_node(self)
-
-        ! Load parent class
-        call self%dependency_config_t%load_from_toml(table, error)
-        if (allocated(error)) return
-
-        call get_value(table, "done", self%done, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call get_value(table, "update", self%update, error, 'dependency_node_t')
-        if (allocated(error)) return
-        call get_value(table, "cached", self%cached, error, 'dependency_node_t')
-        if (allocated(error)) return
-
-        call get_value(table, "proj-dir", self%proj_dir)
-        call get_value(table, "revision", self%revision)
-
-        call get_value(table, "version", version)
-        if (allocated(version)) then
-            allocate(self%version)
-            call new_version(self%version, version, error)
-            if (allocated(error)) then
-                error%message = 'dependency_node_t: version error from TOML table - '//error%message
-                return
-            endif
-        end if
-
-    end subroutine node_load_from_toml
-
-    !> Destructor
-    elemental subroutine destroy_dependency_node(self)
-
-        class(dependency_node_t), intent(inout) :: self
-
-        integer :: ierr
-
-        call dependency_destroy(self)
-
-        deallocate(self%version,stat=ierr)
-        deallocate(self%proj_dir,stat=ierr)
-        deallocate(self%revision,stat=ierr)
-        self%done = .false.
-        self%update = .false.
-        self%cached = .false.
-
-    end subroutine destroy_dependency_node
-
-  !> Check that two dependency trees are equal
-  logical function dependency_tree_is_same(this,that)
-    class(dependency_tree_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    integer :: ii
-
-    dependency_tree_is_same = .false.
-
-    select type (other=>that)
-       type is (dependency_tree_t)
-
-          if (.not.(this%unit==other%unit)) return
-          if (.not.(this%verbosity==other%verbosity)) return
-          if (.not.(this%dep_dir==other%dep_dir)) return
-          if (.not.(this%ndep==other%ndep)) return
-          if (.not.(allocated(this%dep).eqv.allocated(other%dep))) return
-          if (allocated(this%dep)) then
-             if (.not.(size(this%dep)==size(other%dep))) return
-             do ii = 1, size(this%dep)
-                if (.not.(this%dep(ii)==other%dep(ii))) return
-             end do
-          endif
-          if (.not.(this%cache==other%cache)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    dependency_tree_is_same = .true.
-
-  end function dependency_tree_is_same
-
-    !> Dump dependency to toml table
-    subroutine tree_dump_to_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_tree_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        integer :: ierr, ii
-        type(toml_table), pointer :: ptr_deps,ptr
-        character(27) :: unnamed
-
-        call set_value(table, "unit", self%unit, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call set_value(table, "verbosity", self%verbosity, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call set_string(table, "dep-dir", self%dep_dir, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call set_string(table, "cache", self%cache, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call set_value(table, "ndep", self%ndep, error, 'dependency_tree_t')
-        if (allocated(error)) return
-
-        if (allocated(self%dep)) then
-
-           ! Create dependency table
-           call add_table(table, "dependencies", ptr_deps)
-           if (.not. associated(ptr_deps)) then
-              call fatal_error(error, "dependency_tree_t cannot create dependency table ")
-              return
-           end if
-
-           do ii = 1, size(self%dep)
-              associate (dep => self%dep(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(dep%name)==0) then
-                    write(unnamed,1) ii
-                    call add_table(ptr_deps, trim(unnamed), ptr)
-                 else
-                    call add_table(ptr_deps, dep%name, ptr)
-                 end if
-                 if (.not. associated(ptr)) then
-                    call fatal_error(error, "dependency_tree_t cannot create entry for dependency "//dep%name)
-                    return
-                 end if
-                 call dep%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-              end associate
-           end do
-
-        endif
-
-        1 format('UNNAMED_DEPENDENCY_',i0)
-
-    end subroutine tree_dump_to_toml
-
-    !> Read dependency from toml table (no checks made at this stage)
-    subroutine tree_load_from_toml(self, table, error)
-
-        !> Instance of the serializable object
-        class(dependency_tree_t), intent(inout) :: self
-
-        !> Data structure
-        type(toml_table), intent(inout) :: table
-
-        !> Error handling
-        type(error_t), allocatable, intent(out) :: error
-
-        !> Local variables
-        type(toml_key), allocatable :: keys(:),dep_keys(:)
-        type(toml_table), pointer :: ptr_deps,ptr
-        integer :: ii, jj, ierr
-
-        call table%get_keys(keys)
-
-        call get_value(table, "unit", self%unit, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call get_value(table, "verbosity", self%verbosity, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call get_value(table, "ndep", self%ndep, error, 'dependency_tree_t')
-        if (allocated(error)) return
-        call get_value(table, "dep-dir", self%dep_dir)
-        call get_value(table, "cache", self%cache)
-
-        find_deps_table: do ii = 1, size(keys)
-            if (keys(ii)%key=="dependencies") then
-
-               call get_value(table, keys(ii), ptr_deps)
-               if (.not.associated(ptr_deps)) then
-                  call fatal_error(error,'dependency_tree_t: error retrieving dependency table from TOML table')
-                  return
-               end if
-
-               !> Read all dependencies
-               call ptr_deps%get_keys(dep_keys)
-               call resize(self%dep, size(dep_keys))
-
-               do jj = 1, size(dep_keys)
-
-                   call get_value(ptr_deps, dep_keys(jj), ptr)
-                   call self%dep(jj)%load_from_toml(ptr, error)
-                   if (allocated(error)) return
-
-               end do
-
-               exit find_deps_table
-
-            endif
-        end do find_deps_table
-
-    end subroutine tree_load_from_toml
-
 end module fpm_dependency
+
 
 !>>>>> ././src/fpm_model.f90
 !># The fpm package model
@@ -37174,7 +32644,7 @@ end module fpm_dependency
 !>### Enumerations
 !>
 !> __Source type:__ `FPM_UNIT_*`
-!> Describes the type of source file — determines build target generation
+!> Describes the type of source file     determines build target generation
 !>
 !> The logical order of precedence for assigning `unit_type` is as follows:
 !>
@@ -37194,21 +32664,17 @@ end module fpm_dependency
 !> (This allows tree-shaking/pruning of build targets based on unused module dependencies.)
 !>
 !> __Source scope:__ `FPM_SCOPE_*`
-!> Describes the scoping rules for using modules — controls module dependency resolution
+!> Describes the scoping rules for using modules     controls module dependency resolution
 !>
 module fpm_model
 use iso_fortran_env, only: int64
 use fpm_compiler, only: compiler_t, archiver_t, debug
 use fpm_dependency, only: dependency_tree_t
-use fpm_strings, only: string_t, str, len_trim, upper, operator(==)
-use fpm_toml, only: serializable_t, toml_table, toml_stat, set_value, set_list, get_value, &
-                    & get_list, add_table, toml_key, add_array, set_string
-use fpm_error, only: error_t, fatal_error
-use fpm_manifest_preprocess, only: preprocess_config_t
+use fpm_strings, only: string_t, str, len_trim
 implicit none
 
 private
-public :: fpm_model_t, srcfile_t, show_model, fortran_features_t, package_t
+public :: fpm_model_t, srcfile_t, show_model, fortran_features_t
 
 public :: FPM_UNIT_UNKNOWN, FPM_UNIT_PROGRAM, FPM_UNIT_MODULE, &
           FPM_UNIT_SUBMODULE, FPM_UNIT_SUBPROGRAM, FPM_UNIT_CSOURCE, &
@@ -37246,7 +32712,7 @@ integer, parameter :: FPM_SCOPE_TEST = 4
 integer, parameter :: FPM_SCOPE_EXAMPLE = 5
 
 !> Enabled Fortran language features
-type, extends(serializable_t) :: fortran_features_t
+type :: fortran_features_t
 
     !> Use default implicit typing
     logical :: implicit_typing = .false.
@@ -37256,18 +32722,10 @@ type, extends(serializable_t) :: fortran_features_t
 
     !> Form to use for all Fortran sources
     character(:), allocatable :: source_form
-
-    contains
-
-        !> Serialization interface
-        procedure :: serializable_is_same => fft_is_same
-        procedure :: dump_to_toml   => fft_dump_to_toml
-        procedure :: load_from_toml => fft_load_from_toml
-
 end type fortran_features_t
 
 !> Type for describing a source file
-type, extends(serializable_t) :: srcfile_t
+type srcfile_t
     !> File path relative to cwd
     character(:), allocatable :: file_name
 
@@ -37298,17 +32756,11 @@ type, extends(serializable_t) :: srcfile_t
     !> Current hash
     integer(int64) :: digest
 
-    contains
-
-        !> Serialization interface
-        procedure :: serializable_is_same => srcfile_is_same
-        procedure :: dump_to_toml   => srcfile_dump_to_toml
-        procedure :: load_from_toml => srcfile_load_from_toml
-
 end type srcfile_t
 
+
 !> Type for describing a single package
-type, extends(serializable_t) :: package_t
+type package_t
 
     !> Name of package
     character(:), allocatable :: name
@@ -37317,13 +32769,13 @@ type, extends(serializable_t) :: package_t
     type(srcfile_t), allocatable :: sources(:)
 
     !> List of macros.
-    type(preprocess_config_t) :: preprocess
+    type(string_t), allocatable :: macros(:)
 
     !> Package version number.
     character(:), allocatable :: version
 
     !> Module naming conventions
-    logical :: enforce_module_names = .false.
+    logical :: enforce_module_names
 
     !> Prefix for all module names
     type(string_t) :: module_prefix
@@ -37331,18 +32783,12 @@ type, extends(serializable_t) :: package_t
     !> Language features
     type(fortran_features_t) :: features
 
-    contains
-
-        !> Serialization interface
-        procedure :: serializable_is_same => package_is_same
-        procedure :: dump_to_toml   => package_dump_to_toml
-        procedure :: load_from_toml => package_load_from_toml
-
 end type package_t
+
 
 !> Type describing everything required to build
 !>  the root package and its dependencies.
-type, extends(serializable_t) :: fpm_model_t
+type :: fpm_model_t
 
     !> Name of root package
     character(:), allocatable :: package_name
@@ -37392,16 +32838,10 @@ type, extends(serializable_t) :: fpm_model_t
     !> Prefix for all module names
     type(string_t) :: module_prefix
 
-    contains
-
-        !> Serialization interface
-        procedure :: serializable_is_same => model_is_same
-        procedure :: dump_to_toml   => model_dump_to_toml
-        procedure :: load_from_toml => model_load_from_toml
-
 end type fpm_model_t
 
 contains
+
 
 function info_package(p) result(s)
     ! Returns representation of package_t
@@ -37441,7 +32881,23 @@ function info_srcfile(source) result(s)
     !    character(:), allocatable :: exe_name
     s = s // ', exe_name="' // source%exe_name // '"'
     !    integer :: unit_scope = FPM_SCOPE_UNKNOWN
-    s = s // ', unit_scope="' // FPM_SCOPE_NAME(source%unit_scope) // '"'
+    s = s // ", unit_scope="
+    select case(source%unit_scope)
+    case (FPM_SCOPE_UNKNOWN)
+        s = s // "FPM_SCOPE_UNKNOWN"
+    case (FPM_SCOPE_LIB)
+        s = s // "FPM_SCOPE_LIB"
+    case (FPM_SCOPE_DEP)
+        s = s // "FPM_SCOPE_DEP"
+    case (FPM_SCOPE_APP)
+        s = s // "FPM_SCOPE_APP"
+    case (FPM_SCOPE_TEST)
+        s = s // "FPM_SCOPE_TEST"
+    case (FPM_SCOPE_EXAMPLE)
+        s = s // "FPM_SCOPE_EXAMPLE"
+    case default
+        s = s // "INVALID"
+    end select
     !    type(string_t), allocatable :: modules_provided(:)
     s = s // ", modules_provided=["
     do i = 1, size(source%modules_provided)
@@ -37456,7 +32912,27 @@ function info_srcfile(source) result(s)
     end do
     s = s // "]"
     !    integer :: unit_type = FPM_UNIT_UNKNOWN
-    s = s // ', unit_type="' // FPM_UNIT_NAME(source%unit_type) // '"'
+    s = s // ", unit_type="
+    select case(source%unit_type)
+    case (FPM_UNIT_UNKNOWN)
+        s = s // "FPM_UNIT_UNKNOWN"
+    case (FPM_UNIT_PROGRAM)
+        s = s // "FPM_UNIT_PROGRAM"
+    case (FPM_UNIT_MODULE)
+        s = s // "FPM_UNIT_MODULE"
+    case (FPM_UNIT_SUBMODULE)
+        s = s // "FPM_UNIT_SUBMODULE"
+    case (FPM_UNIT_SUBPROGRAM)
+        s = s // "FPM_UNIT_SUBPROGRAM"
+    case (FPM_UNIT_CSOURCE)
+        s = s // "FPM_UNIT_CSOURCE"
+    case (FPM_UNIT_CPPSOURCE)
+        s = s // "FPM_UNIT_CPPSOURCE"
+    case (FPM_UNIT_CHEADER)
+        s = s // "FPM_UNIT_CHEADER"
+    case default
+        s = s // "INVALID"
+    end select
     !    type(string_t), allocatable :: modules_used(:)
     s = s // ", modules_used=["
     do i = 1, size(source%modules_used)
@@ -37552,692 +33028,8 @@ subroutine show_model(model)
     print *, info_model(model)
 end subroutine show_model
 
-!> Return the character name of a scope flag
-function FPM_SCOPE_NAME(flag) result(name)
-    integer, intent(in) :: flag
-    character(len=:), allocatable :: name
-
-    select case (flag)
-       case (FPM_SCOPE_UNKNOWN); name = "FPM_SCOPE_UNKNOWN"
-       case (FPM_SCOPE_LIB);     name = "FPM_SCOPE_LIB"
-       case (FPM_SCOPE_DEP);     name = "FPM_SCOPE_DEP"
-       case (FPM_SCOPE_APP);     name = "FPM_SCOPE_APP"
-       case (FPM_SCOPE_TEST);    name = "FPM_SCOPE_TEST"
-       case (FPM_SCOPE_EXAMPLE); name = "FPM_SCOPE_EXAMPLE"
-       case default;             name = "INVALID"
-    end select
-end function FPM_SCOPE_NAME
-
-!> Parse git FPM_SCOPE identifier from a string
-integer function parse_scope(name) result(scope)
-    character(len=*), intent(in) :: name
-
-    character(len=len(name)) :: uppercase
-
-    !> Make it Case insensitive
-    uppercase = upper(name)
-
-    select case (trim(uppercase))
-       case ("FPM_SCOPE_UNKNOWN"); scope = FPM_SCOPE_UNKNOWN
-       case ("FPM_SCOPE_LIB");     scope = FPM_SCOPE_LIB
-       case ("FPM_SCOPE_DEP");     scope = FPM_SCOPE_DEP
-       case ("FPM_SCOPE_APP");     scope = FPM_SCOPE_APP
-       case ("FPM_SCOPE_TEST");    scope = FPM_SCOPE_TEST
-       case ("FPM_SCOPE_EXAMPLE"); scope = FPM_SCOPE_EXAMPLE
-       case default;               scope = -9999
-    end select
-
-end function parse_scope
-
-!> Return the character name of a unit flag
-function FPM_UNIT_NAME(flag) result(name)
-    integer, intent(in) :: flag
-    character(len=:), allocatable :: name
-
-    select case (flag)
-       case (FPM_UNIT_UNKNOWN);    name = "FPM_UNIT_UNKNOWN"
-       case (FPM_UNIT_PROGRAM);    name = "FPM_UNIT_PROGRAM"
-       case (FPM_UNIT_MODULE);     name = "FPM_UNIT_MODULE"
-       case (FPM_UNIT_SUBMODULE);  name = "FPM_UNIT_SUBMODULE"
-       case (FPM_UNIT_SUBPROGRAM); name = "FPM_UNIT_SUBPROGRAM"
-       case (FPM_UNIT_CSOURCE);    name = "FPM_UNIT_CSOURCE"
-       case (FPM_UNIT_CPPSOURCE);  name = "FPM_UNIT_CPPSOURCE"
-       case (FPM_UNIT_CHEADER);    name = "FPM_UNIT_CHEADER"
-       case default;               name = "INVALID"
-    end select
-end function FPM_UNIT_NAME
-
-!> Parse git FPM_UNIT identifier from a string
-integer function parse_unit(name) result(unit)
-    character(len=*), intent(in) :: name
-
-    character(len=len(name)) :: uppercase
-
-    !> Make it Case insensitive
-    uppercase = upper(name)
-
-    select case (trim(uppercase))
-       case ("FPM_UNIT_UNKNOWN");    unit = FPM_UNIT_UNKNOWN
-       case ("FPM_UNIT_PROGRAM");    unit = FPM_UNIT_PROGRAM
-       case ("FPM_UNIT_MODULE");     unit = FPM_UNIT_MODULE
-       case ("FPM_UNIT_SUBMODULE");  unit = FPM_UNIT_SUBMODULE
-       case ("FPM_UNIT_SUBPROGRAM"); unit = FPM_UNIT_SUBPROGRAM
-       case ("FPM_UNIT_CSOURCE");    unit = FPM_UNIT_CSOURCE
-       case ("FPM_UNIT_CPPSOURCE");  unit = FPM_UNIT_CPPSOURCE
-       case ("FPM_UNIT_CHEADER");    unit = FPM_UNIT_CHEADER
-       case default;                 unit = -9999
-    end select
-
-end function parse_unit
-
-!> Check that two source files are equal
-logical function srcfile_is_same(this,that)
-    class(srcfile_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    srcfile_is_same = .false.
-
-    select type (other=>that)
-       type is (srcfile_t)
-
-          if (.not.(this%file_name==other%file_name)) return
-          if (.not.(this%exe_name==other%exe_name)) return
-          if (.not.(this%unit_scope==other%unit_scope)) return
-          if (.not.(this%modules_provided==other%modules_provided)) return
-          if (.not.(this%unit_type==other%unit_type)) return
-          if (.not.(this%parent_modules==other%parent_modules)) return
-          if (.not.(this%modules_used==other%modules_used)) return
-          if (.not.(this%include_dependencies==other%include_dependencies)) return
-          if (.not.(this%link_libraries==other%link_libraries)) return
-          if (.not.(this%digest==other%digest)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    srcfile_is_same = .true.
-
-end function srcfile_is_same
-
-!> Dump dependency to toml table
-subroutine srcfile_dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(srcfile_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr
-
-    call set_string(table, "file-name", self%file_name, error, 'srcfile_t')
-    if (allocated(error)) return
-    call set_string(table, "exe-name", self%exe_name, error, 'srcfile_t')
-    if (allocated(error)) return
-    call set_value(table, "digest", self%digest, error, 'srcfile_t')
-    if (allocated(error)) return
-
-    ! unit_scope and unit_type are saved as strings so the output is independent
-    ! of the internal representation
-    call set_string(table,"unit-scope",FPM_SCOPE_NAME(self%unit_scope), error, 'srcfile_t')
-    if (allocated(error)) return
-    call set_string(table,"unit-type",FPM_UNIT_NAME(self%unit_type), error, 'srcfile_t')
-    if (allocated(error)) return
-    call set_list(table, "modules-provided",self%modules_provided, error)
-    if (allocated(error)) return
-    call set_list(table, "parent-modules",self%parent_modules, error)
-    if (allocated(error)) return
-    call set_list(table, "modules-used",self%modules_used, error)
-    if (allocated(error)) return
-    call set_list(table, "include-dependencies",self%include_dependencies, error)
-    if (allocated(error)) return
-    call set_list(table, "link-libraries",self%link_libraries, error)
-    if (allocated(error)) return
-
-end subroutine srcfile_dump_to_toml
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine srcfile_load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(srcfile_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    character(len=:), allocatable :: flag
-    integer :: ierr
-
-    call get_value(table, "file-name", self%file_name)
-    call get_value(table, "exe-name", self%exe_name)
-    call get_value(table, "digest", self%digest, error, 'srcfile_t')
-    if (allocated(error)) return
-
-    ! unit_scope and unit_type are saved as strings so the output is independent
-    ! of the internal representation
-    call get_value(table, "unit-scope", flag)
-    if (allocated(flag)) self%unit_scope = parse_scope(flag)
-    call get_value(table, "unit-type", flag)
-    if (allocated(flag)) self%unit_type = parse_unit(flag)
-
-    call get_list(table,"modules-provided",self%modules_provided, error)
-    if (allocated(error)) return
-
-    call get_list(table,"parent-modules",self%parent_modules, error)
-    if (allocated(error)) return
-
-    call get_list(table,"modules-used",self%modules_used, error)
-    if (allocated(error)) return
-
-    call get_list(table,"include-dependencies",self%include_dependencies, error)
-    if (allocated(error)) return
-
-    call get_list(table,"link-libraries",self%link_libraries, error)
-    if (allocated(error)) return
-
-end subroutine srcfile_load_from_toml
-
-!> Check that two fortran feature objects are equal
-logical function fft_is_same(this,that)
-    class(fortran_features_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    fft_is_same = .false.
-
-    select type (other=>that)
-       type is (fortran_features_t)
-
-           if (.not.(this%implicit_typing.eqv.other%implicit_typing)) return
-           if (.not.(this%implicit_external.eqv.other%implicit_external)) return
-           if (.not.(this%source_form==other%source_form)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    fft_is_same = .true.
-
-end function fft_is_same
-
-!> Dump fortran features to toml table
-subroutine fft_dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fortran_features_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    call set_value(table, "implicit-typing", self%implicit_typing, error, 'fortran_features_t')
-    if (allocated(error)) return
-    call set_value(table, "implicit-external", self%implicit_external, error, 'fortran_features_t')
-    if (allocated(error)) return
-    call set_string(table, "source-form", self%source_form, error, 'fortran_features_t')
-    if (allocated(error)) return
-
-end subroutine fft_dump_to_toml
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine fft_load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fortran_features_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr
-
-    call get_value(table, "implicit-typing", self%implicit_typing, error, 'fortran_features_t')
-    if (allocated(error)) return
-    call get_value(table, "implicit-external", self%implicit_external, error, 'fortran_features_t')
-    if (allocated(error)) return
-    ! Return unallocated value if not present
-    call get_value(table, "source-form", self%source_form)
-
-end subroutine fft_load_from_toml
-
-!> Check that two package objects are equal
-logical function package_is_same(this,that)
-    class(package_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    integer :: ii
-
-    package_is_same = .false.
-
-    select type (other=>that)
-       type is (package_t)
-
-           if (.not.(this%name==other%name)) return
-           if (.not.(allocated(this%sources).eqv.allocated(other%sources))) return
-           if (allocated(this%sources)) then
-              if (.not.(size(this%sources)==size(other%sources))) return
-              do ii = 1, size(this%sources)
-                  if (.not.(this%sources(ii)==other%sources(ii))) return
-              end do
-           end if
-
-           if (.not.(this%preprocess==other%preprocess)) return
-           if (.not.(this%version==other%version)) return
-
-           !> Module naming
-           if (.not.(this%enforce_module_names.eqv.other%enforce_module_names)) return
-           if (.not.(this%module_prefix==other%module_prefix)) return
-
-           !> Fortran features
-           if (.not.(this%features==other%features)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    package_is_same = .true.
-
-end function package_is_same
-
-!> Dump dependency to toml table
-subroutine package_dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(package_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr, ii
-    type(toml_table), pointer :: ptr,this_source
-    character(16) :: src_name
-
-    call set_string(table, "name", self%name, error, 'package_t')
-    if (allocated(error)) return
-
-    call set_string(table, "version", self%version, error, 'package_t')
-    if (allocated(error)) return
-
-    call set_value(table, "module-naming", self%enforce_module_names, error, 'package_t')
-    if (allocated(error)) return
-
-    call set_string(table, "module-prefix", self%module_prefix, error, 'package_t')
-    if (allocated(error)) return
-
-    !> Create a preprocessor table
-    call add_table(table, "preprocess", ptr, error, 'package_t')
-    if (allocated(error)) return
-    call self%preprocess%dump_to_toml(ptr, error)
-    if (allocated(error)) return
-
-    !> Create a fortran table
-    call add_table(table, "fortran", ptr, error, 'package_t')
-    if (allocated(error)) return
-    call self%features%dump_to_toml(ptr, error)
-    if (allocated(error)) return
-
-    !> Create a sources table
-    if (allocated(self%sources)) then
-
-        call add_table(table, "sources", ptr, error, 'package_t')
-        if (allocated(error)) return
-
-        do ii = 1, size(self%sources)
-
-            write(src_name,1) ii
-            call add_table(ptr, trim(src_name), this_source, error, 'package_t[source]')
-            if (allocated(error)) return
-            call self%sources(ii)%dump_to_toml(this_source,error)
-            if (allocated(error)) return
-
-        end do
-
-    end if
-
-    1 format('src_',i0)
-
-end subroutine package_dump_to_toml
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine package_load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(package_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr,ii,jj
-    type(toml_key), allocatable :: keys(:),src_keys(:)
-    type(toml_table), pointer :: ptr_sources,ptr,ptr_fortran,ptr_preprocess
-    type(error_t), allocatable :: new_error
-
-    call get_value(table, "name", self%name)
-    call get_value(table, "version", self%version)
-
-    call get_value(table, "module-naming", self%enforce_module_names, error, 'package_t')
-    if (allocated(error)) return
-
-    ! Return unallocated value if not present
-    call get_value(table, "module-prefix", self%module_prefix%s)
-
-    ! Sources
-    call table%get_keys(keys)
-
-    find_others: do ii = 1, size(keys)
-        select case (keys(ii)%key)
-           case ("fortran")
-
-               call get_value(table, keys(ii), ptr_fortran)
-               if (.not.associated(ptr_fortran)) then
-                  call fatal_error(error,'package_t: error retrieving fortran table from TOML table')
-                  return
-               end if
-
-               call self%features%load_from_toml(ptr_fortran,error)
-               if (allocated(error)) return
-
-           case ("preprocess")
-
-               call get_value(table, keys(ii), ptr_preprocess)
-               if (.not.associated(ptr_preprocess)) then
-                  call fatal_error(error,'package_t: error retrieving preprocess table from TOML table')
-                  return
-               end if
-
-               call self%preprocess%load_from_toml(ptr_preprocess,error)
-               if (allocated(error)) return
-
-           case ("sources")
-
-               call get_value(table, keys(ii), ptr_sources)
-               if (.not.associated(ptr_sources)) then
-                  call fatal_error(error,'package_t: error retrieving sources table from TOML table')
-                  return
-               end if
-
-               !> Read all dependencies
-               call ptr_sources%get_keys(src_keys)
-               allocate(self%sources(size(src_keys)))
-
-               do jj = 1, size(src_keys)
-                   call get_value(ptr_sources, src_keys(jj), ptr)
-                   call self%sources(jj)%load_from_toml(ptr, error)
-                   if (allocated(error)) return
-               end do
-
-           case default
-              cycle find_others
-        end select
-    end do find_others
-
-end subroutine package_load_from_toml
-
-!> Check that two model objects are equal
-logical function model_is_same(this,that)
-    class(fpm_model_t), intent(in) :: this
-    class(serializable_t), intent(in) :: that
-
-    type(fpm_model_t), pointer :: other
-
-    integer :: ii
-
-    model_is_same = .false.
-
-    select type (other=>that)
-       type is (fpm_model_t)
-
-           if (.not.(this%package_name==other%package_name)) return
-           if (.not.(allocated(this%packages).eqv.allocated(other%packages))) return
-           if (allocated(this%packages)) then
-               if (.not.(size(this%packages)==size(other%packages))) return
-               do ii = 1, size(this%packages)
-                   if (.not.(this%packages(ii)==other%packages(ii))) return
-               end do
-           end if
-
-           if (.not.(this%compiler==other%compiler)) return
-           if (.not.(this%archiver==other%archiver)) return
-           if (.not.(this%fortran_compile_flags==other%fortran_compile_flags)) return
-           if (.not.(this%c_compile_flags==other%c_compile_flags)) return
-           if (.not.(this%cxx_compile_flags==other%cxx_compile_flags)) return
-           if (.not.(this%link_flags==other%link_flags)) return
-           if (.not.(this%build_prefix==other%build_prefix)) return
-           if (.not.(this%include_dirs==other%include_dirs)) return
-           if (.not.(this%link_libraries==other%link_libraries)) return
-           if (.not.(this%external_modules==other%external_modules)) return
-           if (.not.(this%deps==other%deps)) return
-           if (.not.(this%include_tests.eqv.other%include_tests)) return
-           if (.not.(this%enforce_module_names.eqv.other%enforce_module_names)) return
-           if (.not.(this%module_prefix==other%module_prefix)) return
-
-       class default
-          ! Not the same type
-          return
-    end select
-
-    !> All checks passed!
-    model_is_same = .true.
-
-end function model_is_same
-
-!> Dump dependency to toml table
-subroutine model_dump_to_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fpm_model_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: ierr, ii
-    type(toml_table), pointer :: ptr,ptr_pkg
-    character(27) :: unnamed
-
-    call set_string(table, "package-name", self%package_name, error, 'fpm_model_t')
-    if (allocated(error)) return
-
-    call add_table(table, "compiler", ptr, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call self%compiler%dump_to_toml(ptr, error)
-    if (allocated(error)) return
-
-    call add_table(table, "archiver", ptr, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call self%archiver%dump_to_toml(ptr, error)
-    if (allocated(error)) return
-
-    call set_string(table, "fortran-flags", self%fortran_compile_flags, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_string(table, "c-flags", self%c_compile_flags, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_string(table, "cxx-flags", self%cxx_compile_flags, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_string(table, "link-flags", self%link_flags, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_string(table, "build-prefix", self%build_prefix, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_list(table, "include-dirs", self%include_dirs, error)
-    if (allocated(error)) return
-    call set_list(table, "link-libraries", self%link_libraries, error)
-    if (allocated(error)) return
-    call set_list(table, "external-modules", self%external_modules, error)
-    if (allocated(error)) return
-
-    call set_value(table, "include-tests", self%include_tests, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_value(table, "module-naming", self%enforce_module_names, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call set_string(table, "module-prefix", self%module_prefix, error, 'fpm_model_t')
-    if (allocated(error)) return
-
-    call add_table(table, "deps", ptr, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call self%deps%dump_to_toml(ptr, error)
-    if (allocated(error)) return
-
-    !> Array of packages (including the root package)
-    if (allocated(self%packages)) then
-
-           ! Create packages table
-           call add_table(table, "packages", ptr_pkg)
-           if (.not. associated(ptr_pkg)) then
-              call fatal_error(error, "fpm_model_t cannot create dependency table ")
-              return
-           end if
-
-           do ii = 1, size(self%packages)
-
-              associate (pkg => self%packages(ii))
-
-                 !> Because dependencies are named, fallback if this has no name
-                 !> So, serialization will work regardless of size(self%dep) == self%ndep
-                 if (len_trim(pkg%name)==0) then
-                    write(unnamed,1) ii
-                    call add_table(ptr_pkg, trim(unnamed), ptr, error, 'fpm_model_t[package]')
-                 else
-                    call add_table(ptr_pkg, pkg%name, ptr, error, 'fpm_model_t[package]')
-                 end if
-                 if (allocated(error)) return
-                 call pkg%dump_to_toml(ptr, error)
-                 if (allocated(error)) return
-
-              end associate
-
-           end do
-    end if
-
-    1 format('UNNAMED_PACKAGE_',i0)
-
-end subroutine model_dump_to_toml
-
-!> Read dependency from toml table (no checks made at this stage)
-subroutine model_load_from_toml(self, table, error)
-
-    !> Instance of the serializable object
-    class(fpm_model_t), intent(inout) :: self
-
-    !> Data structure
-    type(toml_table), intent(inout) :: table
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    type(toml_key), allocatable :: keys(:),pkg_keys(:)
-    integer :: ierr, ii, jj
-    type(toml_table), pointer :: ptr,ptr_pkg
-
-    call table%get_keys(keys)
-
-    call get_value(table, "package-name", self%package_name)
-    call get_value(table, "fortran-flags", self%fortran_compile_flags)
-    call get_value(table, "c-flags", self%c_compile_flags)
-    call get_value(table, "cxx-flags", self%cxx_compile_flags)
-    call get_value(table, "link-flags", self%link_flags)
-    call get_value(table, "build-prefix", self%build_prefix)
-
-    if (allocated(self%packages)) deallocate(self%packages)
-    sub_deps: do ii = 1, size(keys)
-
-       select case (keys(ii)%key)
-          case ("compiler")
-
-               call get_value(table, keys(ii), ptr)
-               if (.not.associated(ptr)) then
-                  call fatal_error(error,'fpm_model_t: error retrieving compiler table')
-                  return
-               end if
-
-               call self%compiler%load_from_toml(ptr, error)
-               if (allocated(error)) return
-
-          case ("archiver")
-
-               call get_value(table, keys(ii), ptr)
-               if (.not.associated(ptr)) then
-                  call fatal_error(error,'fpm_model_t: error retrieving archiver table')
-                  return
-               end if
-
-               call self%archiver%load_from_toml(ptr, error)
-               if (allocated(error)) return
-
-          case ("deps")
-
-               call get_value(table, keys(ii), ptr)
-               if (.not.associated(ptr)) then
-                  call fatal_error(error,'fpm_model_t: error retrieving dependency tree table')
-                  return
-               end if
-
-               call self%deps%load_from_toml(ptr, error)
-               if (allocated(error)) return
-
-          case ("packages")
-
-               call get_value(table, keys(ii), ptr)
-               if (.not.associated(ptr)) then
-                  call fatal_error(error,'fpm_model_t: error retrieving packages table')
-                  return
-               end if
-
-               !> Read all packages
-               call ptr%get_keys(pkg_keys)
-               allocate(self%packages(size(pkg_keys)))
-
-               do jj = 1, size(pkg_keys)
-
-                   call get_value(ptr, pkg_keys(jj), ptr_pkg)
-                   call self%packages(jj)%load_from_toml(ptr_pkg, error)
-                   if (allocated(error)) return
-
-               end do
-
-          case default
-                cycle sub_deps
-       end select
-
-    end do sub_deps
-
-    call get_list(table, "include-dirs", self%include_dirs, error)
-    if (allocated(error)) return
-    call get_list(table, "link-libraries", self%link_libraries, error)
-    if (allocated(error)) return
-    call get_list(table, "external-modules", self%external_modules, error)
-    if (allocated(error)) return
-    call get_value(table, "include-tests", self%include_tests, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call get_value(table, "module-naming", self%enforce_module_names, error, 'fpm_model_t')
-    if (allocated(error)) return
-    call get_value(table, "module-prefix", self%module_prefix%s)
-
-end subroutine model_load_from_toml
-
 end module fpm_model
+
 
 !>>>>> ././src/fpm/cmd/update.f90
 module fpm_cmd_update
@@ -38246,7 +33038,6 @@ module fpm_cmd_update
   use fpm_error, only : error_t, fpm_stop
   use fpm_filesystem, only : exists, mkdir, join_path, delete_file, filewrite
   use fpm_manifest, only : package_config_t, get_package_data
-  use fpm_toml, only: name_is_json
   implicit none
   private
   public :: cmd_update
@@ -38257,23 +33048,25 @@ contains
   subroutine cmd_update(settings)
     !> Representation of the command line arguments
     type(fpm_update_settings), intent(in) :: settings
-
     type(package_config_t) :: package
     type(dependency_tree_t) :: deps
     type(error_t), allocatable :: error
+
     integer :: ii
     character(len=:), allocatable :: cache
 
     call get_package_data(package, "fpm.toml", error, apply_defaults=.true.)
     call handle_error(error)
 
-    if (.not. exists("build")) then
+    if (.not.exists("build")) then
       call mkdir("build")
       call filewrite(join_path("build", ".gitignore"),["*"])
     end if
 
     cache = join_path("build", "cache.toml")
-    if (settings%clean) call delete_file(cache)
+    if (settings%clean) then
+      call delete_file(cache)
+    end if
 
     call new_dependency_tree(deps, cache=cache, &
       verbosity=merge(2, 1, settings%verbose))
@@ -38300,11 +33093,6 @@ contains
       end do
     end if
 
-    if (len_trim(settings%dump)>0) then
-        call deps%dump(trim(settings%dump), error, json=name_is_json(trim(settings%dump)))
-        call handle_error(error)
-    end if
-
   end subroutine cmd_update
 
   !> Error handling for this command
@@ -38312,11 +33100,12 @@ contains
     !> Potential error
     type(error_t), intent(in), optional :: error
     if (present(error)) then
-      call fpm_stop(1, '*cmd_update* error: '//error%message)
+      call fpm_stop(1, error%message)
     end if
   end subroutine handle_error
 
 end module fpm_cmd_update
+
 
 !>>>>> ././src/fpm_source_parsing.f90
 !># Parsing of package source files
@@ -38348,7 +33137,15 @@ use fpm_filesystem, only: read_lines, read_lines_expanded, exists
 implicit none
 
 private
-public :: parse_f_source, parse_c_source, parse_use_statement
+public :: parse_f_source, parse_c_source
+
+character(15), parameter :: INTRINSIC_MODULE_NAMES(*) =  &
+                             ['iso_c_binding  ', &
+                              'iso_fortran_env', &
+                              'ieee_arithmetic', &
+                              'ieee_exceptions', &
+                              'ieee_features  ', &
+                              'omp_lib        ']
 
 contains
 
@@ -38390,7 +33187,7 @@ function parse_f_source(f_filename,error) result(f_source)
     type(srcfile_t) :: f_source
     type(error_t), allocatable, intent(out) :: error
 
-    logical :: inside_module, inside_interface, using, intrinsic_module
+    logical :: inside_module, inside_interface
     integer :: stat
     integer :: fh, n_use, n_include, n_mod, n_parent, i, j, ic, pass
     type(string_t), allocatable :: file_lines(:), file_lines_lower(:)
@@ -38492,24 +33289,59 @@ function parse_f_source(f_filename,error) result(f_source)
             end if
 
             ! Process 'USE' statements
-            call parse_use_statement(f_filename,i,file_lines_lower(i)%s,using,intrinsic_module,mod_name,error)
-            if (allocated(error)) return
+            if (index(file_lines_lower(i)%s,'use ') == 1 .or. &
+                index(file_lines_lower(i)%s,'use::') == 1) then
 
-            if (using) then
+                if (index(file_lines_lower(i)%s,'::') > 0) then
 
-                ! Not a valid module name?
-                if (.not.is_fortran_name(mod_name)) cycle
+                    temp_string = split_n(file_lines_lower(i)%s,delims=':',n=2,stat=stat)
+                    if (stat /= 0) then
+                        call file_parse_error(error,f_filename, &
+                                'unable to find used module name',i, &
+                                file_lines_lower(i)%s,index(file_lines_lower(i)%s,'::'))
+                        return
+                    end if
 
-                ! Valid intrinsic module: not a dependency
-                if (intrinsic_module) cycle
+                    mod_name = split_n(temp_string,delims=' ,',n=1,stat=stat)
+                    if (stat /= 0) then
+                        call file_parse_error(error,f_filename, &
+                                 'unable to find used module name',i, &
+                                 file_lines_lower(i)%s)
+                        return
+                    end if
+
+                else
+
+                    mod_name = split_n(file_lines_lower(i)%s,n=2,delims=' ,',stat=stat)
+                    if (stat /= 0) then
+                        call file_parse_error(error,f_filename, &
+                                'unable to find used module name',i, &
+                                file_lines_lower(i)%s)
+                        return
+                    end if
+
+                end if
+
+                if (.not.is_fortran_name(mod_name)) then
+                    cycle
+                end if
+
+                if (any([(index(mod_name,trim(INTRINSIC_MODULE_NAMES(j)))>0, &
+                            j=1,size(INTRINSIC_MODULE_NAMES))])) then
+                    cycle
+                end if
 
                 n_use = n_use + 1
 
-                if (pass == 2) f_source%modules_used(n_use)%s = mod_name
+                if (pass == 2) then
+
+                    f_source%modules_used(n_use)%s = mod_name
+
+                end if
 
                 cycle
 
-            endif
+            end if
 
             ! Process 'INCLUDE' statements
             ic = index(file_lines_lower(i)%s,'include')
@@ -38713,6 +33545,7 @@ function parse_f_source(f_filename,error) result(f_source)
 
 end function parse_f_source
 
+
 !> Parsing of c, cpp source files
 !>
 !> The following statements are recognised and parsed:
@@ -38819,7 +33652,6 @@ function split_n(string,delims,n,stat) result(substring)
     if (n<1) then
         i = size(string_parts) + n
         if (i < 1) then
-            allocate(character(len=0) :: substring) ! ifort bus error otherwise
             stat = 1
             return
         end if
@@ -38828,7 +33660,6 @@ function split_n(string,delims,n,stat) result(substring)
     end if
 
     if (i>size(string_parts)) then
-        allocate(character(len=0) :: substring) ! ifort bus error otherwise
         stat = 1
         return
     end if
@@ -38837,6 +33668,7 @@ function split_n(string,delims,n,stat) result(substring)
     stat = 0
 
 end function split_n
+
 
 !> Parse a subsequence of blank-separated tokens within a string
 !>  (see parse_sequence)
@@ -38931,2167 +33763,9 @@ function parse_sequence(string,t1,t2,t3,t4) result(found)
 
 end function parse_sequence
 
-! USE [, intrinsic] :: module_name [, only: only_list]
-! USE [, non_intrinsic] :: module_name [, only: only_list]
-subroutine parse_use_statement(f_filename,i,line,use_stmt,is_intrinsic,module_name,error)
-
-    !> Current file name and line number (for error messaging)
-    character(*), intent(in) :: f_filename
-    integer, intent(in) :: i
-
-    !> The line being parsed. MUST BE preprocessed with trim(adjustl()
-    character(*), intent(in) :: line
-
-    !> Does this line contain a `use` statement?
-    logical, intent(out) :: use_stmt
-
-    !> Is the module in this statement intrinsic?
-    logical, intent(out) :: is_intrinsic
-
-    !> used module name
-    character(:), allocatable, intent(out) :: module_name
-
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    character(15), parameter :: INTRINSIC_NAMES(*) =  &
-                                 ['iso_c_binding  ', &
-                                  'iso_fortran_env', &
-                                  'ieee_arithmetic', &
-                                  'ieee_exceptions', &
-                                  'ieee_features  ', &
-                                  'omp_lib        ']
-
-    character(len=:), allocatable :: temp_string
-    integer :: colons,intr,nonintr,j,stat
-    logical :: has_intrinsic_name
-
-    use_stmt      = .false.
-    is_intrinsic  = .false.
-    if (len_trim(line)<=0) return
-
-    ! Quick check that the line is preprocessed
-    if (line(1:1)==' ') then
-        call fatal_error(error,'internal_error: source file line is not trim(adjustl()) on input to parse_use_statement')
-        return
-    end if
-
-    ! 'use' should be the first string in the adjustl line
-    use_stmt = index(line,'use ')==1 .or. index(line,'use::')==1 .or. index(line,'use,')==1
-    if (.not.use_stmt) return
-    colons   = index(line,'::')
-    nonintr  = 0
-    intr     = 0
-
-    have_colons: if (colons>3) then
-
-        ! there may be an intrinsic/non-intrinsic spec
-        nonintr = index(line(1:colons-1),'non_intrinsic')
-        if (nonintr==0) intr = index(line(1:colons-1),'intrinsic')
-
-        temp_string = split_n(line,delims=':',n=2,stat=stat)
-        if (stat /= 0) then
-            call file_parse_error(error,f_filename, &
-                    'unable to find used module name',i, &
-                    line,colons)
-            return
-        end if
-
-        module_name = split_n(temp_string,delims=' ,',n=1,stat=stat)
-        if (stat /= 0) then
-            call file_parse_error(error,f_filename, &
-                     'unable to find used module name',i, &
-                     line)
-            return
-        end if
-
-    else
-
-        module_name = split_n(line,n=2,delims=' ,',stat=stat)
-        if (stat /= 0) then
-            call file_parse_error(error,f_filename, &
-                    'unable to find used module name',i, &
-                    line)
-            return
-        end if
-
-    end if have_colons
-
-    ! If declared intrinsic, check that it is true
-    has_intrinsic_name = any([(index(module_name,trim(INTRINSIC_NAMES(j)))>0, &
-                             j=1,size(INTRINSIC_NAMES))])
-    if (intr>0 .and. .not.has_intrinsic_name) then
-
-        ! An intrinsic module was not found. Its name could be in the next line,
-        ! in which case, we just skip this check. The compiler will do the job if the name is invalid.
-
-        ! Module name was not read: it's in the next line
-        if (index(module_name,'&')<=0) then
-            call file_parse_error(error,f_filename, &
-                                  'module '//module_name//' is declared intrinsic but it is not ',i, &
-                                  line)
-            return
-        endif
-    endif
-
-    ! Should we treat this as an intrinsic module
-    is_intrinsic = nonintr==0 .and. & ! not declared non-intrinsic
-                   (intr>0 .or. has_intrinsic_name)
-
-end subroutine parse_use_statement
-
 end module fpm_source_parsing
 
-!>>>>> ././src/fpm_meta.f90
-!># The fpm meta-package model
-!>
-!> This is a wrapper data type that encapsulate all pre-processing information
-!> (compiler flags, linker libraries, etc.) required to correctly enable a package
-!> to use a core library.
-!>
-!>
-!>### Available core libraries
-!>
-!> - OpenMP
-!> - MPI
-!> - fortran-lang stdlib
-!> - fortran-lang minpack
-!>
-!>
-!> @note Core libraries are enabled in the [build] section of the fpm.toml manifest
-!>
-!>
-module fpm_meta
-use fpm_strings, only: string_t, len_trim, remove_newline_characters, str_begins_with_str, &
-                       str_ends_with
-use fpm_error, only: error_t, fatal_error, syntax_error, fpm_stop
-use fpm_compiler
-use fpm_model
-use fpm_command_line
-use fpm_manifest_dependency, only: dependency_config_t
-use fpm_git, only : git_target_branch, git_target_tag
-use fpm_manifest, only: package_config_t
-use fpm_environment, only: get_env,os_is_unix
-use fpm_filesystem, only: run, get_temp_filename, getline, exists, canon_path, is_dir, get_dos_path
-use fpm_versioning, only: version_t, new_version, regex_version_from_text
-use fpm_os, only: get_absolute_path
-use shlex_module, only: shlex_split => split
-use regex_module, only: regex
-use iso_fortran_env, only: stdout => output_unit
 
-implicit none
-
-private
-
-public :: resolve_metapackages
-
-!> Type for describing a source file
-type, public :: metapackage_t
-
-    !> Package version (if supported)
-    type(version_t), allocatable :: version
-
-    logical :: has_link_libraries   = .false.
-    logical :: has_link_flags       = .false.
-    logical :: has_build_flags      = .false.
-    logical :: has_fortran_flags    = .false.
-    logical :: has_c_flags          = .false.
-    logical :: has_cxx_flags        = .false.
-    logical :: has_include_dirs     = .false.
-    logical :: has_dependencies     = .false.
-    logical :: has_run_command      = .false.
-    logical :: has_external_modules = .false.
-
-    !> List of compiler flags and options to be added
-    type(string_t) :: flags
-    type(string_t) :: fflags
-    type(string_t) :: cflags
-    type(string_t) :: cxxflags
-    type(string_t) :: link_flags
-    type(string_t) :: run_command
-    type(string_t), allocatable :: incl_dirs(:)
-    type(string_t), allocatable :: link_libs(:)
-    type(string_t), allocatable :: external_modules(:)
-
-    !> Special fortran features
-    type(fortran_features_t), allocatable :: fortran
-
-    !> List of Development dependency meta data.
-    !> Metapackage dependencies are never exported from the model
-    type(dependency_config_t), allocatable :: dependency(:)
-
-    contains
-
-       !> Clean metapackage structure
-       procedure :: destroy
-
-       !> Initialize the metapackage structure from its given name
-       procedure :: new => init_from_name
-
-       !> Add metapackage dependencies to the model
-       procedure, private :: resolve_cmd
-       procedure, private :: resolve_model
-       procedure, private :: resolve_package_config
-       generic :: resolve => resolve_cmd,resolve_model,resolve_package_config
-
-end type metapackage_t
-
-interface resolve_metapackages
-    module procedure resolve_metapackage_model
-end interface resolve_metapackages
-
-integer, parameter :: MPI_TYPE_NONE    = 0
-integer, parameter :: MPI_TYPE_OPENMPI = 1
-integer, parameter :: MPI_TYPE_MPICH   = 2
-integer, parameter :: MPI_TYPE_INTEL   = 3
-integer, parameter :: MPI_TYPE_MSMPI   = 4
-public             :: MPI_TYPE_NAME
-
-!> Debugging information
-logical, parameter, private :: verbose = .false.
-
-integer, parameter, private :: LANG_FORTRAN = 1
-integer, parameter, private :: LANG_C       = 2
-integer, parameter, private :: LANG_CXX     = 3
-
-character(*), parameter :: LANG_NAME(*) = [character(7) :: 'Fortran','C','C++']
-
-contains
-
-!> Return a name for the MPI library
-pure function MPI_TYPE_NAME(mpilib) result(name)
-   integer, intent(in) :: mpilib
-   character(len=:), allocatable :: name
-   select case (mpilib)
-      case (MPI_TYPE_NONE);    name = "none"
-      case (MPI_TYPE_OPENMPI); name = "OpenMPI"
-      case (MPI_TYPE_MPICH);   name = "MPICH"
-      case (MPI_TYPE_INTEL);   name = "INTELMPI"
-      case (MPI_TYPE_MSMPI);   name = "MS-MPI"
-      case default;            name = "UNKNOWN"
-   end select
-end function MPI_TYPE_NAME
-
-!> Clean the metapackage structure
-elemental subroutine destroy(this)
-   class(metapackage_t), intent(inout) :: this
-
-   this%has_link_libraries   = .false.
-   this%has_link_flags       = .false.
-   this%has_build_flags      = .false.
-   this%has_fortran_flags    = .false.
-   this%has_c_flags          = .false.
-   this%has_cxx_flags        = .false.
-   this%has_include_dirs     = .false.
-   this%has_dependencies     = .false.
-   this%has_run_command      = .false.
-   this%has_external_modules = .false.
-
-   if (allocated(this%fortran)) deallocate(this%fortran)
-   if (allocated(this%version)) deallocate(this%version)
-   if (allocated(this%flags%s)) deallocate(this%flags%s)
-   if (allocated(this%fflags%s)) deallocate(this%fflags%s)
-   if (allocated(this%cflags%s)) deallocate(this%cflags%s)
-   if (allocated(this%cxxflags%s)) deallocate(this%cxxflags%s)
-   if (allocated(this%link_flags%s)) deallocate(this%link_flags%s)
-   if (allocated(this%run_command%s)) deallocate(this%run_command%s)
-   if (allocated(this%link_libs)) deallocate(this%link_libs)
-   if (allocated(this%dependency)) deallocate(this%dependency)
-   if (allocated(this%incl_dirs)) deallocate(this%incl_dirs)
-   if (allocated(this%external_modules)) deallocate(this%external_modules)
-
-end subroutine destroy
-
-!> Initialize a metapackage from the given name
-subroutine init_from_name(this,name,compiler,error)
-    class(metapackage_t), intent(inout) :: this
-    character(*), intent(in) :: name
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    !> Initialize metapackage by name
-    select case(name)
-        case("openmp");  call init_openmp (this,compiler,error)
-        case("stdlib");  call init_stdlib (this,compiler,error)
-        case("minpack"); call init_minpack(this,compiler,error)
-        case("mpi");     call init_mpi    (this,compiler,error)
-        case default
-            call syntax_error(error, "Package "//name//" is not supported in [metapackages]")
-            return
-    end select
-
-end subroutine init_from_name
-
-!> Initialize OpenMP metapackage for the current system
-subroutine init_openmp(this,compiler,error)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    !> Cleanup
-    call destroy(this)
-
-    !> OpenMP has compiler flags
-    this%has_build_flags = .true.
-    this%has_link_flags  = .true.
-
-    !> OpenMP flags should be added to
-    which_compiler: select case (compiler%id)
-       case (id_gcc,id_f95)
-            this%flags      = string_t(flag_gnu_openmp)
-            this%link_flags = string_t(flag_gnu_openmp)
-
-       case (id_intel_classic_windows,id_intel_llvm_windows)
-            this%flags      = string_t(flag_intel_openmp_win)
-            this%link_flags = string_t(flag_intel_openmp_win)
-
-       case (id_intel_classic_nix,id_intel_classic_mac,&
-             id_intel_llvm_nix)
-            this%flags      = string_t(flag_intel_openmp)
-            this%link_flags = string_t(flag_intel_openmp)
-
-       case (id_pgi,id_nvhpc)
-            this%flags      = string_t(flag_pgi_openmp)
-            this%link_flags = string_t(flag_pgi_openmp)
-
-       case (id_ibmxl)
-            this%flags      = string_t(" -qsmp=omp")
-            this%link_flags = string_t(" -qsmp=omp")
-
-       case (id_nag)
-            this%flags      = string_t(flag_nag_openmp)
-            this%link_flags = string_t(flag_nag_openmp)
-
-       case (id_lfortran)
-            this%flags      = string_t(flag_lfortran_openmp)
-            this%link_flags = string_t(flag_lfortran_openmp)
-
-       case default
-
-          call fatal_error(error,'openmp not supported on compiler '//compiler%name()//' yet')
-
-    end select which_compiler
-
-end subroutine init_openmp
-
-!> Initialize minpack metapackage for the current system
-subroutine init_minpack(this,compiler,error)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    !> Cleanup
-    call destroy(this)
-
-    !> minpack is queried as a dependency from the official repository
-    this%has_dependencies = .true.
-
-    allocate(this%dependency(1))
-
-    !> 1) minpack. There are no true releases currently. Fetch HEAD
-    this%dependency(1)%name = "minpack"
-    this%dependency(1)%git = git_target_tag("https://github.com/fortran-lang/minpack", "v2.0.0-rc.1")
-    if (.not.allocated(this%dependency(1)%git)) then
-        call fatal_error(error,'cannot initialize git repo dependency for minpack metapackage')
-        return
-    end if
-
-end subroutine init_minpack
-
-!> Initialize stdlib metapackage for the current system
-subroutine init_stdlib(this,compiler,error)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    !> Cleanup
-    call destroy(this)
-
-    !> Stdlib is queried as a dependency from the official repository
-    this%has_dependencies = .true.
-
-    allocate(this%dependency(2))
-
-    !> 1) Test-drive
-    this%dependency(1)%name = "test-drive"
-    this%dependency(1)%git = git_target_branch("https://github.com/fortran-lang/test-drive","v0.4.0")
-    if (.not.allocated(this%dependency(1)%git)) then
-        call fatal_error(error,'cannot initialize test-drive git dependency for stdlib metapackage')
-        return
-    end if
-
-    !> 2) stdlib
-    this%dependency(2)%name = "stdlib"
-    this%dependency(2)%git = git_target_branch("https://github.com/fortran-lang/stdlib","stdlib-fpm")
-    if (.not.allocated(this%dependency(2)%git)) then
-        call fatal_error(error,'cannot initialize git repo dependency for stdlib metapackage')
-        return
-    end if
-
-end subroutine init_stdlib
-
-! Resolve metapackage dependencies into the command line settings
-subroutine resolve_cmd(self,settings,error)
-    class(metapackage_t), intent(in) :: self
-    class(fpm_cmd_settings), intent(inout) :: settings
-    type(error_t), allocatable, intent(out) :: error
-
-    ! Add customize run commands
-    if (self%has_run_command) then
-
-        select type (cmd=>settings)
-           class is (fpm_run_settings) ! includes fpm_test_settings
-
-              ! Only override runner if user has not provided a custom one
-              if (.not.len_trim(cmd%runner)>0) cmd%runner = self%run_command%s
-
-        end select
-
-    endif
-
-end subroutine resolve_cmd
-
-! Resolve metapackage dependencies into the model
-subroutine resolve_model(self,model,error)
-    class(metapackage_t), intent(in) :: self
-    type(fpm_model_t), intent(inout) :: model
-    type(error_t), allocatable, intent(out) :: error
-
-    ! Add global build flags, to apply to all sources
-    if (self%has_build_flags) then
-        model%fortran_compile_flags = model%fortran_compile_flags//self%flags%s
-        model%c_compile_flags       = model%c_compile_flags//self%flags%s
-        model%cxx_compile_flags     = model%cxx_compile_flags//self%flags%s
-    endif
-
-    ! Add language-specific flags
-    if (self%has_fortran_flags) model%fortran_compile_flags = model%fortran_compile_flags//self%fflags%s
-    if (self%has_c_flags)       model%c_compile_flags       = model%c_compile_flags//self%cflags%s
-    if (self%has_cxx_flags)     model%cxx_compile_flags     = model%cxx_compile_flags//self%cxxflags%s
-
-    if (self%has_link_flags) then
-        model%link_flags            = model%link_flags//self%link_flags%s
-    end if
-
-    if (self%has_link_libraries) then
-        model%link_libraries        = [model%link_libraries,self%link_libs]
-    end if
-
-    if (self%has_include_dirs) then
-        model%include_dirs          = [model%include_dirs,self%incl_dirs]
-    end if
-
-    if (self%has_external_modules) then
-        model%external_modules      = [model%external_modules,self%external_modules]
-    end if
-
-end subroutine resolve_model
-
-subroutine resolve_package_config(self,package,error)
-    class(metapackage_t), intent(in) :: self
-    type(package_config_t), intent(inout) :: package
-    type(error_t), allocatable, intent(out) :: error
-
-    ! All metapackage dependencies are added as dev-dependencies,
-    ! as they may change if built upstream
-    if (self%has_dependencies) then
-        if (allocated(package%dev_dependency)) then
-           package%dev_dependency = [package%dev_dependency,self%dependency]
-        else
-           package%dev_dependency = self%dependency
-        end if
-    end if
-
-    ! Check if there are any special fortran requests which the package does not comply to
-    if (allocated(self%fortran)) then
-
-        if (self%fortran%implicit_external.neqv.package%fortran%implicit_external) then
-            call fatal_error(error,'metapackage fortran error: metapackage '// &
-                                   dn(self%fortran%implicit_external)//' require implicit-external, main package '//&
-                                   dn(package%fortran%implicit_external))
-            return
-        end if
-
-        if (self%fortran%implicit_typing.neqv.package%fortran%implicit_typing) then
-            call fatal_error(error,'metapackage fortran error: metapackage '// &
-                                   dn(self%fortran%implicit_external)//' require implicit-typing, main package '//&
-                                   dn(package%fortran%implicit_external))
-            return
-        end if
-
-    end if
-
-    contains
-
-    pure function dn(bool)
-       logical, intent(in) :: bool
-       character(len=:), allocatable :: dn
-       if (bool) then
-          dn = "does"
-       else
-          dn = "does not"
-       end if
-    end function dn
-
-end subroutine resolve_package_config
-
-! Add named metapackage dependency to the model
-subroutine add_metapackage_model(model,package,settings,name,error)
-    type(fpm_model_t), intent(inout) :: model
-    type(package_config_t), intent(inout) :: package
-    class(fpm_cmd_settings), intent(inout) :: settings
-    character(*), intent(in) :: name
-    type(error_t), allocatable, intent(out) :: error
-
-    type(metapackage_t) :: meta
-
-    !> Init metapackage
-    call meta%new(name,model%compiler,error)
-    if (allocated(error)) return
-
-    !> Add it into the model
-    call meta%resolve(model,error)
-    if (allocated(error)) return
-
-    !> Add it into the package
-    call meta%resolve(package,error)
-    if (allocated(error)) return
-
-    !> Add it into the settings
-    call meta%resolve(settings,error)
-    if (allocated(error)) return
-
-    ! If we need to run executables, there should be an MPI runner
-    if (name=="mpi") then
-        select type (settings)
-           class is (fpm_run_settings) ! run, test
-              if (.not.meta%has_run_command) &
-              call fatal_error(error,"cannot find a valid mpi runner on the local host")
-        end select
-    endif
-
-end subroutine add_metapackage_model
-
-!> Resolve all metapackages into the package config
-subroutine resolve_metapackage_model(model,package,settings,error)
-    type(fpm_model_t), intent(inout) :: model
-    type(package_config_t), intent(inout) :: package
-    class(fpm_build_settings), intent(inout) :: settings
-    type(error_t), allocatable, intent(out) :: error
-
-    ! Dependencies are added to the package config, so they're properly resolved
-    ! into the dependency tree later.
-    ! Flags are added to the model (whose compiler needs to be already initialized)
-    if (model%compiler%is_unknown()) &
-    write(stdout,'(a)') '<WARNING> compiler not initialized: metapackages may not be available'
-
-    ! OpenMP
-    if (package%meta%openmp%on) then
-        call add_metapackage_model(model,package,settings,"openmp",error)
-        if (allocated(error)) return
-    endif
-
-    ! stdlib
-    if (package%meta%stdlib%on) then
-        call add_metapackage_model(model,package,settings,"stdlib",error)
-        if (allocated(error)) return
-    endif
-
-    ! stdlib
-    if (package%meta%minpack%on) then
-        call add_metapackage_model(model,package,settings,"minpack",error)
-        if (allocated(error)) return
-    endif
-
-    ! Stdlib is not 100% thread safe. print a warning to the user
-    if (package%meta%stdlib%on .and. package%meta%openmp%on) then
-        write(stdout,'(a)')'<WARNING> both openmp and stdlib requested: some functions may not be thread-safe!'
-    end if
-
-    ! MPI
-    if (package%meta%mpi%on) then
-        call add_metapackage_model(model,package,settings,"mpi",error)
-        if (allocated(error)) return
-    endif
-
-end subroutine resolve_metapackage_model
-
-!> Initialize MPI metapackage for the current system
-subroutine init_mpi(this,compiler,error)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    type(string_t), allocatable :: c_wrappers(:),cpp_wrappers(:),fort_wrappers(:)
-    type(string_t) :: output,fwrap,cwrap,cxxwrap
-    character(256) :: msg_out
-    character(len=:), allocatable :: tokens(:)
-    integer :: wcfit(3),mpilib(3),ic,icpp,i
-    logical :: found
-
-    !> Cleanup
-    call destroy(this)
-
-    !> Get all candidate MPI wrappers
-    call mpi_wrappers(compiler,fort_wrappers,c_wrappers,cpp_wrappers)
-    if (verbose) print 1, size(fort_wrappers),size(c_wrappers),size(cpp_wrappers)
-
-    call wrapper_compiler_fit(fort_wrappers,c_wrappers,cpp_wrappers,compiler,wcfit,mpilib,error)
-
-    if (allocated(error) .or. all(wcfit==0)) then
-
-        !> No wrapper compiler fit. Are we on Windows? use MSMPI-specific search
-        found = msmpi_init(this,compiler,error)
-        if (allocated(error)) return
-
-        !> All attempts failed
-        if (.not.found) then
-            call fatal_error(error,"cannot find MPI wrappers or libraries for "//compiler%name()//" compiler")
-            return
-        endif
-
-    else
-
-        if (wcfit(LANG_FORTRAN)>0) fwrap   = fort_wrappers(wcfit(LANG_FORTRAN))
-        if (wcfit(LANG_C)>0)       cwrap   = c_wrappers   (wcfit(LANG_C))
-        if (wcfit(LANG_CXX)>0)     cxxwrap = cpp_wrappers (wcfit(LANG_CXX))
-
-        !> If there's only an available Fortran wrapper, and the compiler's different than fpm's baseline
-        !> fortran compiler suite, we still want to enable C language flags as that is most likely being
-        !> ABI-compatible anyways. However, issues may arise.
-        !> see e.g. Homebrew with clabng C/C++ and GNU fortran at https://gitlab.kitware.com/cmake/cmake/-/issues/18139
-        if (wcfit(LANG_FORTRAN)>0 .and. all(wcfit([LANG_C,LANG_CXX])==0)) then
-            cwrap   = fort_wrappers(wcfit(LANG_FORTRAN))
-            cxxwrap = fort_wrappers(wcfit(LANG_FORTRAN))
-        end if
-
-        if (verbose) print *, '+ MPI fortran wrapper: ',fwrap%s
-        if (verbose) print *, '+ MPI c       wrapper: ',cwrap%s
-        if (verbose) print *, '+ MPI c++     wrapper: ',cxxwrap%s
-
-        !> Initialize MPI package from wrapper command
-        call init_mpi_from_wrappers(this,compiler,mpilib(LANG_FORTRAN),fwrap,cwrap,cxxwrap,error)
-        if (allocated(error)) return
-
-        !> Request Fortran implicit typing
-        if (mpilib(LANG_FORTRAN)/=MPI_TYPE_INTEL) then
-            allocate(this%fortran)
-            this%fortran%implicit_typing   = .true.
-            this%fortran%implicit_external = .true.
-        endif
-
-    end if
-
-    !> Not all MPI implementations offer modules mpi and mpi_f08: hence, include them
-    !> to the list of external modules, so they won't be requested as standard source files
-    this%has_external_modules = .true.
-    this%external_modules = [string_t("mpi"),string_t("mpi_f08")]
-
-    1 format('MPI wrappers found: fortran=',i0,' c=',i0,' c++=',i0)
-
-end subroutine init_mpi
-
-!> Check if we're on a 64-bit environment
-!> Accept answer from https://stackoverflow.com/questions/49141093/get-system-information-with-fortran
-logical function is_64bit_environment()
-   use iso_c_binding, only: c_intptr_t
-   integer, parameter :: nbits = bit_size(0_c_intptr_t)
-   is_64bit_environment = nbits==64
-end function is_64bit_environment
-
-!> Check if there is a wrapper-compiler fit
-subroutine wrapper_compiler_fit(fort_wrappers,c_wrappers,cpp_wrappers,compiler,wrap,mpi,error)
-   type(string_t), allocatable, intent(in) :: fort_wrappers(:),c_wrappers(:),cpp_wrappers(:)
-   type(compiler_t), intent(in) :: compiler
-   type(error_t), allocatable, intent(out) :: error
-   integer, intent(out), dimension(3) :: wrap, mpi
-
-   type(error_t), allocatable :: wrap_error
-
-   wrap = 0
-   mpi  = MPI_TYPE_NONE
-
-   if (size(fort_wrappers)>0) &
-   call mpi_compiler_match(LANG_FORTRAN,fort_wrappers,compiler,wrap(LANG_FORTRAN),mpi(LANG_FORTRAN),wrap_error)
-
-   if (size(c_wrappers)>0) &
-   call mpi_compiler_match(LANG_C,c_wrappers,compiler,wrap(LANG_C),mpi(LANG_C),wrap_error)
-
-   if (size(cpp_wrappers)>0) &
-   call mpi_compiler_match(LANG_CXX,cpp_wrappers,compiler,wrap(LANG_CXX),mpi(LANG_CXX),wrap_error)
-
-   !> Find a Fortran wrapper for the current compiler
-   if (all(wrap==0)) then
-        call fatal_error(error,'no valid wrappers match current compiler, '//compiler_name(compiler))
-        return
-   end if
-
-end subroutine wrapper_compiler_fit
-
-!> Check if a local MS-MPI SDK build is found
-logical function msmpi_init(this,compiler,error) result(found)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    type(error_t), allocatable, intent(out) :: error
-
-    character(len=:), allocatable :: incdir,windir,libdir,bindir,post,reall,msysdir
-    type(version_t) :: ver,ver10
-    type(string_t) :: cpath,msys_path,runner_path
-    logical :: msys2
-
-    !> Default: not found
-    found = .false.
-
-    if (get_os_type()==OS_WINDOWS) then
-
-        ! to run MSMPI on Windows,
-        is_minGW: if (compiler%id==id_gcc) then
-
-            call compiler_get_version(compiler,ver,msys2,error)
-            if (allocated(error)) return
-
-        endif is_minGW
-
-        ! Check we're on a 64-bit environment
-        if (is_64bit_environment()) then
-            libdir = get_env('MSMPI_LIB64')
-            post   = 'x64'
-        else
-            libdir = get_env('MSMPI_LIB32')
-            post   = 'x86'
-
-            !> Not working on 32-bit Windows yet
-            call fatal_error(error,'MS-MPI error: this package requires 64-bit Windows environment')
-            return
-
-        end if
-
-        ! Check that the runtime is installed
-        bindir = ""
-        call get_absolute_path(get_env('MSMPI_BIN'),bindir,error)
-        if (verbose) print *, '+ %MSMPI_BIN%=',bindir
-
-        ! In some environments, variable %MSMPI_BIN% is missing (i.e. in GitHub Action images).
-        ! Do a second attempt: search for the default location
-        if (len_trim(bindir)<=0 .or. allocated(error)) then
-            if (verbose) print *, '+ %MSMPI_BIN% empty, searching C:\Program Files\Microsoft MPI\Bin\ ...'
-            call get_absolute_path('C:\Program Files\Microsoft MPI\Bin\mpiexec.exe',bindir,error)
-        endif
-
-        ! Third attempt for bash-style shell
-        if (len_trim(bindir)<=0 .or. allocated(error)) then
-            if (verbose) print *, '+ %MSMPI_BIN% empty, searching /c/Program Files/Microsoft MPI/Bin/ ...'
-            call get_absolute_path('/c/Program Files/Microsoft MPI/Bin/mpiexec.exe',bindir,error)
-        endif
-
-        ! Do a fourth attempt: search for mpiexec.exe in PATH location
-        if (len_trim(bindir)<=0 .or. allocated(error)) then
-            if (verbose) print *, '+ C:\Program Files\Microsoft MPI\Bin\ not found. searching %PATH%...'
-
-            call get_mpi_runner(runner_path,verbose,error)
-
-            if (.not.allocated(error)) then
-               if (verbose) print *, '+ mpiexec found: ',runner_path%s
-               call find_command_location(runner_path%s,bindir,verbose=verbose,error=error)
-            endif
-
-        endif
-
-        if (allocated(error)) then
-            call fatal_error(error,'MS-MPI error: MS-MPI Runtime directory is missing. '//&
-                                   'check environment variable %MSMPI_BIN% or that the folder is in %PATH%.')
-            return
-        end if
-
-        ! Success!
-        found = .true.
-
-        ! Init ms-mpi
-        call destroy(this)
-
-        ! MSYS2 provides a pre-built static msmpi.dll.a library. Use that if possible
-        use_prebuilt: if (msys2) then
-
-            ! MSYS executables are in %MSYS_ROOT%/bin
-            call compiler_get_path(compiler,cpath,error)
-            if (allocated(error)) return
-
-            call get_absolute_path(join_path(cpath%s,'..'),msys_path%s,error)
-            if (allocated(error)) return
-
-            call get_absolute_path(join_path(msys_path%s,'include'),incdir,error)
-            if (allocated(error)) return
-
-            call get_absolute_path(join_path(msys_path%s,'lib'),libdir,error)
-            if (allocated(error)) return
-
-            if (verbose) print 1, 'include',incdir,exists(incdir)
-            if (verbose) print 1, 'library',libdir,exists(libdir)
-
-            ! Check that the necessary files exist
-            call get_absolute_path(join_path(libdir,'libmsmpi.dll.a'),post,error)
-            if (allocated(error)) return
-
-            if (len_trim(post)<=0 .or. .not.exists(post)) then
-                call fatal_error(error,'MS-MPI available through the MSYS2 system not found. '// &
-                                       'Run <pacman -Sy mingw64/mingw-w64-x86_64-msmpi> '// &
-                                       'or your system-specific version to install.')
-                return
-            end if
-
-            ! Add dir cpath
-            this%has_link_flags = .true.
-            this%link_flags = string_t(' -L'//get_dos_path(libdir,error))
-
-            this%has_link_libraries = .true.
-            this%link_libs = [string_t('msmpi.dll')]
-
-            if (allocated(error)) return
-
-            this%has_include_dirs = .true.
-            this%incl_dirs = [string_t(get_dos_path(incdir,error))]
-            if (allocated(error)) return
-
-        else
-
-            call fatal_error(error,'MS-MPI cannot work with non-MSYS2 GNU compilers yet')
-            return
-
-            ! Add dir path
-            this%has_link_flags = .true.
-            this%link_flags = string_t(' -L'//get_dos_path(libdir,error))
-
-            this%has_link_libraries = .true.
-            this%link_libs = [string_t('msmpi'),string_t('msmpifec'),string_t('msmpifmc')]
-
-            if (allocated(error)) return
-
-            this%has_include_dirs = .true.
-            this%incl_dirs = [string_t(get_dos_path(incdir,error)), &
-                              string_t(get_dos_path(incdir//post,error))]
-            if (allocated(error)) return
-
-        end if use_prebuilt
-
-        !> Request Fortran implicit typing
-        allocate(this%fortran)
-        this%fortran%implicit_typing = .true.
-        this%fortran%implicit_external = .true.
-
-        ! gfortran>=10 is incompatible with the old-style mpif.h MS-MPI headers.
-        ! If so, add flags to allow old-style BOZ constants in mpif.h
-        allow_BOZ: if (compiler%id==id_gcc) then
-
-            call new_version(ver10,'10.0.0',error)
-            if (allocated(error)) return
-
-            if (ver>=ver10) then
-                this%has_build_flags = .true.
-                this%flags = string_t(' -fallow-invalid-boz')
-            end if
-
-        endif allow_BOZ
-
-        !> Add default run command
-        this%has_run_command = .true.
-        this%run_command = string_t(join_path(get_dos_path(bindir,error),'mpiexec.exe')//' -np * ')
-
-    else
-
-        !> Not on Windows
-        found = .false.
-
-    end if
-
-    1 format('MSMSPI ',a,' directory: PATH=',a,' EXISTS=',l1)
-
-end function msmpi_init
-
-!> Check if we're under a WSL bash shell
-logical function wsl_shell()
-    if (get_os_type()==OS_WINDOWS) then
-        wsl_shell = exists('/proc/sys/fs/binfmt_misc/WSLInterop')
-    else
-        wsl_shell = .false.
-    endif
-end function wsl_shell
-
-!> Find the location of a valid command
-subroutine find_command_location(command,path,echo,verbose,error)
-    character(*), intent(in) :: command
-    character(len=:), allocatable, intent(out) :: path
-    logical, optional, intent(in) :: echo,verbose
-    type(error_t), allocatable, intent(out) :: error
-
-    character(:), allocatable :: tmp_file,screen_output,line,fullpath,search_command
-    integer :: stat,iunit,ire,length,try
-    character(*), parameter :: search(2) = ["where ","which "]
-
-    if (len_trim(command)<=0) then
-        call fatal_error(error,'empty command provided in find_command_location')
-        return
-    end if
-
-    tmp_file = get_temp_filename()
-
-    ! On Windows, we try both commands because we may be on WSL
-    do try=merge(1,2,get_os_type()==OS_WINDOWS),2
-       search_command = search(try)//command
-       call run(search_command, echo=echo, exitstat=stat, verbose=verbose, redirect=tmp_file)
-       if (stat==0) exit
-    end do
-    if (stat/=0) then
-        call fatal_error(error,'find_command_location failed for '//command)
-        return
-    end if
-
-    ! Only read first instance (first line)
-    allocate(character(len=0) :: screen_output)
-    open(newunit=iunit,file=tmp_file,status='old',iostat=stat)
-    if (stat == 0)then
-       do
-           call getline(iunit, line, stat)
-           if (stat /= 0) exit
-           if (len(screen_output)>0) then
-                screen_output = screen_output//new_line('a')//line
-           else
-                screen_output = line
-           endif
-       end do
-       ! Close and delete file
-       close(iunit,status='delete')
-    else
-       call fatal_error(error,'cannot read temporary file from successful find_command_location')
-       return
-    endif
-
-    ! Only use the first instance
-    length = index(screen_output,new_line('a'))
-
-    multiline: if (length>1) then
-        fullpath = screen_output(1:length-1)
-    else
-        fullpath = screen_output
-    endif multiline
-    if (len_trim(fullpath)<1) then
-        call fatal_error(error,'no paths found to command ('//command//')')
-        return
-    end if
-
-    ! Extract path only
-    length = index(fullpath,command,BACK=.true.)
-    if (length<=0) then
-        call fatal_error(error,'full path to command ('//command//') does not include command name')
-        return
-    elseif (length==1) then
-        ! Compiler is in the current folder
-        path = '.'
-    else
-        path = fullpath(1:length-1)
-    end if
-    if (allocated(error)) return
-
-    ! On Windows, be sure to return a path with no spaces
-    if (get_os_type()==OS_WINDOWS) path = get_dos_path(path,error)
-
-    if (allocated(error) .or. .not.is_dir(path)) then
-        call fatal_error(error,'full path ('//path//') to command ('//command//') is not a directory')
-        return
-    end if
-
-end subroutine find_command_location
-
-!> Get MPI runner in $PATH
-subroutine get_mpi_runner(command,verbose,error)
-    type(string_t), intent(out) :: command
-    logical, intent(in) :: verbose
-    type(error_t), allocatable, intent(out) :: error
-
-    character(*), parameter :: try(*) = ['mpiexec    ','mpirun     ','mpiexec.exe','mpirun.exe ']
-    character(:), allocatable :: bindir
-    integer :: itri
-    logical :: success
-
-    ! Try several commands
-    do itri=1,size(try)
-       call find_command_location(trim(try(itri)),command%s,verbose=verbose,error=error)
-       if (allocated(error)) cycle
-
-       ! Success!
-       success = len_trim(command%s)>0
-       if (success) then
-           if (verbose) print *, '+ runner folder found: '//command%s
-           command%s = join_path(command%s,trim(try(itri)))
-           return
-       endif
-    end do
-
-    ! On windows, also search in %MSMPI_BIN%
-    if (get_os_type()==OS_WINDOWS) then
-        ! Check that the runtime is installed
-        bindir = ""
-        call get_absolute_path(get_env('MSMPI_BIN'),bindir,error)
-        if (verbose) print *, '+ %MSMPI_BIN%=',bindir
-        ! In some environments, variable %MSMPI_BIN% is missing (i.e. in GitHub Action images).
-        ! Do a second attempt: search for the default location
-        if (len_trim(bindir)<=0 .or. allocated(error)) then
-            if (verbose) print *, '+ %MSMPI_BIN% empty, searching C:\Program Files\Microsoft MPI\Bin\ ...'
-            call get_absolute_path('C:\Program Files\Microsoft MPI\Bin\mpiexec.exe',bindir,error)
-        endif
-        if (len_trim(bindir)>0 .and. .not.allocated(error)) then
-            ! MSMPI_BIN directory found
-            command%s = join_path(bindir,'mpiexec.exe')
-            return
-        endif
-    endif
-
-    ! No valid command found
-    call fatal_error(error,'cannot find a valid mpi runner command')
-    return
-
-end subroutine get_mpi_runner
-
-!> Return compiler path
-subroutine compiler_get_path(self,path,error)
-    type(compiler_t), intent(in) :: self
-    type(string_t), intent(out) :: path
-    type(error_t), allocatable, intent(out) :: error
-
-    call find_command_location(self%fc,path%s,self%echo,self%verbose,error)
-
-end subroutine compiler_get_path
-
-!> Return compiler version
-subroutine compiler_get_version(self,version,is_msys2,error)
-    type(compiler_t), intent(in) :: self
-    type(version_t), intent(out) :: version
-    logical, intent(out) :: is_msys2
-    type(error_t), allocatable, intent(out) :: error
-
-    character(:), allocatable :: tmp_file,screen_output,line
-    type(string_t) :: ver
-    integer :: stat,iunit,ire,length
-
-    is_msys2 = .false.
-
-    select case (self%id)
-       case (id_gcc)
-
-            tmp_file = get_temp_filename()
-
-            call run(self%fc // " --version ", echo=self%echo, verbose=self%verbose, redirect=tmp_file, exitstat=stat)
-            if (stat/=0) then
-                call fatal_error(error,'compiler_get_version failed for '//self%fc)
-                return
-            end if
-
-            allocate(character(len=0) :: screen_output)
-            open(newunit=iunit,file=tmp_file,status='old',iostat=stat)
-            if (stat == 0)then
-               do
-                   call getline(iunit, line, stat)
-                   if (stat /= 0) exit
-                   screen_output = screen_output//' '//line//' '
-               end do
-               ! Close and delete file
-               close(iunit,status='delete')
-            else
-               call fatal_error(error,'cannot read temporary file from successful compiler_get_version')
-               return
-            endif
-
-            ! Check if this gcc is from the MSYS2 project
-            is_msys2 = index(screen_output,'MSYS2')>0
-
-            ver = regex_version_from_text(screen_output,self%fc//' compiler',error)
-            if (allocated(error)) return
-
-            ! Extract version
-            call new_version(version,ver%s,error)
-
-       case default
-            call fatal_error(error,'compiler_get_version not yet implemented for compiler '//self%fc)
-            return
-    end select
-
-end subroutine compiler_get_version
-
-!> Initialize an MPI metapackage from a valid wrapper command ('mpif90', etc...)
-subroutine init_mpi_from_wrappers(this,compiler,mpilib,fort_wrapper,c_wrapper,cxx_wrapper,error)
-    class(metapackage_t), intent(inout) :: this
-    type(compiler_t), intent(in) :: compiler
-    integer, intent(in) :: mpilib
-    type(string_t), intent(in) :: fort_wrapper,c_wrapper,cxx_wrapper
-    type(error_t), allocatable, intent(out) :: error
-
-    type(version_t) :: version
-    type(error_t), allocatable :: runner_error
-
-    ! Cleanup structure
-    call destroy(this)
-
-    ! Get linking flags
-    this%link_flags = mpi_wrapper_query(mpilib,fort_wrapper,'link',verbose,error)
-    if (allocated(error)) return
-
-    ! Remove useless/dangerous flags
-    call filter_link_arguments(compiler,this%link_flags)
-
-    this%has_link_flags = len_trim(this%link_flags)>0
-
-    ! Request to use libs in arbitrary order
-    if (this%has_link_flags .and. compiler%is_gnu() .and. os_is_unix() .and. get_os_type()/=OS_MACOS) then
-        this%link_flags = string_t(' -Wl,--start-group '//this%link_flags%s)
-    end if
-
-    ! Add language-specific flags
-    call set_language_flags(compiler,mpilib,fort_wrapper,this%has_fortran_flags,this%fflags,verbose,error)
-    if (allocated(error)) return
-    call set_language_flags(compiler,mpilib,c_wrapper,this%has_c_flags,this%cflags,verbose,error)
-    if (allocated(error)) return
-    call set_language_flags(compiler,mpilib,cxx_wrapper,this%has_cxx_flags,this%cxxflags,verbose,error)
-    if (allocated(error)) return
-
-    ! Get library version
-    version = mpi_version_get(mpilib,fort_wrapper,error)
-    if (allocated(error)) then
-       return
-    else
-       allocate(this%version,source=version)
-    end if
-
-    !> Add default run command, if present
-    this%run_command = mpi_wrapper_query(mpilib,fort_wrapper,'runner',verbose,runner_error)
-    this%has_run_command = (len_trim(this%run_command)>0) .and. .not.allocated(runner_error)
-
-    contains
-
-    subroutine set_language_flags(compiler,mpilib,wrapper,has_flags,flags,verbose,error)
-        type(compiler_t), intent(in) :: compiler
-        integer, intent(in) :: mpilib
-        type(string_t), intent(in) :: wrapper
-        logical, intent(inout) :: has_flags
-        type(string_t), intent(inout) :: flags
-        logical, intent(in) :: verbose
-        type(error_t), allocatable, intent(out) :: error
-
-        ! Get build flags for each language
-        if (len_trim(wrapper)>0) then
-            flags = mpi_wrapper_query(mpilib,wrapper,'flags',verbose,error)
-
-            if (allocated(error)) return
-            has_flags = len_trim(flags)>0
-
-            ! Add heading space
-            flags = string_t(' '//flags%s)
-
-            if (verbose) print *, '+ MPI language flags from wrapper <',wrapper%s,'>: flags=',flags%s
-
-            call filter_build_arguments(compiler,flags)
-
-        endif
-
-    end subroutine set_language_flags
-
-end subroutine init_mpi_from_wrappers
-
-!> Match one of the available compiler wrappers with the current compiler
-subroutine mpi_compiler_match(language,wrappers,compiler,which_one,mpilib,error)
-    integer, intent(in) :: language
-    type(string_t), intent(in) :: wrappers(:)
-    type(compiler_t), intent(in) :: compiler
-    integer, intent(out) :: which_one, mpilib
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: i, same_vendor, vendor_mpilib
-    type(string_t) :: screen
-    character(128) :: msg_out
-    type(compiler_t) :: mpi_compiler
-
-    which_one   = 0
-    same_vendor = 0
-    mpilib      = MPI_TYPE_NONE
-
-    if (verbose) print *, '+ Trying to match available ',LANG_NAME(language),' MPI wrappers to ',compiler%fc,'...'
-
-    do i=1,size(wrappers)
-
-        mpilib = which_mpi_library(wrappers(i),compiler,verbose=.false.)
-
-        screen = mpi_wrapper_query(mpilib,wrappers(i),'compiler',verbose=.false.,error=error)
-        if (allocated(error)) return
-
-        if (verbose) print *, '  Wrapper ',wrappers(i)%s,' lib=',MPI_TYPE_NAME(mpilib),' uses ',screen%s
-
-        select case (language)
-           case (LANG_FORTRAN)
-               ! Build compiler type. The ID is created based on the Fortran name
-               call new_compiler(mpi_compiler,screen%s,'','',echo=.true.,verbose=.false.)
-
-               ! Fortran match found!
-               if (mpi_compiler%id == compiler%id) then
-                   which_one = i
-                   return
-               end if
-           case (LANG_C)
-               ! For other languages, we can only hope that the name matches the expected one
-               if (screen%s==compiler%cc .or. screen%s==compiler%fc) then
-                   which_one = i
-                   return
-               end if
-           case (LANG_CXX)
-               if (screen%s==compiler%cxx .or. screen%s==compiler%fc) then
-                   which_one = i
-                   return
-               end if
-        end select
-
-        ! Because the intel mpi library does not support llvm_ compiler wrappers yet,
-        ! we must check for that manually
-        if (is_intel_classic_option(language,same_vendor,screen,compiler,mpi_compiler)) then
-            same_vendor = i
-            vendor_mpilib = mpilib
-        end if
-    end do
-
-    ! Intel compiler: if an exact match is not found, attempt closest wrapper
-    if (which_one==0 .and. same_vendor>0) then
-        which_one = same_vendor
-        mpilib    = vendor_mpilib
-    end if
-
-    ! None of the available wrappers matched the current Fortran compiler
-    write(msg_out,1) size(wrappers),compiler%fc
-    call fatal_error(error,trim(msg_out))
-    1 format('<ERROR> None out of ',i0,' valid MPI wrappers matches compiler ',a)
-
-end subroutine mpi_compiler_match
-
-!> Because the Intel mpi library does not support llvm_ compiler wrappers yet,
-!> we must save the Intel-classic option and later manually replace it
-logical function is_intel_classic_option(language,same_vendor_ID,screen_out,compiler,mpi_compiler)
-    integer, intent(in) :: language,same_vendor_ID
-    type(string_t), intent(in) :: screen_out
-    type(compiler_t), intent(in) :: compiler,mpi_compiler
-
-    if (same_vendor_ID/=0) then
-        is_intel_classic_option = .false.
-    else
-        select case (language)
-           case (LANG_FORTRAN)
-               is_intel_classic_option = mpi_compiler%is_intel() .and. compiler%is_intel()
-           case (LANG_C)
-               is_intel_classic_option = screen_out%s=='icc' .and. compiler%cc=='icx'
-           case (LANG_CXX)
-               is_intel_classic_option = screen_out%s=='icpc' .and. compiler%cc=='icpx'
-        end select
-    end if
-
-end function is_intel_classic_option
-
-!> Return library version from the MPI wrapper command
-type(version_t) function mpi_version_get(mpilib,wrapper,error)
-   integer, intent(in) :: mpilib
-   type(string_t), intent(in) :: wrapper
-   type(error_t), allocatable, intent(out) :: error
-
-   type(string_t) :: version_line
-
-   ! Get version string
-   version_line = mpi_wrapper_query(mpilib,wrapper,'version',error=error)
-   if (allocated(error)) return
-
-   ! Wrap to object
-   call new_version(mpi_version_get,version_line%s,error)
-
-end function mpi_version_get
-
-!> Return several mpi wrappers, and return
-subroutine mpi_wrappers(compiler,fort_wrappers,c_wrappers,cpp_wrappers)
-    type(compiler_t), intent(in) :: compiler
-    type(string_t), allocatable, intent(out) :: c_wrappers(:),cpp_wrappers(:),fort_wrappers(:)
-
-    character(len=:), allocatable :: mpi_root,intel_wrap
-    type(error_t), allocatable :: error
-
-    ! Attempt gathering MPI wrapper names from the environment variables
-    c_wrappers    = [string_t(get_env('MPICC' ,'mpicc'))]
-    cpp_wrappers  = [string_t(get_env('MPICXX','mpic++'))]
-    fort_wrappers = [string_t(get_env('MPIFC' ,'mpifc' )),&
-                     string_t(get_env('MPIf90','mpif90')),&
-                     string_t(get_env('MPIf77','mpif77'))]
-
-    if (get_os_type()==OS_WINDOWS) then
-        c_wrappers = [c_wrappers,string_t('mpicc.bat')]
-        cpp_wrappers = [cpp_wrappers,string_t('mpicxx.bat')]
-        fort_wrappers = [fort_wrappers,string_t('mpifc.bat')]
-    endif
-
-    ! Add compiler-specific wrappers
-    compiler_specific: select case (compiler%id)
-       case (id_gcc,id_f95)
-
-            c_wrappers = [c_wrappers,string_t('mpigcc'),string_t('mpgcc')]
-          cpp_wrappers = [cpp_wrappers,string_t('mpig++'),string_t('mpg++')]
-         fort_wrappers = [fort_wrappers,string_t('mpigfortran'),string_t('mpgfortran'),&
-                          string_t('mpig77'),string_t('mpg77')]
-
-       case (id_intel_classic_windows,id_intel_llvm_windows, &
-             id_intel_classic_nix,id_intel_classic_mac,id_intel_llvm_nix,id_intel_llvm_unknown)
-
-            c_wrappers = [string_t(get_env('I_MPI_CC','mpiicc'))]
-          cpp_wrappers = [string_t(get_env('I_MPI_CXX','mpiicpc'))]
-         fort_wrappers = [string_t(get_env('I_MPI_F90','mpiifort'))]
-
-         ! Also search MPI wrappers via the base MPI folder
-         mpi_root = get_env('I_MPI_ROOT')
-         if (mpi_root/="") then
-
-             mpi_root = join_path(mpi_root,'bin')
-
-             intel_wrap = join_path(mpi_root,'mpiifort')
-             if (get_os_type()==OS_WINDOWS) intel_wrap = get_dos_path(intel_wrap,error)
-             if (intel_wrap/="") fort_wrappers = [fort_wrappers,string_t(intel_wrap)]
-
-             intel_wrap = join_path(mpi_root,'mpiicc')
-             if (get_os_type()==OS_WINDOWS) intel_wrap = get_dos_path(intel_wrap,error)
-             if (intel_wrap/="") c_wrappers = [c_wrappers,string_t(intel_wrap)]
-
-             intel_wrap = join_path(mpi_root,'mpiicpc')
-             if (get_os_type()==OS_WINDOWS) intel_wrap = get_dos_path(intel_wrap,error)
-             if (intel_wrap/="") cpp_wrappers = [cpp_wrappers,string_t(intel_wrap)]
-
-         end if
-
-       case (id_pgi,id_nvhpc)
-
-            c_wrappers = [c_wrappers,string_t('mpipgicc'),string_t('mpgcc')]
-          cpp_wrappers = [cpp_wrappers,string_t('mpipgic++')]
-         fort_wrappers = [fort_wrappers,string_t('mpipgifort'),string_t('mpipgf90')]
-
-       case (id_cray)
-
-            c_wrappers = [c_wrappers,string_t('cc')]
-          cpp_wrappers = [cpp_wrappers,string_t('CC')]
-         fort_wrappers = [fort_wrappers,string_t('ftn')]
-
-    end select compiler_specific
-
-    call assert_mpi_wrappers(fort_wrappers,compiler)
-    call assert_mpi_wrappers(c_wrappers,compiler)
-    call assert_mpi_wrappers(cpp_wrappers,compiler)
-
-end subroutine mpi_wrappers
-
-!> Filter out invalid/unavailable mpi wrappers
-subroutine assert_mpi_wrappers(wrappers,compiler,verbose)
-    type(string_t), allocatable, intent(inout) :: wrappers(:)
-    type(compiler_t), intent(in) :: compiler
-    logical, optional, intent(in) :: verbose
-
-    integer :: i
-    integer, allocatable :: works(:)
-
-    allocate(works(size(wrappers)))
-
-    do i=1,size(wrappers)
-        if (present(verbose)) then
-            if (verbose) print *, '+ MPI test wrapper <',wrappers(i)%s,'>'
-        endif
-        works(i) = which_mpi_library(wrappers(i),compiler,verbose)
-    end do
-
-    ! Filter out non-working wrappers
-    wrappers = pack(wrappers,works/=MPI_TYPE_NONE)
-
-end subroutine assert_mpi_wrappers
-
-!> Simple call to execute_command_line involving one mpi* wrapper
-subroutine run_mpi_wrapper(wrapper,args,verbose,exitcode,cmd_success,screen_output)
-    type(string_t), intent(in) :: wrapper
-    type(string_t), intent(in), optional :: args(:)
-    logical, intent(in), optional :: verbose
-    integer, intent(out), optional :: exitcode
-    logical, intent(out), optional :: cmd_success
-    type(string_t), intent(out), optional :: screen_output
-
-    logical :: echo_local
-    character(:), allocatable :: redirect_str,command,redirect,line
-    integer :: iunit,iarg,stat,cmdstat
-
-    if(present(verbose))then
-       echo_local=verbose
-    else
-       echo_local=.false.
-    end if
-
-    ! No redirection and non-verbose output
-    if (present(screen_output)) then
-        redirect = get_temp_filename()
-        redirect_str =  ">"//redirect//" 2>&1"
-    else
-        if (os_is_unix()) then
-            redirect_str = " >/dev/null 2>&1"
-        else
-            redirect_str = " >NUL 2>&1"
-        end if
-    end if
-
-    ! Empty command
-    if (len_trim(wrapper)<=0) then
-        if (echo_local) print *, '+ <EMPTY COMMAND>'
-        if (present(exitcode)) exitcode = 0
-        if (present(cmd_success)) cmd_success = .true.
-        if (present(screen_output)) screen_output = string_t("")
-        return
-    end if
-
-    ! Init command
-    command = trim(wrapper%s)
-
-    add_arguments: if (present(args)) then
-        do iarg=1,size(args)
-            if (len_trim(args(iarg))<=0) cycle
-            command = trim(command)//' '//args(iarg)%s
-        end do
-    endif add_arguments
-
-    if (echo_local) print *, '+ ', command
-
-    ! Test command
-    call execute_command_line(command//redirect_str,exitstat=stat,cmdstat=cmdstat)
-
-    ! Command successful?
-    if (present(cmd_success)) cmd_success = cmdstat==0
-
-    ! Program exit code?
-    if (present(exitcode)) exitcode = stat
-
-    ! Want screen output?
-    if (present(screen_output) .and. cmdstat==0) then
-
-        allocate(character(len=0) :: screen_output%s)
-
-        open(newunit=iunit,file=redirect,status='old',iostat=stat)
-        if (stat == 0)then
-           do
-               call getline(iunit, line, stat)
-               if (stat /= 0) exit
-
-               screen_output%s = screen_output%s//new_line('a')//line
-
-               if (echo_local) write(*,'(A)') trim(line)
-           end do
-
-           ! Close and delete file
-           close(iunit,status='delete')
-
-        else
-           call fpm_stop(1,'cannot read temporary file from successful MPI wrapper')
-        endif
-
-    end if
-
-end subroutine run_mpi_wrapper
-
-!> Get MPI library type from the wrapper command. Currently, only OpenMPI is supported
-integer function which_mpi_library(wrapper,compiler,verbose)
-    type(string_t), intent(in) :: wrapper
-    type(compiler_t), intent(in) :: compiler
-    logical, intent(in), optional :: verbose
-
-    logical :: is_mpi_wrapper
-    integer :: stat
-
-    ! Init as currently unsupported library
-    which_mpi_library = MPI_TYPE_NONE
-
-    if (len_trim(wrapper)<=0) return
-
-    ! Run mpi wrapper first
-    call run_mpi_wrapper(wrapper,verbose=verbose,cmd_success=is_mpi_wrapper)
-
-    if (is_mpi_wrapper) then
-
-        if (compiler%is_intel()) then
-            which_mpi_library = MPI_TYPE_INTEL
-            return
-        end if
-
-        ! Attempt to decipher which library this wrapper comes from.
-
-        ! OpenMPI responds to '--showme' calls
-        call run_mpi_wrapper(wrapper,[string_t('--showme')],verbose,&
-                             exitcode=stat,cmd_success=is_mpi_wrapper)
-        if (stat==0 .and. is_mpi_wrapper) then
-            which_mpi_library = MPI_TYPE_OPENMPI
-            return
-        endif
-
-        ! MPICH responds to '-show' calls
-        call run_mpi_wrapper(wrapper,[string_t('-show')],verbose,&
-                             exitcode=stat,cmd_success=is_mpi_wrapper)
-        if (stat==0 .and. is_mpi_wrapper) then
-            which_mpi_library = MPI_TYPE_MPICH
-            return
-        endif
-
-    end if
-
-end function which_mpi_library
-
-!> Test if an MPI wrapper works
-type(string_t) function mpi_wrapper_query(mpilib,wrapper,command,verbose,error) result(screen)
-    integer, intent(in) :: mpilib
-    type(string_t), intent(in) :: wrapper
-    character(*), intent(in) :: command
-    logical, intent(in), optional :: verbose
-    type(error_t), allocatable, intent(out) :: error
-
-    logical :: success
-    character(:), allocatable :: redirect_str,tokens(:),unsupported_msg
-    type(string_t) :: cmdstr
-    type(compiler_t) :: mpi_compiler
-    integer :: stat,cmdstat,ire,length
-
-    unsupported_msg = 'the MPI library of wrapper '//wrapper%s//' does not support task '//trim(command)
-
-    select case (command)
-
-       ! Get MPI compiler name
-       case ('compiler')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI); cmdstr = string_t('--showme:command')
-              case (MPI_TYPE_MPICH);   cmdstr = string_t('-compile-info')
-              case (MPI_TYPE_INTEL);   cmdstr = string_t('-show')
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-           call run_mpi_wrapper(wrapper,[cmdstr],verbose=verbose, &
-                                exitcode=stat,cmd_success=success,screen_output=screen)
-
-           if (stat/=0 .or. .not.success) then
-              call syntax_error(error,'local '//MPI_TYPE_NAME(mpilib)//&
-                                      ' library wrapper does not support flag '//cmdstr%s)
-              return
-           end if
-
-           ! Take out the first command from the whole line
-           call remove_newline_characters(screen)
-           call split(screen%s,tokens,delimiters=' ')
-           screen%s = trim(adjustl(tokens(1)))
-
-       ! Get a list of additional compiler flags
-       case ('flags')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI); cmdstr = string_t('--showme:compile')
-              case (MPI_TYPE_MPICH);   cmdstr = string_t('-compile-info')
-              case (MPI_TYPE_INTEL);   cmdstr = string_t('-show')
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-           call run_mpi_wrapper(wrapper,[cmdstr],verbose=verbose, &
-                                exitcode=stat,cmd_success=success,screen_output=screen)
-
-           if (stat/=0 .or. .not.success) then
-              call syntax_error(error,'local '//MPI_TYPE_NAME(mpilib)//&
-                                      ' library wrapper does not support flag '//cmdstr%s)
-              return
-           end if
-
-           ! Post-process output
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI)
-                 ! This library reports the compiler name only
-                 call remove_newline_characters(screen)
-              case (MPI_TYPE_MPICH,MPI_TYPE_INTEL)
-                 ! These libraries report the full command including the compiler name. Remove it if so
-                 call remove_newline_characters(screen)
-                 call split(screen%s,tokens)
-                 ! Remove trailing compiler name
-                 screen%s = screen%s(len_trim(tokens(1))+1:)
-              case default
-                 call fatal_error(error,'invalid MPI library type')
-                 return
-           end select
-
-       ! Get a list of additional linker flags
-       case ('link')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI); cmdstr = string_t('--showme:link')
-              case (MPI_TYPE_MPICH);   cmdstr = string_t('-link-info')
-              case (MPI_TYPE_INTEL);   cmdstr = string_t('-show')
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-           call run_mpi_wrapper(wrapper,[cmdstr],verbose=verbose, &
-                                exitcode=stat,cmd_success=success,screen_output=screen)
-
-           if (stat/=0 .or. .not.success) then
-              call syntax_error(error,'local '//MPI_TYPE_NAME(mpilib)//&
-                                      ' library wrapper does not support flag '//cmdstr%s)
-              return
-           end if
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI)
-                 call remove_newline_characters(screen)
-              case (MPI_TYPE_MPICH,MPI_TYPE_INTEL)
-                 ! MPICH reports the full command including the compiler name. Remove it if so
-                 call remove_newline_characters(screen)
-                 call split(screen%s,tokens)
-                 ! Remove trailing compiler name
-                 screen%s = screen%s(len_trim(tokens(1))+1:)
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-       ! Get a list of MPI library directories
-       case ('link_dirs')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI)
-
-                 ! --showme:command returns the build command of this wrapper
-                 call run_mpi_wrapper(wrapper,[string_t('--showme:libdirs')],verbose=verbose, &
-                                      exitcode=stat,cmd_success=success,screen_output=screen)
-
-                 if (stat/=0 .or. .not.success) then
-                    call syntax_error(error,'local OpenMPI library does not support --showme:libdirs')
-                    return
-                 end if
-
-              case default
-
-                 call fatal_error(error,unsupported_msg)
-                 return
-
-           end select
-
-       ! Get a list of include directories for the MPI headers/modules
-       case ('incl_dirs')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI)
-                 ! --showme:command returns the build command of this wrapper
-                 call run_mpi_wrapper(wrapper,[string_t('--showme:incdirs')],verbose=verbose, &
-                                      exitcode=stat,cmd_success=success,screen_output=screen)
-                 if (stat/=0 .or. .not.success) then
-                    call syntax_error(error,'local OpenMPI library does not support --showme:incdirs')
-                    return
-                 end if
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-           call remove_newline_characters(screen)
-
-       ! Retrieve library version
-       case ('version')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI)
-
-                 ! --showme:command returns the build command of this wrapper
-                 call run_mpi_wrapper(wrapper,[string_t('--showme:version')],verbose=verbose, &
-                                      exitcode=stat,cmd_success=success,screen_output=screen)
-
-                 if (stat/=0 .or. .not.success) then
-                    call syntax_error(error,'local OpenMPI library does not support --showme:version')
-                    return
-                 else
-                    call remove_newline_characters(screen)
-                 end if
-
-              case (MPI_TYPE_MPICH)
-
-                 !> MPICH offers command "mpichversion" in the same system folder as the MPI wrappers.
-                 !> So, attempt to run that first
-                 cmdstr = string_t('mpichversion')
-                 call run_mpi_wrapper(cmdstr,verbose=verbose, &
-                                      exitcode=stat,cmd_success=success,screen_output=screen)
-
-                 ! Second option: run mpich wrapper + "-v"
-                 if (stat/=0 .or. .not.success) then
-                    call run_mpi_wrapper(wrapper,[string_t('-v')],verbose=verbose, &
-                                         exitcode=stat,cmd_success=success,screen_output=screen)
-                    call remove_newline_characters(screen)
-                 endif
-
-                 ! Third option: mpiexec --version
-                 if (stat/=0 .or. .not.success) then
-                     cmdstr = string_t('mpiexec --version')
-                     call run_mpi_wrapper(cmdstr,verbose=verbose, &
-                                          exitcode=stat,cmd_success=success,screen_output=screen)
-                 endif
-
-                 if (stat/=0 .or. .not.success) then
-                    call syntax_error(error,'cannot retrieve MPICH library version from <mpichversion, '//wrapper%s//', mpiexec>')
-                    return
-                 end if
-
-              case (MPI_TYPE_INTEL)
-
-                 ! --showme:command returns the build command of this wrapper
-                 call run_mpi_wrapper(wrapper,[string_t('-v')],verbose=verbose, &
-                                      exitcode=stat,cmd_success=success,screen_output=screen)
-
-                 if (stat/=0 .or. .not.success) then
-                    call syntax_error(error,'local INTEL MPI library does not support -v')
-                    return
-                 else
-                    call remove_newline_characters(screen)
-                 end if
-
-              case default
-
-                 call fatal_error(error,unsupported_msg)
-                 return
-
-           end select
-
-           ! Extract version
-           screen = regex_version_from_text(screen%s,MPI_TYPE_NAME(mpilib)//' library',error)
-           if (allocated(error)) return
-
-       ! Get path to the MPI runner command
-       case ('runner')
-
-           select case (mpilib)
-              case (MPI_TYPE_OPENMPI,MPI_TYPE_MPICH,MPI_TYPE_MSMPI,MPI_TYPE_INTEL)
-                 call get_mpi_runner(screen,verbose,error)
-              case default
-                 call fatal_error(error,unsupported_msg)
-                 return
-           end select
-
-       case default;
-           call fatal_error(error,'an invalid MPI wrapper command ('//command//&
-                                  ') was invoked for wrapper <'//wrapper%s//'>.')
-           return
-    end select
-
-end function mpi_wrapper_query
-
-!> Check if input is a useful linker argument
-logical function is_link_argument(compiler,string)
-   type(compiler_t), intent(in) :: compiler
-   character(*), intent(in) :: string
-
-   select case (compiler%id)
-      case (id_intel_classic_windows,id_intel_llvm_windows)
-          is_link_argument = string=='/link' &
-                             .or. str_begins_with_str(string,'/LIBPATH')&
-                             .or. str_ends_with(string,'.lib') ! always .lib whether static or dynamic
-      case default
-
-          ! fix OpenMPI's Fortran wrapper bug (https://github.com/open-mpi/ompi/issues/11636) here
-          is_link_argument = (    str_begins_with_str(string,'-L') &
-                             .or. str_begins_with_str(string,'-l') &
-                             .or. str_begins_with_str(string,'-Xlinker') &
-                             .or. string=='-pthread' &
-                             .or. (str_begins_with_str(string,'-W') .and. &
-                                   (string/='-Wall') .and. (.not.str_begins_with_str(string,'-Werror'))) ) &
-                             .and. .not. ( &
-                                 (get_os_type()==OS_MACOS .and. index(string,'-commons,use_dylibs')>0) )
-   end select
-
-end function is_link_argument
-
-!> From build, remove optimization and other unnecessary flags
-subroutine filter_build_arguments(compiler,command)
-    type(compiler_t), intent(in) :: compiler
-    type(string_t), intent(inout) :: command
-    character(len=:), allocatable :: tokens(:)
-
-    integer :: i,n,re_i,re_l
-    logical, allocatable :: keep(:)
-    logical :: keep_next
-    character(len=:), allocatable :: module_flag,include_flag
-
-    if (len_trim(command)<=0) return
-
-    ! Split command into arguments
-    tokens = shlex_split(command%s)
-
-    module_flag  = get_module_flag(compiler,"")
-    include_flag = get_include_flag(compiler,"")
-
-    n = size(tokens)
-    allocate(keep(n),source=.false.)
-    keep_next = .false.
-
-    do i=1,n
-
-        if (get_os_type()==OS_MACOS .and. index(tokens(i),'-commons,use_dylibs')>0) then
-            keep(i) = .false.
-            keep_next = .false.
-        elseif (str_begins_with_str(tokens(i),'-D') .or. &
-                str_begins_with_str(tokens(i),'-f') .or. &
-                str_begins_with_str(tokens(i),'-I') .or. &
-                str_begins_with_str(tokens(i),module_flag) .or. &
-                str_begins_with_str(tokens(i),include_flag) .or. &
-                tokens(i)=='-pthread' .or. &
-                (str_begins_with_str(tokens(i),'-W') .and. tokens(i)/='-Wall' .and. .not.str_begins_with_str(tokens(i),'-Werror')) &
-                ) then
-                   keep(i) = .true.
-                   if (tokens(i)==module_flag .or. tokens(i)==include_flag .or. tokens(i)=='-I') keep_next = .true.
-        elseif (keep_next) then
-            keep(i) = .true.
-            keep_next = .false.
-        end if
-    end do
-
-    ! Backfill
-    command = string_t("")
-    do i=1,n
-        if (.not.keep(i)) cycle
-
-        command%s = command%s//' '//trim(tokens(i))
-    end do
-
-end subroutine filter_build_arguments
-
-!> From the linker flags, remove optimization and other unnecessary flags
-subroutine filter_link_arguments(compiler,command)
-    type(compiler_t), intent(in) :: compiler
-    type(string_t), intent(inout) :: command
-    character(len=:), allocatable :: tokens(:)
-
-    integer :: i,n
-    logical, allocatable :: keep(:)
-    logical :: keep_next
-
-    if (len_trim(command)<=0) return
-
-    ! Split command into arguments
-    tokens = shlex_split(command%s)
-
-    n = size(tokens)
-    allocate(keep(n),source=.false.)
-    keep_next = .false.
-
-    do i=1,n
-       if (is_link_argument(compiler,tokens(i))) then
-           keep(i) = .true.
-           if (tokens(i)=='-L' .or. tokens(i)=='-Xlinker') keep_next = .true.
-       elseif (keep_next) then
-           keep(i) = .true.
-           keep_next = .false.
-       end if
-    end do
-
-    ! Backfill
-    command = string_t("")
-    do i=1,n
-        if (.not.keep(i)) cycle
-        command%s = command%s//' '//trim(tokens(i))
-    end do
-
-end subroutine filter_link_arguments
-
-end module fpm_meta
-
-!>>>>> ././src/fpm_sources.f90
-!># Discovery of sources
-!>
-!> This module implements subroutines for building a list of
-!> `[[srcfile_t]]` objects by looking for source files in the filesystem.
-!>
-module fpm_sources
-use fpm_error, only: error_t
-use fpm_model, only: srcfile_t, FPM_UNIT_PROGRAM
-use fpm_filesystem, only: basename, canon_path, dirname, join_path, list_files, is_hidden_file
-use fpm_environment, only: get_os_type,OS_WINDOWS
-use fpm_strings, only: lower, str_ends_with, string_t, operator(.in.)
-use fpm_source_parsing, only: parse_f_source, parse_c_source
-use fpm_manifest_executable, only: executable_config_t
-implicit none
-
-private
-public :: add_sources_from_dir, add_executable_sources
-public :: get_exe_name_with_suffix
-
-character(4), parameter :: fortran_suffixes(2) = [".f90", &
-                                                  ".f  "]
-character(4), parameter :: c_suffixes(4) = [".c  ", ".h  ", ".cpp", ".hpp"]
-
-contains
-
-!> Wrapper to source parsing routines.
-!> Selects parsing routine based on source file name extension
-function parse_source(source_file_path,custom_f_ext,error) result(source)
-    character(*), intent(in) :: source_file_path
-    type(string_t), optional, intent(in) :: custom_f_ext(:)
-    type(error_t), allocatable, intent(out) :: error
-    type(srcfile_t)  :: source
-    type(string_t), allocatable :: f_ext(:)
-
-    call list_fortran_suffixes(f_ext,custom_f_ext)
-
-    if (str_ends_with(lower(source_file_path), f_ext)) then
-
-        source = parse_f_source(source_file_path, error)
-
-        if (source%unit_type == FPM_UNIT_PROGRAM) then
-            source%exe_name = basename(source_file_path,suffix=.false.)
-        end if
-
-    else if (str_ends_with(lower(source_file_path), c_suffixes)) then
-
-        source = parse_c_source(source_file_path,error)
-
-    endif
-
-    if (allocated(error)) then
-        return
-    end if
-
-end function parse_source
-
-!> List fortran suffixes, including optional ones
-subroutine list_fortran_suffixes(suffixes,with_f_ext)
-    type(string_t), allocatable, intent(out) :: suffixes(:)
-    !> Additional user-defined (preprocessor) extensions that should be treated as Fortran sources
-    type(string_t), intent(in), optional :: with_f_ext(:)
-
-    integer :: ndefault,nuser,i
-
-    ndefault = size(fortran_suffixes)
-    nuser    = 0; if (present(with_f_ext)) nuser = size(with_f_ext)
-
-    allocate(suffixes(ndefault + nuser))
-    do i=1,ndefault
-        suffixes(i) = string_t(fortran_suffixes(i))
-    end do
-    if (present(with_f_ext)) then
-        do i=1,nuser
-            suffixes(ndefault+i) = string_t(with_f_ext(i)%s)
-        end do
-    endif
-
-end subroutine list_fortran_suffixes
-
-!> Add to `sources` by looking for source files in `directory`
-subroutine add_sources_from_dir(sources,directory,scope,with_executables,with_f_ext,recurse,error)
-    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
-    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
-    !> Directory in which to search for source files
-    character(*), intent(in) :: directory
-    !> Scope to apply to the discovered sources, see [[fpm_model]] for enumeration
-    integer, intent(in) :: scope
-    !> Executable sources (fortran `program`s) are ignored unless `with_executables=.true.`
-    logical, intent(in), optional :: with_executables
-    !> Additional user-defined (preprocessor) extensions that should be treated as Fortran sources
-    type(string_t), intent(in), optional :: with_f_ext(:)
-    !> Whether to recursively search subdirectories, default is `.true.`
-    logical, intent(in), optional :: recurse
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: i
-    logical, allocatable :: is_source(:), exclude_source(:)
-    logical :: recurse_
-    type(string_t), allocatable :: file_names(:)
-    type(string_t), allocatable :: src_file_names(:),f_ext(:)
-    type(string_t), allocatable :: existing_src_files(:)
-    type(srcfile_t), allocatable :: dir_sources(:)
-
-    recurse_ = .true.
-    if (present(recurse)) recurse_ = recurse
-    ! Scan directory for sources
-    call list_files(directory, file_names,recurse=recurse_)
-
-    if (allocated(sources)) then
-        allocate(existing_src_files(size(sources)))
-        do i=1,size(sources)
-            existing_src_files(i)%s = canon_path(sources(i)%file_name)
-        end do
-    else
-        allocate(existing_src_files(0))
-    end if
-
-    ! Get legal fortran suffixes
-    call list_fortran_suffixes(f_ext,with_f_ext)
-
-    is_source = [(.not.(is_hidden_file(basename(file_names(i)%s))) .and. &
-                 .not.(canon_path(file_names(i)%s) .in. existing_src_files) .and. &
-                 (str_ends_with(lower(file_names(i)%s), f_ext) .or. &
-                 str_ends_with(lower(file_names(i)%s), c_suffixes) ),i=1,size(file_names))]
-
-    src_file_names = pack(file_names,is_source)
-
-    allocate(dir_sources(size(src_file_names)))
-    allocate(exclude_source(size(src_file_names)))
-
-    do i = 1, size(src_file_names)
-
-        dir_sources(i) = parse_source(src_file_names(i)%s,with_f_ext,error)
-        if (allocated(error)) return
-
-        dir_sources(i)%unit_scope = scope
-        allocate(dir_sources(i)%link_libraries(0))
-
-        ! Exclude executables unless specified otherwise
-        exclude_source(i) = (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM)
-        if (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM .and. &
-            & present(with_executables)) then
-            if (with_executables) then
-
-                exclude_source(i) = .false.
-
-            end if
-        end if
-
-    end do
-
-    if (.not.allocated(sources)) then
-        sources = pack(dir_sources,.not.exclude_source)
-    else
-        sources = [sources, pack(dir_sources,.not.exclude_source)]
-    end if
-
-end subroutine add_sources_from_dir
-
-!> Add to `sources` using the executable and test entries in the manifest and
-!> applies any executable-specific overrides such as `executable%name`.
-!> Adds all sources (including modules) from each `executable%source_dir`
-subroutine add_executable_sources(sources,executables,scope,auto_discover,with_f_ext,error)
-    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
-    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
-    !> List of `[[executable_config_t]]` entries from manifest
-    class(executable_config_t), intent(in) :: executables(:)
-    !> Scope to apply to the discovered sources: either `FPM_SCOPE_APP` or `FPM_SCOPE_TEST`, see [[fpm_model]]
-    integer, intent(in) :: scope
-    !> If `.false.` only executables and tests specified in the manifest are added to `sources`
-    logical, intent(in) :: auto_discover
-    !> Additional user-defined (preprocessor) extensions that should be treated as Fortran sources
-    type(string_t), intent(in), optional :: with_f_ext(:)
-    !> Error handling
-    type(error_t), allocatable, intent(out) :: error
-
-    integer :: i, j
-
-    type(string_t), allocatable :: exe_dirs(:)
-    type(srcfile_t) :: exe_source
-
-    call get_executable_source_dirs(exe_dirs,executables)
-
-    do i=1,size(exe_dirs)
-        call add_sources_from_dir(sources,exe_dirs(i)%s, scope, &
-                     with_executables=auto_discover, with_f_ext=with_f_ext,recurse=.false., error=error)
-
-        if (allocated(error)) then
-            return
-        end if
-    end do
-
-    exe_loop: do i=1,size(executables)
-
-        ! Check if executable already discovered automatically
-        !  and apply any overrides
-        do j=1,size(sources)
-
-            if (basename(sources(j)%file_name,suffix=.true.) == executables(i)%main .and.&
-                 canon_path(dirname(sources(j)%file_name)) == &
-                 canon_path(executables(i)%source_dir) ) then
-
-                sources(j)%exe_name = executables(i)%name
-                if (allocated(executables(i)%link)) then
-                    sources(j)%link_libraries = executables(i)%link
-                end if
-                sources(j)%unit_type = FPM_UNIT_PROGRAM
-                cycle exe_loop
-
-            end if
-
-        end do
-
-        ! Add if not already discovered (auto_discovery off)
-        associate(exe => executables(i))
-            exe_source = parse_source(join_path(exe%source_dir,exe%main),with_f_ext,error)
-            exe_source%exe_name = exe%name
-            if (allocated(exe%link)) then
-                exe_source%link_libraries = exe%link
-            end if
-            exe_source%unit_type = FPM_UNIT_PROGRAM
-            exe_source%unit_scope = scope
-        end associate
-
-        if (allocated(error)) return
-
-        if (.not.allocated(sources)) then
-            sources = [exe_source]
-        else
-            sources = [sources, exe_source]
-        end if
-
-    end do exe_loop
-
-end subroutine add_executable_sources
-
-!> Build a list of unique source directories
-!>  from executables specified in manifest
-subroutine get_executable_source_dirs(exe_dirs,executables)
-    type(string_t), allocatable, intent(inout) :: exe_dirs(:)
-    class(executable_config_t), intent(in) :: executables(:)
-
-    type(string_t) :: dirs_temp(size(executables))
-
-    integer :: i, n
-
-    n = 0
-
-    do i=1,size(executables)
-       dirs_temp(i)%s=' '
-    enddo
-
-    do i=1,size(executables)
-        if (.not.(executables(i)%source_dir .in. dirs_temp)) then
-
-            n = n + 1
-            dirs_temp(n)%s = executables(i)%source_dir
-
-        end if
-    end do
-
-    if (.not.allocated(exe_dirs)) then
-        exe_dirs = dirs_temp(1:n)
-    else
-        exe_dirs = [exe_dirs,dirs_temp(1:n)]
-    end if
-
-end subroutine get_executable_source_dirs
-
-!> Build an executable name with suffix. Safe routine that always returns an allocated string
-function get_exe_name_with_suffix(source) result(suffixed)
-    type(srcfile_t), intent(in) :: source
-    character(len=:), allocatable :: suffixed
-
-    if (allocated(source%exe_name)) then
-       if (get_os_type() == OS_WINDOWS) then
-           suffixed = source%exe_name//'.exe'
-       else
-           suffixed = source%exe_name
-       end if
-    else
-       suffixed = ""
-    endif
-
-end function get_exe_name_with_suffix
-
-end module fpm_sources
 
 !>>>>> ././src/fpm_targets.f90
 !># Build target handling
@@ -41117,7 +33791,7 @@ end module fpm_sources
 !>### Enumerations
 !>
 !> __Target type:__ `FPM_TARGET_*`
-!> Describes the type of build target — determines backend build rules
+!> Describes the type of build target     determines backend build rules
 !>
 module fpm_targets
 use iso_fortran_env, only: int64
@@ -41128,8 +33802,6 @@ use fpm_environment, only: get_os_type, OS_WINDOWS, OS_MACOS
 use fpm_filesystem, only: dirname, join_path, canon_path
 use fpm_strings, only: string_t, operator(.in.), string_cat, fnv_1a, resize, lower, str_ends_with
 use fpm_compiler, only: get_macros
-use fpm_sources, only: get_exe_name_with_suffix
-use fpm_manifest_preprocess, only: preprocess_config_t
 implicit none
 
 private
@@ -41141,6 +33813,8 @@ public build_target_t, build_target_ptr
 public targets_from_sources, resolve_module_dependencies
 public add_target, add_dependency
 public filter_library_targets, filter_executable_targets, filter_modules
+
+
 
 !> Target type is unknown (ignored)
 integer, parameter :: FPM_TARGET_UNKNOWN = -1
@@ -41161,6 +33835,7 @@ type build_target_ptr
     type(build_target_t), pointer :: ptr => null()
 
 end type build_target_ptr
+
 
 !> Type describing a generated build target
 type build_target_t
@@ -41227,6 +33902,7 @@ type build_target_t
 
 end type build_target_t
 
+
 contains
 
 !> High-level wrapper to generate build target information
@@ -41259,6 +33935,7 @@ subroutine targets_from_sources(targets,model,prune,error)
 
 end subroutine targets_from_sources
 
+
 !> Constructs a list of build targets from a list of source files
 !>
 !>### Source-target mapping
@@ -41287,17 +33964,23 @@ subroutine build_target_list(targets,model)
     type(fpm_model_t), intent(inout), target :: model
 
     integer :: i, j, n_source, exe_type
-    character(:), allocatable :: exe_dir, compile_flags
+    character(:), allocatable :: xsuffix, exe_dir
     logical :: with_lib
-
-    ! Initialize targets
-    allocate(targets(0))
 
     ! Check for empty build (e.g. header-only lib)
     n_source = sum([(size(model%packages(j)%sources), &
                       j=1,size(model%packages))])
 
-    if (n_source < 1) return
+    if (n_source < 1) then
+        allocate(targets(0))
+        return
+    end if
+
+    if (get_os_type() == OS_WINDOWS) then
+        xsuffix = '.exe'
+    else
+        xsuffix = ''
+    end if
 
     with_lib = any([((model%packages(j)%sources(i)%unit_scope == FPM_SCOPE_LIB, &
                       i=1,size(model%packages(j)%sources)), &
@@ -41325,8 +34008,9 @@ subroutine build_target_list(targets,model)
                                                sources(i)%unit_type==FPM_UNIT_CSOURCE), &
                                 output_name = get_object_name(sources(i)), &
                                 features = model%packages(j)%features, &
-                                preprocess = model%packages(j)%preprocess, &
+                                macros = model%packages(j)%macros, &
                                 version = model%packages(j)%version)
+
 
                     if (with_lib .and. sources(i)%unit_scope == FPM_SCOPE_LIB) then
                         ! Archive depends on object
@@ -41338,7 +34022,7 @@ subroutine build_target_list(targets,model)
                     call add_target(targets,package=model%packages(j)%name,source = sources(i), &
                                 type = FPM_TARGET_CPP_OBJECT, &
                                 output_name = get_object_name(sources(i)), &
-                                preprocess = model%packages(j)%preprocess, &
+                                macros = model%packages(j)%macros, &
                                 version = model%packages(j)%version)
 
                     if (with_lib .and. sources(i)%unit_scope == FPM_SCOPE_LIB) then
@@ -41371,7 +34055,7 @@ subroutine build_target_list(targets,model)
                                 output_name = get_object_name(sources(i)), &
                                 source = sources(i), &
                                 features = model%packages(j)%features, &
-                                preprocess = model%packages(j)%preprocess &
+                                macros = model%packages(j)%macros &
                                 )
 
                     if (sources(i)%unit_scope == FPM_SCOPE_APP) then
@@ -41390,30 +34074,16 @@ subroutine build_target_list(targets,model)
 
                     call add_target(targets,package=model%packages(j)%name,type = FPM_TARGET_EXECUTABLE,&
                                     link_libraries = sources(i)%link_libraries, &
-                                    output_name = join_path(exe_dir,get_exe_name_with_suffix(sources(i))))
-
-                    associate(target => targets(size(targets))%ptr)
-
-                    ! Linker-only flags are necessary on some compilers for codes with non-Fortran main
-                    select case (exe_type)
-                       case (FPM_TARGET_C_OBJECT)
-                            call model%compiler%get_main_flags("c",compile_flags)
-                       case (FPM_TARGET_CPP_OBJECT)
-                            call model%compiler%get_main_flags("c++",compile_flags)
-                       case default
-                            compile_flags = ""
-                    end select
-                    target%compile_flags = target%compile_flags//' '//compile_flags
+                                    output_name = join_path(exe_dir, &
+                                    sources(i)%exe_name//xsuffix))
 
                     ! Executable depends on object
-                    call add_dependency(target, targets(size(targets)-1)%ptr)
+                    call add_dependency(targets(size(targets))%ptr, targets(size(targets)-1)%ptr)
 
                     if (with_lib) then
                         ! Executable depends on library
-                        call add_dependency(target, targets(1)%ptr)
+                        call add_dependency(targets(size(targets))%ptr, targets(1)%ptr)
                     end if
-
-                    endassociate
 
                 end select
 
@@ -41449,6 +34119,7 @@ subroutine build_target_list(targets,model)
     end function get_object_name
 
 end subroutine build_target_list
+
 
 !> Add non-library non-module dependencies for executable targets
 !>
@@ -41500,9 +34171,10 @@ subroutine collect_exe_link_dependencies(targets)
 
 end subroutine collect_exe_link_dependencies
 
+
 !> Allocate a new target and append to target list
 subroutine add_target(targets, package, type, output_name, source, link_libraries, &
-        & features, preprocess, version)
+        & features, macros, version)
     type(build_target_ptr), allocatable, intent(inout) :: targets(:)
     character(*), intent(in) :: package
     integer, intent(in) :: type
@@ -41510,7 +34182,7 @@ subroutine add_target(targets, package, type, output_name, source, link_librarie
     type(srcfile_t), intent(in), optional :: source
     type(string_t), intent(in), optional :: link_libraries(:)
     type(fortran_features_t), intent(in), optional :: features
-    type(preprocess_config_t), intent(in), optional :: preprocess
+    type(string_t), intent(in), optional :: macros(:)
     character(*), intent(in), optional :: version
 
     integer :: i
@@ -41539,15 +34211,14 @@ subroutine add_target(targets, package, type, output_name, source, link_librarie
     if (present(source)) new_target%source = source
     if (present(link_libraries)) new_target%link_libraries = link_libraries
     if (present(features)) new_target%features = features
-    if (present(preprocess)) then
-        if (allocated(preprocess%macros)) new_target%macros = preprocess%macros
-    endif
+    if (present(macros)) new_target%macros = macros
     if (present(version)) new_target%version = version
     allocate(new_target%dependencies(0))
 
     targets = [targets, build_target_ptr(new_target)]
 
 end subroutine add_target
+
 
 !> Add pointer to dependeny in target%dependencies
 subroutine add_dependency(target, dependency)
@@ -41557,6 +34228,7 @@ subroutine add_dependency(target, dependency)
     target%dependencies = [target%dependencies, build_target_ptr(dependency)]
 
 end subroutine add_dependency
+
 
 !> Add dependencies to source-based targets (`FPM_TARGET_OBJECT`)
 !> based on any modules used by the corresponding source file.
@@ -41672,6 +34344,7 @@ function find_module_dependency(targets,module_name,include_dir) result(target_p
     end do
 
 end function find_module_dependency
+
 
 !> Perform tree-shaking to remove unused module targets
 subroutine prune_build_targets(targets, root_package)
@@ -41874,6 +34547,7 @@ subroutine prune_build_targets(targets, root_package)
 
 end subroutine prune_build_targets
 
+
 !> Construct the linker flags string for each target
 !>  `target%link_flags` includes non-library objects and library flags
 !>
@@ -41905,23 +34579,14 @@ subroutine resolve_target_linking(targets, model)
     do i=1,size(targets)
 
         associate(target => targets(i)%ptr)
-
-            ! If the main program is a C/C++ one, some compilers require additional linking flags, see
-            ! https://stackoverflow.com/questions/36221612/p3dfft-compilation-ifort-compiler-error-multiple-definiton-of-main
-            ! In this case, compile_flags were already allocated
-            if (.not.allocated(target%compile_flags)) allocate(character(len=0) :: target%compile_flags)
-
-            target%compile_flags = target%compile_flags//' '
-
-            select case (target%target_type)
-               case (FPM_TARGET_C_OBJECT)
-                   target%compile_flags = target%compile_flags//model%c_compile_flags
-               case (FPM_TARGET_CPP_OBJECT)
-                   target%compile_flags = target%compile_flags//model%cxx_compile_flags
-               case default
-                   target%compile_flags = target%compile_flags//model%fortran_compile_flags &
-                                        & // get_feature_flags(model%compiler, target%features)
-            end select
+            if (target%target_type /= FPM_TARGET_C_OBJECT .and. target%target_type /= FPM_TARGET_CPP_OBJECT) then
+                target%compile_flags = model%fortran_compile_flags &
+                    & // get_feature_flags(model%compiler, target%features)
+            else if (target%target_type == FPM_TARGET_C_OBJECT) then
+                target%compile_flags = model%c_compile_flags
+            else if(target%target_type == FPM_TARGET_CPP_OBJECT) then
+                target%compile_flags = model%cxx_compile_flags
+            end if
 
             !> Get macros as flags.
             target%compile_flags = target%compile_flags // get_macros(model%compiler%id, &
@@ -41956,8 +34621,7 @@ subroutine resolve_target_linking(targets, model)
 
                 call get_link_objects(target%link_objects,target,is_exe=.true.)
 
-                local_link_flags = ""
-                if (allocated(model%link_flags)) local_link_flags = model%link_flags
+                local_link_flags = model%link_flags
                 target%link_flags = model%link_flags//" "//string_cat(target%link_objects," ")
 
                 if (allocated(target%link_libraries)) then
@@ -42027,6 +34691,7 @@ contains
 
 end subroutine resolve_target_linking
 
+
 subroutine add_include_build_dirs(model, targets)
     type(fpm_model_t), intent(in) :: model
     type(build_target_ptr), intent(inout), target :: targets(:)
@@ -42057,6 +34722,7 @@ subroutine add_include_build_dirs(model, targets)
 
 end subroutine add_include_build_dirs
 
+
 function get_output_dir(build_prefix, args) result(path)
     character(len=*), intent(in) :: build_prefix
     character(len=*), intent(in) :: args
@@ -42067,6 +34733,7 @@ function get_output_dir(build_prefix, args) result(path)
     write(build_hash, '(z16.16)') fnv_1a(args)
     path = build_prefix//"_"//build_hash
 end function get_output_dir
+
 
 subroutine filter_library_targets(targets, list)
     type(build_target_ptr), intent(in) :: targets(:)
@@ -42105,6 +34772,7 @@ subroutine filter_executable_targets(targets, scope, list)
     call resize(list, n)
 end subroutine filter_executable_targets
 
+
 elemental function is_executable_target(target_ptr, scope) result(is_exe)
     type(build_target_t), intent(in) :: target_ptr
     integer, intent(in) :: scope
@@ -42115,6 +34783,7 @@ elemental function is_executable_target(target_ptr, scope) result(is_exe)
         is_exe = target_ptr%dependencies(1)%ptr%source%unit_scope == scope
     end if
 end function is_executable_target
+
 
 subroutine filter_modules(targets, list)
     type(build_target_ptr), intent(in) :: targets(:)
@@ -42139,6 +34808,7 @@ subroutine filter_modules(targets, list)
     call resize(list, n)
 end subroutine filter_modules
 
+
 function get_feature_flags(compiler, features) result(flags)
     type(compiler_t), intent(in) :: compiler
     type(fortran_features_t), intent(in) :: features
@@ -42162,7 +34832,247 @@ function get_feature_flags(compiler, features) result(flags)
     end if
 end function get_feature_flags
 
+
 end module fpm_targets
+
+
+!>>>>> ././src/fpm_sources.f90
+!># Discovery of sources
+!>
+!> This module implements subroutines for building a list of
+!> `[[srcfile_t]]` objects by looking for source files in the filesystem.
+!>
+module fpm_sources
+use fpm_error, only: error_t
+use fpm_model, only: srcfile_t, FPM_UNIT_PROGRAM
+use fpm_filesystem, only: basename, canon_path, dirname, join_path, list_files, is_hidden_file
+use fpm_strings, only: lower, str_ends_with, string_t, operator(.in.)
+use fpm_source_parsing, only: parse_f_source, parse_c_source
+use fpm_manifest_executable, only: executable_config_t
+implicit none
+
+private
+public :: add_sources_from_dir, add_executable_sources
+
+character(4), parameter :: fortran_suffixes(2) = [".f90", &
+                                                  ".f  "]
+character(4), parameter :: c_suffixes(4) = [".c  ", ".h  ", ".cpp", ".hpp"]
+
+contains
+
+!> Wrapper to source parsing routines.
+!> Selects parsing routine based on source file name extension
+function parse_source(source_file_path,error) result(source)
+    character(*), intent(in) :: source_file_path
+    type(error_t), allocatable, intent(out) :: error
+    type(srcfile_t)  :: source
+
+    if (str_ends_with(lower(source_file_path), fortran_suffixes)) then
+
+        source = parse_f_source(source_file_path, error)
+
+        if (source%unit_type == FPM_UNIT_PROGRAM) then
+            source%exe_name = basename(source_file_path,suffix=.false.)
+        end if
+
+    else if (str_ends_with(lower(source_file_path), c_suffixes)) then
+
+        source = parse_c_source(source_file_path,error)
+
+    end if
+
+    if (allocated(error)) then
+        return
+    end if
+
+end function parse_source
+
+!> Add to `sources` by looking for source files in `directory`
+subroutine add_sources_from_dir(sources,directory,scope,with_executables,recurse,error)
+    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
+    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
+    !> Directory in which to search for source files
+    character(*), intent(in) :: directory
+    !> Scope to apply to the discovered sources, see [[fpm_model]] for enumeration
+    integer, intent(in) :: scope
+    !> Executable sources (fortran `program`s) are ignored unless `with_executables=.true.`
+    logical, intent(in), optional :: with_executables
+    !> Whether to recursively search subdirectories, default is `.true.`
+    logical, intent(in), optional :: recurse
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: i
+    logical, allocatable :: is_source(:), exclude_source(:)
+    logical :: recurse_
+    type(string_t), allocatable :: file_names(:)
+    type(string_t), allocatable :: src_file_names(:)
+    type(string_t), allocatable :: existing_src_files(:)
+    type(srcfile_t), allocatable :: dir_sources(:)
+
+    recurse_ = .true.
+    if (present(recurse)) recurse_ = recurse
+    ! Scan directory for sources
+    call list_files(directory, file_names,recurse=recurse_)
+
+    if (allocated(sources)) then
+        allocate(existing_src_files(size(sources)))
+        do i=1,size(sources)
+            existing_src_files(i)%s = canon_path(sources(i)%file_name)
+        end do
+    else
+        allocate(existing_src_files(0))
+    end if
+
+    is_source = [(.not.(is_hidden_file(basename(file_names(i)%s))) .and. &
+                 .not.(canon_path(file_names(i)%s) .in. existing_src_files) .and. &
+                 (str_ends_with(lower(file_names(i)%s), fortran_suffixes) .or. &
+                 str_ends_with(lower(file_names(i)%s), c_suffixes) ),i=1,size(file_names))]
+    src_file_names = pack(file_names,is_source)
+
+    allocate(dir_sources(size(src_file_names)))
+    allocate(exclude_source(size(src_file_names)))
+
+    do i = 1, size(src_file_names)
+
+        dir_sources(i) = parse_source(src_file_names(i)%s,error)
+        if (allocated(error)) return
+
+        dir_sources(i)%unit_scope = scope
+        allocate(dir_sources(i)%link_libraries(0))
+
+        ! Exclude executables unless specified otherwise
+        exclude_source(i) = (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM)
+        if (dir_sources(i)%unit_type == FPM_UNIT_PROGRAM .and. &
+            & present(with_executables)) then
+            if (with_executables) then
+
+                exclude_source(i) = .false.
+
+            end if
+        end if
+
+    end do
+
+    if (.not.allocated(sources)) then
+        sources = pack(dir_sources,.not.exclude_source)
+    else
+        sources = [sources, pack(dir_sources,.not.exclude_source)]
+    end if
+
+end subroutine add_sources_from_dir
+
+
+!> Add to `sources` using the executable and test entries in the manifest and
+!> applies any executable-specific overrides such as `executable%name`.
+!> Adds all sources (including modules) from each `executable%source_dir`
+subroutine add_executable_sources(sources,executables,scope,auto_discover,error)
+    !> List of `[[srcfile_t]]` objects to append to. Allocated if not allocated
+    type(srcfile_t), allocatable, intent(inout), target :: sources(:)
+    !> List of `[[executable_config_t]]` entries from manifest
+    class(executable_config_t), intent(in) :: executables(:)
+    !> Scope to apply to the discovered sources: either `FPM_SCOPE_APP` or `FPM_SCOPE_TEST`, see [[fpm_model]]
+    integer, intent(in) :: scope
+    !> If `.false.` only executables and tests specified in the manifest are added to `sources`
+    logical, intent(in) :: auto_discover
+    !> Error handling
+    type(error_t), allocatable, intent(out) :: error
+
+    integer :: i, j
+
+    type(string_t), allocatable :: exe_dirs(:)
+    type(srcfile_t) :: exe_source
+
+    call get_executable_source_dirs(exe_dirs,executables)
+
+    do i=1,size(exe_dirs)
+        call add_sources_from_dir(sources,exe_dirs(i)%s, scope, &
+                     with_executables=auto_discover, recurse=.false., error=error)
+
+        if (allocated(error)) then
+            return
+        end if
+    end do
+
+    exe_loop: do i=1,size(executables)
+
+        ! Check if executable already discovered automatically
+        !  and apply any overrides
+        do j=1,size(sources)
+
+            if (basename(sources(j)%file_name,suffix=.true.) == executables(i)%main .and.&
+                 canon_path(dirname(sources(j)%file_name)) == &
+                 canon_path(executables(i)%source_dir) ) then
+
+                sources(j)%exe_name = executables(i)%name
+                if (allocated(executables(i)%link)) then
+                    sources(j)%link_libraries = executables(i)%link
+                end if
+                sources(j)%unit_type = FPM_UNIT_PROGRAM
+                cycle exe_loop
+
+            end if
+
+        end do
+
+        ! Add if not already discovered (auto_discovery off)
+        associate(exe => executables(i))
+            exe_source = parse_source(join_path(exe%source_dir,exe%main),error)
+            exe_source%exe_name = exe%name
+            if (allocated(exe%link)) then
+                exe_source%link_libraries = exe%link
+            end if
+            exe_source%unit_type = FPM_UNIT_PROGRAM
+            exe_source%unit_scope = scope
+        end associate
+
+        if (allocated(error)) return
+
+        if (.not.allocated(sources)) then
+            sources = [exe_source]
+        else
+            sources = [sources, exe_source]
+        end if
+
+    end do exe_loop
+
+end subroutine add_executable_sources
+
+!> Build a list of unique source directories
+!>  from executables specified in manifest
+subroutine get_executable_source_dirs(exe_dirs,executables)
+    type(string_t), allocatable, intent(inout) :: exe_dirs(:)
+    class(executable_config_t), intent(in) :: executables(:)
+
+    type(string_t) :: dirs_temp(size(executables))
+
+    integer :: i, n
+
+    n = 0
+
+    do i=1,size(executables)
+       dirs_temp(i)%s=' '
+    enddo
+
+    do i=1,size(executables)
+        if (.not.(executables(i)%source_dir .in. dirs_temp)) then
+
+            n = n + 1
+            dirs_temp(n)%s = executables(i)%source_dir
+
+        end if
+    end do
+
+    if (.not.allocated(exe_dirs)) then
+        exe_dirs = dirs_temp(1:n)
+    else
+        exe_dirs = [exe_dirs,dirs_temp(1:n)]
+    end if
+
+end subroutine get_executable_source_dirs
+
+end module fpm_sources
+
 
 !>>>>> ././src/fpm_backend_output.f90
 !># Build Backend Progress Output
@@ -42215,7 +35125,7 @@ interface build_progress_t
 end interface build_progress_t
 
 contains
-    
+
     !> Initialise a new build progress object
     function new_build_progress(target_queue,plain_mode) result(progress)
         !> The queue of scheduled targets
@@ -42288,7 +35198,7 @@ contains
         character(100) :: output_string
         character(7) :: overall_progress
 
-        !$omp critical 
+        !$omp critical
         progress%n_complete = progress%n_complete + 1
         !$omp end critical
 
@@ -42506,6 +35416,7 @@ subroutine build_package(targets,model,verbose)
 
 end subroutine build_package
 
+
 !> Topologically sort a target for scheduling by
 !>  recursing over its dependencies.
 !>
@@ -42590,6 +35501,7 @@ recursive subroutine sort_target(target)
 
 end subroutine sort_target
 
+
 !> Construct a build schedule from the sorted targets.
 !>
 !> The schedule is broken into regions, described by `schedule_ptr`,
@@ -42639,6 +35551,7 @@ subroutine schedule_targets(queue, schedule_ptr, targets)
     end do
 
 end subroutine schedule_targets
+
 
 !> Call compile/link command for a single target.
 !>
@@ -42690,6 +35603,7 @@ subroutine build_target(model,target,verbose,stat)
 
 end subroutine build_target
 
+
 !> Read and print the build log for target
 !>
 subroutine print_build_log(target)
@@ -42718,6 +35632,7 @@ end subroutine print_build_log
 
 end module fpm_backend
 
+
 !>>>>> ././src/fpm.f90
 module fpm
 use fpm_strings, only: string_t, operator(.in.), glob, join, string_cat, &
@@ -42735,19 +35650,16 @@ use fpm_model, only: fpm_model_t, srcfile_t, show_model, fortran_features_t, &
                     FPM_SCOPE_APP, FPM_SCOPE_EXAMPLE, FPM_SCOPE_TEST
 use fpm_compiler, only: new_compiler, new_archiver, set_cpp_preprocessor_flags
 
+
 use fpm_sources, only: add_executable_sources, add_sources_from_dir
 use fpm_targets, only: targets_from_sources, build_target_t, build_target_ptr, &
                         FPM_TARGET_EXECUTABLE, FPM_TARGET_ARCHIVE
 use fpm_manifest, only : get_package_data, package_config_t
-use fpm_meta, only : resolve_metapackages
 use fpm_error, only : error_t, fatal_error, fpm_stop
-use fpm_toml, only: name_is_json
-use, intrinsic :: iso_fortran_env, only : stdin => input_unit, &
-                                        & stdout => output_unit, &
-                                        & stderr => error_unit
+use,intrinsic :: iso_fortran_env, only : stdin=>input_unit,   &
+                                       & stdout=>output_unit, &
+                                       & stderr=>error_unit
 use iso_c_binding, only: c_char, c_ptr, c_int, c_null_char, c_associated, c_f_pointer
-use fpm_environment, only: os_is_unix
-
 implicit none
 private
 public :: cmd_build, cmd_run, cmd_clean
@@ -42758,13 +35670,13 @@ contains
 !> Constructs a valid fpm model from command line settings and the toml manifest.
 subroutine build_model(model, settings, package, error)
     type(fpm_model_t), intent(out) :: model
-    class(fpm_build_settings), intent(inout) :: settings
-    type(package_config_t), intent(inout) :: package
+    type(fpm_build_settings), intent(in) :: settings
+    type(package_config_t), intent(in) :: package
     type(error_t), allocatable, intent(out) :: error
 
     integer :: i, j
     type(package_config_t) :: dependency
-    character(len=:), allocatable :: manifest, lib_dir
+    character(len=:), allocatable :: manifest, lib_dir, flags, cflags, cxxflags, ldflags
     logical :: has_cpp
     logical :: duplicates_found
     type(string_t) :: include_dir
@@ -42775,31 +35687,7 @@ subroutine build_model(model, settings, package, error)
     allocate(model%link_libraries(0))
     allocate(model%external_modules(0))
 
-    call new_compiler(model%compiler, settings%compiler, settings%c_compiler, &
-        & settings%cxx_compiler, echo=settings%verbose, verbose=settings%verbose)
-    call new_archiver(model%archiver, settings%archiver, &
-        & echo=settings%verbose, verbose=settings%verbose)
-
-    if (model%compiler%is_unknown()) then
-        write(*, '(*(a:,1x))') &
-            "<WARN>", "Unknown compiler", model%compiler%fc, "requested!", &
-            "Defaults for this compiler might be incorrect"
-    end if
-
-    call new_compiler_flags(model,settings)
-    model%build_prefix = join_path("build", basename(model%compiler%fc))
-    model%include_tests = settings%build_tests
-    model%enforce_module_names = package%build%module_naming
-    model%module_prefix = package%build%module_prefix
-
-    ! Resolve meta-dependencies into the package and the model
-    call resolve_metapackages(model,package,settings,error)
-    if (allocated(error)) return
-
-    ! Create dependencies
     call new_dependency_tree(model%deps, cache=join_path("build", "cache.toml"))
-
-    ! Build and resolve model dependencies
     call model%deps%add(package, error)
     if (allocated(error)) return
 
@@ -42811,6 +35699,36 @@ subroutine build_model(model, settings, package, error)
     if (.not.exists("build/.gitignore")) then
       call filewrite(join_path("build", ".gitignore"),["*"])
     end if
+
+    call new_compiler(model%compiler, settings%compiler, settings%c_compiler, &
+        & settings%cxx_compiler, echo=settings%verbose, verbose=settings%verbose)
+    call new_archiver(model%archiver, settings%archiver, &
+        & echo=settings%verbose, verbose=settings%verbose)
+
+    if (settings%flag == '') then
+        flags = model%compiler%get_default_flags(settings%profile == "release")
+    else
+        flags = settings%flag
+        select case(settings%profile)
+        case("release", "debug")
+            flags = flags // model%compiler%get_default_flags(settings%profile == "release")
+        end select
+    end if
+
+    cflags = trim(settings%cflag)
+    cxxflags = trim(settings%cxxflag)
+    ldflags = trim(settings%ldflag)
+
+    if (model%compiler%is_unknown()) then
+        write(*, '(*(a:,1x))') &
+            "<WARN>", "Unknown compiler", model%compiler%fc, "requested!", &
+            "Defaults for this compiler might be incorrect"
+    end if
+    model%build_prefix = join_path("build", basename(model%compiler%fc))
+
+    model%include_tests = settings%build_tests
+    model%enforce_module_names = package%build%module_naming
+    model%module_prefix = package%build%module_prefix
 
     allocate(model%packages(model%deps%ndep))
 
@@ -42830,23 +35748,19 @@ subroutine build_model(model, settings, package, error)
             end associate
             model%packages(i)%version = package%version%s()
 
-            !> Add this dependency's manifest macros
-            call model%packages(i)%preprocess%destroy()
-
             if (allocated(dependency%preprocess)) then
                 do j = 1, size(dependency%preprocess)
-                    call model%packages(i)%preprocess%add_config(dependency%preprocess(j))
+                    if (dependency%preprocess(j)%name == "cpp") then
+                        if (.not. has_cpp) has_cpp = .true.
+                        if (allocated(dependency%preprocess(j)%macros)) then
+                            model%packages(i)%macros = dependency%preprocess(j)%macros
+                        end if
+                    else
+                        write(stderr, '(a)') 'Warning: Preprocessor ' // package%preprocess(i)%name // &
+                            ' is not supported; will ignore it'
+                    end if
                 end do
             end if
-
-            !> Add this dependency's package-level macros
-            if (allocated(dep%preprocess)) then
-                do j = 1, size(dep%preprocess)
-                    call model%packages(i)%preprocess%add_config(dep%preprocess(j))
-                end do
-            end if
-
-            if (model%packages(i)%preprocess%is_cpp()) has_cpp = .true.
 
             if (.not.allocated(model%packages(i)%sources)) allocate(model%packages(i)%sources(0))
 
@@ -42856,7 +35770,7 @@ subroutine build_model(model, settings, package, error)
                     lib_dir = join_path(dep%proj_dir, dependency%library%source_dir)
                     if (is_dir(lib_dir)) then
                         call add_sources_from_dir(model%packages(i)%sources, lib_dir, FPM_SCOPE_LIB, &
-                            with_f_ext=model%packages(i)%preprocess%suffixes, error=error)
+                            error=error)
                         if (allocated(error)) exit
                     end if
                 end if
@@ -42888,14 +35802,16 @@ subroutine build_model(model, settings, package, error)
     end do
     if (allocated(error)) return
 
-    ! Add optional flags
-    if (has_cpp) call set_cpp_preprocessor_flags(model%compiler%id, model%fortran_compile_flags)
+    if (has_cpp) call set_cpp_preprocessor_flags(model%compiler%id, flags)
+    model%fortran_compile_flags = flags
+    model%c_compile_flags = cflags
+    model%cxx_compile_flags = cxxflags
+    model%link_flags = ldflags
 
     ! Add sources from executable directories
     if (is_dir('app') .and. package%build%auto_executables) then
         call add_sources_from_dir(model%packages(1)%sources,'app', FPM_SCOPE_APP, &
-                                   with_executables=.true., with_f_ext=model%packages(1)%preprocess%suffixes,&
-                                   error=error)
+                                   with_executables=.true., error=error)
 
         if (allocated(error)) then
             return
@@ -42904,8 +35820,7 @@ subroutine build_model(model, settings, package, error)
     end if
     if (is_dir('example') .and. package%build%auto_examples) then
         call add_sources_from_dir(model%packages(1)%sources,'example', FPM_SCOPE_EXAMPLE, &
-                                  with_executables=.true., &
-                                  with_f_ext=model%packages(1)%preprocess%suffixes,error=error)
+                                   with_executables=.true., error=error)
 
         if (allocated(error)) then
             return
@@ -42914,8 +35829,7 @@ subroutine build_model(model, settings, package, error)
     end if
     if (is_dir('test') .and. package%build%auto_tests) then
         call add_sources_from_dir(model%packages(1)%sources,'test', FPM_SCOPE_TEST, &
-                                  with_executables=.true., &
-                                  with_f_ext=model%packages(1)%preprocess%suffixes,error=error)
+                                   with_executables=.true., error=error)
 
         if (allocated(error)) then
             return
@@ -42925,7 +35839,6 @@ subroutine build_model(model, settings, package, error)
     if (allocated(package%executable)) then
         call add_executable_sources(model%packages(1)%sources, package%executable, FPM_SCOPE_APP, &
                                      auto_discover=package%build%auto_executables, &
-                                     with_f_ext=model%packages(1)%preprocess%suffixes, &
                                      error=error)
 
         if (allocated(error)) then
@@ -42936,7 +35849,6 @@ subroutine build_model(model, settings, package, error)
     if (allocated(package%example)) then
         call add_executable_sources(model%packages(1)%sources, package%example, FPM_SCOPE_EXAMPLE, &
                                      auto_discover=package%build%auto_examples, &
-                                     with_f_ext=model%packages(1)%preprocess%suffixes, &
                                      error=error)
 
         if (allocated(error)) then
@@ -42947,7 +35859,6 @@ subroutine build_model(model, settings, package, error)
     if (allocated(package%test)) then
         call add_executable_sources(model%packages(1)%sources, package%test, FPM_SCOPE_TEST, &
                                      auto_discover=package%build%auto_tests, &
-                                     with_f_ext=model%packages(1)%preprocess%suffixes, &
                                      error=error)
 
         if (allocated(error)) then
@@ -42979,34 +35890,6 @@ subroutine build_model(model, settings, package, error)
         call fpm_stop(1,'*build_model*:Error: One or more duplicate module names found.')
     end if
 end subroutine build_model
-
-!> Initialize model compiler flags
-subroutine new_compiler_flags(model,settings)
-    type(fpm_model_t), intent(inout) :: model
-    type(fpm_build_settings), intent(in) :: settings
-
-    character(len=:), allocatable :: flags, cflags, cxxflags, ldflags
-
-    if (settings%flag == '') then
-        flags = model%compiler%get_default_flags(settings%profile == "release")
-    else
-        flags = settings%flag
-        select case(settings%profile)
-        case("release", "debug")
-            flags = flags // model%compiler%get_default_flags(settings%profile == "release")
-        end select
-    end if
-
-    cflags   = trim(settings%cflag)
-    cxxflags = trim(settings%cxxflag)
-    ldflags  = trim(settings%ldflag)
-
-    model%fortran_compile_flags = flags
-    model%c_compile_flags       = cflags
-    model%cxx_compile_flags     = cxxflags
-    model%link_flags            = ldflags
-
-end subroutine new_compiler_flags
 
 ! Check for duplicate modules
 subroutine check_modules_for_duplicates(model, duplicates_found)
@@ -43056,7 +35939,7 @@ end subroutine check_modules_for_duplicates
 subroutine check_module_names(model, error)
     type(fpm_model_t), intent(in) :: model
     type(error_t), allocatable, intent(out) :: error
-    integer :: k,l,m
+    integer :: i,j,k,l,m
     logical :: valid,errors_found,enforce_this_file
     type(string_t) :: package_name,module_name,package_prefix
 
@@ -43146,7 +36029,7 @@ subroutine check_module_names(model, error)
 end subroutine check_module_names
 
 subroutine cmd_build(settings)
-type(fpm_build_settings), intent(inout) :: settings
+type(fpm_build_settings), intent(in) :: settings
 
 type(package_config_t) :: package
 type(fpm_model_t) :: model
@@ -43170,12 +36053,6 @@ if (allocated(error)) then
     call fpm_stop(1,'*cmd_build* Target error: '//error%message)
 end if
 
-!> Dump model to file
-if (len_trim(settings%dump)>0) then
-    call model%dump(trim(settings%dump),error,json=name_is_json(trim(settings%dump)))
-    if (allocated(error)) call fpm_stop(1,'*cmd_build* Model dump error: '//error%message)
-endif
-
 if(settings%list)then
     do i=1,size(targets)
         write(stderr,*) targets(i)%ptr%output_file
@@ -43189,7 +36066,7 @@ endif
 end subroutine cmd_build
 
 subroutine cmd_run(settings,test)
-    class(fpm_run_settings), intent(inout) :: settings
+    class(fpm_run_settings), intent(in) :: settings
     logical, intent(in) :: test
 
     integer :: i, j, col_width
@@ -43212,7 +36089,7 @@ subroutine cmd_run(settings,test)
         call fpm_stop(1, '*cmd_run* Package error: '//error%message)
     end if
 
-    call build_model(model, settings, package, error)
+    call build_model(model, settings%fpm_build_settings, package, error)
     if (allocated(error)) then
         call fpm_stop(1, '*cmd_run* Model error: '//error%message)
     end if
@@ -43325,10 +36202,10 @@ subroutine cmd_run(settings,test)
             if (exists(executables(i)%s)) then
                 if(settings%runner /= ' ')then
                     if(.not.allocated(settings%args))then
-                       call run(settings%runner_command()//' '//executables(i)%s, &
+                       call run(settings%runner//' '//executables(i)%s, &
                              echo=settings%verbose, exitstat=stat(i))
                     else
-                       call run(settings%runner_command()//' '//executables(i)%s//" "//settings%args, &
+                       call run(settings%runner//' '//executables(i)%s//" "//settings%args, &
                              echo=settings%verbose, exitstat=stat(i))
                     endif
                 else
@@ -43355,19 +36232,17 @@ subroutine cmd_run(settings,test)
             call fpm_stop(stat(firsterror),'*cmd_run*:stopping due to failed executions')
         end if
 
-    end if
-
+    endif
     contains
-
     subroutine compact_list_all()
     integer, parameter :: LINE_WIDTH = 80
-    integer :: ii, jj, nCol
-        jj = 1
+    integer :: i, j, nCol
+        j = 1
         nCol = LINE_WIDTH/col_width
         write(stderr,*) 'Available names:'
-        do ii=1,size(targets)
+        do i=1,size(targets)
 
-            exe_target => targets(ii)%ptr
+            exe_target => targets(i)%ptr
 
             if (exe_target%target_type == FPM_TARGET_EXECUTABLE .and. &
                 allocated(exe_target%dependencies)) then
@@ -43375,9 +36250,11 @@ subroutine cmd_run(settings,test)
                 exe_source => exe_target%dependencies(1)%ptr%source
 
                 if (exe_source%unit_scope == run_scope) then
-                    write(stderr,'(A)',advance=(merge("yes","no ",modulo(jj,nCol)==0))) &
+
+                    write(stderr,'(A)',advance=(merge("yes","no ",modulo(j,nCol)==0))) &
                         & [character(len=col_width) :: basename(exe_target%output_file, suffix=.false.)]
-                    jj = jj + 1
+                    j = j + 1
+
                 end if
             end if
         end do
@@ -43386,15 +36263,15 @@ subroutine cmd_run(settings,test)
 
     subroutine compact_list()
     integer, parameter :: LINE_WIDTH = 80
-    integer :: ii, jj, nCol
-        jj = 1
+    integer :: i, j, nCol
+        j = 1
         nCol = LINE_WIDTH/col_width
         write(stderr,*) 'Matched names:'
-        do ii=1,size(executables)
-            write(stderr,'(A)',advance=(merge("yes","no ",modulo(jj,nCol)==0))) &
-                & [character(len=col_width) :: basename(executables(ii)%s, suffix=.false.)]
-            jj = jj + 1
-        end do
+        do i=1,size(executables)
+            write(stderr,'(A)',advance=(merge("yes","no ",modulo(j,nCol)==0))) &
+                & [character(len=col_width) :: basename(executables(i)%s, suffix=.false.)]
+            j = j + 1
+        enddo
         write(stderr,*)
     end subroutine compact_list
 
@@ -43415,28 +36292,27 @@ subroutine delete_skip(is_unix)
     end do
 end subroutine delete_skip
 
-!> Delete the build directory including or excluding dependencies.
 subroutine cmd_clean(settings)
-    !> Settings for the clean command.
+    !> fpm clean called
     class(fpm_clean_settings), intent(in) :: settings
-
-    character :: user_response
-
+    ! character(len=:), allocatable :: dir
+    ! type(string_t), allocatable :: files(:)
+    character(len=1) :: response
     if (is_dir('build')) then
-        ! Remove the entire build directory
+        ! remove the entire build directory
         if (settings%clean_call) then
-            call os_delete_dir(os_is_unix(), 'build'); return
+            call os_delete_dir(settings%is_unix, 'build')
+            return
         end if
-
-        ! Remove the build directory but skip dependencies
+        ! remove the build directory but skip dependencies
         if (settings%clean_skip) then
-            call delete_skip(os_is_unix()); return
+            call delete_skip(settings%is_unix)
+            return
         end if
-
-        ! Prompt to remove the build directory but skip dependencies
+        ! prompt to remove the build directory but skip dependencies
         write(stdout, '(A)', advance='no') "Delete build, excluding dependencies (y/n)? "
-        read(stdin, '(A1)') user_response
-        if (lower(user_response) == 'y') call delete_skip(os_is_unix())
+        read(stdin, '(A1)') response
+        if (lower(response) == 'y') call delete_skip(settings%is_unix)
     else
         write (stdout, '(A)') "fpm: No build directory found."
     end if
@@ -43444,90 +36320,6 @@ end subroutine cmd_clean
 
 end module fpm
 
-!>>>>> ././src/fpm/cmd/export.f90
-module fpm_cmd_export
-  use fpm_command_line, only : fpm_export_settings
-  use fpm_dependency, only : dependency_tree_t, new_dependency_tree
-  use fpm_error, only : error_t, fpm_stop
-  use fpm_filesystem, only : join_path
-  use fpm_manifest, only : package_config_t, get_package_data
-  use fpm_toml, only: name_is_json
-  use fpm_model, only: fpm_model_t
-  use fpm, only: build_model
-  implicit none
-  private
-  public :: cmd_export
-
-contains
-
-  !> Entry point for the export subcommand
-  subroutine cmd_export(settings)
-    !> Representation of the command line arguments
-    type(fpm_export_settings), intent(inout) :: settings
-    type(package_config_t) :: package
-    type(dependency_tree_t) :: deps
-    type(fpm_model_t) :: model
-    type(error_t), allocatable :: error
-
-    integer :: ii
-    character(len=:), allocatable :: filename
-
-    if (len_trim(settings%dump_manifest)<=0 .and. &
-        len_trim(settings%dump_model)<=0 .and. &
-        len_trim(settings%dump_dependencies)<=0) then
-        call fpm_stop(0,'*cmd_export* exiting: no manifest/model/dependencies keyword provided')
-    end if
-
-    !> Read in manifest
-    call get_package_data(package, "fpm.toml", error, apply_defaults=.true.)
-    call handle_error(error)
-
-    !> Export manifest
-    if (len_trim(settings%dump_manifest)>0) then
-       filename = trim(settings%dump_manifest)
-       call package%dump(filename, error, json=name_is_json(filename))
-    end if
-
-    !> Export dependency tree
-    if (len_trim(settings%dump_dependencies)>0) then
-
-        !> Generate dependency tree
-        filename = join_path("build", "cache.toml")
-        call new_dependency_tree(deps, cache=filename, verbosity=merge(2, 1, settings%verbose))
-        call deps%add(package, error)
-        call handle_error(error)
-
-        !> Export dependency tree
-        filename = settings%dump_dependencies
-        call deps%dump(filename, error, json=name_is_json(filename))
-        call handle_error(error)
-    end if
-
-    !> Export full model
-    if (len_trim(settings%dump_model)>0) then
-
-        call build_model(model, settings%fpm_build_settings, package, error)
-        if (allocated(error)) then
-            call fpm_stop(1,'*cmd_export* Model error: '//error%message)
-        end if
-
-        filename = settings%dump_model
-        call model%dump(filename, error, json=name_is_json(filename))
-        call handle_error(error)
-    end if
-
-  end subroutine cmd_export
-
-  !> Error handling for this command
-  subroutine handle_error(error)
-    !> Potential error
-    type(error_t), intent(in), optional :: error
-    if (present(error)) then
-      call fpm_stop(1, '*cmd_export* error: '//error%message)
-    end if
-  end subroutine handle_error
-
-end module fpm_cmd_export
 
 !>>>>> ././src/fpm/cmd/publish.f90
 !> Upload a package to the registry using the `publish` command.
@@ -43540,8 +36332,8 @@ module fpm_cmd_publish
   use fpm_model, only: fpm_model_t
   use fpm_error, only: error_t, fpm_stop
   use fpm_versioning, only: version_t
-  use fpm_filesystem, only: exists, join_path, get_temp_filename, delete_file
-  use fpm_git, only: git_archive
+  use fpm_filesystem, only: exists, join_path, get_tmp_directory
+  use fpm_git, only: git_archive, compressed_package_name
   use fpm_downloader, only: downloader_t
   use fpm_strings, only: string_t
   use fpm_settings, only: official_registry_base_url
@@ -43562,8 +36354,8 @@ contains
     type(fpm_model_t) :: model
     type(error_t), allocatable :: error
     type(version_t), allocatable :: version
-    type(string_t), allocatable :: upload_data(:)
-    character(len=:), allocatable :: tmp_file
+    type(string_t), allocatable :: form_data(:)
+    character(len=:), allocatable :: tmpdir
     type(downloader_t) :: downloader
     integer :: i
 
@@ -43576,78 +36368,52 @@ contains
       print *, version%s(); return
     end if
 
-    !> Checks before uploading the package.
-    if (.not. allocated(package%license)) call fpm_stop(1, 'No license specified in fpm.toml.')
-    if (.not. package%build%module_naming) call fpm_stop(1, 'The package does not meet the module naming requirements. '// &
-      & 'Please set "module-naming = true" in fpm.toml [build] or specify a custom module prefix.')
-    if (.not. allocated(version)) call fpm_stop(1, 'No version specified in fpm.toml.')
-    if (version%s() == '0') call fpm_stop(1, 'Invalid version: "'//version%s()//'".')
-    if (.not. exists('fpm.toml')) call fpm_stop(1, "Cannot find 'fpm.toml' file. Are you in the project root?")
-
     ! Build model to obtain dependency tree.
     call build_model(model, settings%fpm_build_settings, package, error)
     if (allocated(error)) call fpm_stop(1, '*cmd_build* Model error: '//error%message)
 
+    !> Checks before uploading the package.
+    if (.not. allocated(package%license)) call fpm_stop(1, 'No license specified in fpm.toml.')
+    if (.not. allocated(version)) call fpm_stop(1, 'No version specified in fpm.toml.')
+    if (version%s() == '0') call fpm_stop(1, 'Invalid version: "'//version%s()//'".')
+    if (.not. exists('fpm.toml')) call fpm_stop(1, "Cannot find 'fpm.toml' file. Are you in the project root?")
+
     ! Check if package contains git dependencies. Only publish packages without git dependencies.
     do i = 1, model%deps%ndep
       if (allocated(model%deps%dep(i)%git)) then
-        call fpm_stop(1, 'Do not publish packages containing git dependencies. '// &
-        & "Please upload '"//model%deps%dep(i)%name//"' to the registry first.")
+        call fpm_stop(1, "Do not publish packages containing git dependencies. '"//model%deps%dep(i)%name//"' is a git dependency.")
       end if
     end do
 
-    tmp_file = get_temp_filename()
-    call git_archive('.', tmp_file, 'HEAD', settings%verbose, error)
-    if (allocated(error)) call fpm_stop(1, '*cmd_publish* Archive error: '//error%message)
+    form_data = [ &
+      string_t('package_name="'//package%name//'"'), &
+      string_t('package_license="'//package%license//'"'), &
+      string_t('package_version="'//version%s()//'"') &
+      & ]
 
-    upload_data = [ &
-    & string_t('package_name="'//package%name//'"'), &
-    & string_t('package_license="'//package%license//'"'), &
-    & string_t('package_version="'//version%s()//'"'), &
-    & string_t('tarball=@"'//tmp_file//'"') &
-    & ]
+    if (allocated(settings%token)) form_data = [form_data, string_t('upload_token="'//settings%token//'"')]
 
-    if (allocated(settings%token)) upload_data = [upload_data, string_t('upload_token="'//settings%token//'"')]
+    call get_tmp_directory(tmpdir, error)
+    if (allocated(error)) call fpm_stop(1, '*cmd_publish* Tmp directory error: '//error%message)
+    call git_archive('.', tmpdir, error)
+    if (allocated(error)) call fpm_stop(1, '*cmd_publish* Pack error: '//error%message)
+    form_data = [form_data, string_t('tarball=@"'//join_path(tmpdir, compressed_package_name)//'"')]
 
-    if (settings%show_upload_data) then
-      call print_upload_data(upload_data); return
+    if (settings%show_form_data) then
+      do i = 1, size(form_data)
+        print *, form_data(i)%s
+      end do
+      return
     end if
 
     ! Make sure a token is provided for publishing.
-    if (allocated(settings%token)) then
-      if (settings%token == '') then
-        call delete_file(tmp_file); call fpm_stop(1, 'No token provided.')
-      end if
-    else
-      call delete_file(tmp_file); call fpm_stop(1, 'No token provided.')
-    end if
+    if (.not. allocated(settings%token)) call fpm_stop(1, 'No token provided.')
 
-    if (settings%verbose) then
-      call print_upload_data(upload_data)
-      print *, ''
-    end if
-
-    ! Perform network request and validate package, token etc. on the backend once
-    ! https://github.com/fortran-lang/registry/issues/41 is resolved.
-    if (settings%is_dry_run) then
-      print *, 'Dry run successful. Generated tarball: ', tmp_file; return
-    end if
-
-    call downloader%upload_form(official_registry_base_url//'/packages', upload_data, settings%verbose, error)
-    call delete_file(tmp_file)
+    call downloader%upload_form(official_registry_base_url//'/packages', form_data, error)
     if (allocated(error)) call fpm_stop(1, '*cmd_publish* Upload error: '//error%message)
   end
-
-  subroutine print_upload_data(upload_data)
-    type(string_t), intent(in) :: upload_data(:)
-    integer :: i
-
-    print *, 'Upload data:'
-    do i = 1, size(upload_data)
-      print *, upload_data(i)%s
-    end do
-  end
 end
+
 
 !>>>>> ././src/fpm/cmd/install.f90
 module fpm_cmd_install
@@ -43674,7 +36440,7 @@ contains
   !> Entry point for the fpm-install subcommand
   subroutine cmd_install(settings)
     !> Representation of the command line settings
-    type(fpm_install_settings), intent(inout) :: settings
+    type(fpm_install_settings), intent(in) :: settings
     type(package_config_t) :: package
     type(error_t), allocatable :: error
     type(fpm_model_t) :: model
@@ -43686,7 +36452,7 @@ contains
     call get_package_data(package, "fpm.toml", error, apply_defaults=.true.)
     call handle_error(error)
 
-    call build_model(model, settings, package, error)
+    call build_model(model, settings%fpm_build_settings, package, error)
     call handle_error(error)
 
     call targets_from_sources(targets, model, settings%prune, error)
@@ -43809,6 +36575,7 @@ contains
 
 end module fpm_cmd_install
 
+
 !>>>>> app/main.f90
 program main
 use, intrinsic :: iso_fortran_env, only : error_unit, output_unit
@@ -43816,7 +36583,6 @@ use fpm_command_line, only: &
         fpm_cmd_settings, &
         fpm_new_settings, &
         fpm_build_settings, &
-        fpm_export_settings, &
         fpm_run_settings, &
         fpm_test_settings, &
         fpm_install_settings, &
@@ -43828,7 +36594,6 @@ use fpm_error, only: error_t
 use fpm_filesystem, only: exists, parent_dir, join_path
 use fpm, only: cmd_build, cmd_run, cmd_clean
 use fpm_cmd_install, only: cmd_install
-use fpm_cmd_export, only: cmd_export
 use fpm_cmd_new, only: cmd_new
 use fpm_cmd_update, only : cmd_update
 use fpm_cmd_publish, only: cmd_publish
@@ -43890,8 +36655,6 @@ type is (fpm_run_settings)
     call cmd_run(settings,test=.false.)
 type is (fpm_test_settings)
     call cmd_run(settings,test=.true.)
-type is (fpm_export_settings)
-    call cmd_export(settings)
 type is (fpm_install_settings)
     call cmd_install(settings)
 type is (fpm_update_settings)
@@ -43937,3 +36700,4 @@ contains
     end subroutine get_working_dir
 
 end program main
+

@@ -20,7 +20,7 @@ EXAMPLE
  Sample usage:
 
  This shows that level was executed in a bash(1) shell spawned from
- the vim(1) editor (which was spawned by a bash(1) shell from instead
+ the vim(1) editor (which was spawned by a bash(1) shell from inside
  of another script...). I am probably due for a few exit(1) commands.
 
    level

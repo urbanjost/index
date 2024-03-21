@@ -4,6 +4,16 @@
 export STRING=$(echo "$*"|sed -e 's/ /%20/g')
 STRINGHTTP='http://www.google.com/search?q='"$STRING"
 ################################################################################
+if [ "$*" = '' ]
+then
+   goo urbanjost github
+   goo fortran wiki
+   goo fortran newsgroup
+   goo urbanjost github
+   goo fortran discourse
+   exit
+fi
+################################################################################
 if inpath.sh xdg-open
 then
    # red hat linux
