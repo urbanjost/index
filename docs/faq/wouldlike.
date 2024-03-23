@@ -1,0 +1,269 @@
+
+https://fortran-lang.discourse.group/t/would-you-like-to-have-a-real-time-chat-feature-on-fortran-discourse/5008/4
+
+   Something I find lacking in Discourse is a natural way to evolve FAQs
+     FAQs and documentation from the discussions.
+   I can easily give you a good list of FAQ-ready questions if you so
+    2. Archiving every small question in some kind of FAQ/documentation,
+   and various FAQ sites
+   o [32]FAQ in Fortran Wiki
+   o [33]Fortran FAQ
+   o [34]FAQ — Fortran90 1.0 documentation
+   o [35]FORTRAN 90 FAQ: Compilation and Execution
+   community-edited, or upvoted as something that should appear in an FAQ
+   If chat is added, I think we should also add an FAQ category on Fortran
+   In the meantime, I added three items to the Fortran Wiki FAQ
+   o short-circuiting - [38]FAQ in Fortran Wiki
+   o row-column array construction - [39]FAQ in Fortran Wiki
+   o numbered filenames - [40]FAQ in Fortran Wiki
+     FAQ as
+     * [49]FAQ/Guidelines
+  32. http://fortranwiki.org/fortran/show/FAQ
+  33. http://www.faqs.org/faqs/fortran-faq/
+  34. http://www.fortran90.org/src/faq.html
+  35. http://pages.mtu.edu/~shene/COURSES/cs201/FAQ/compile.html
+  38. https://fortranwiki.org/fortran/show/FAQ#short-circuit
+  39. https://fortranwiki.org/fortran/show/FAQ#array_constructor
+  40. https://fortranwiki.org/fortran/show/FAQ#numbered_files
+
+Skip to main content
+Fortran Discourse
+
+Would you like to have a real-time chat feature on Fortran Discourse?
+Jan 11
+Jan 16
+milancurcic
+Jan 11
+
+We can now enable the chat feature on the Fortran Discourse, similar to Discord.
+Discourse – 11 Jan 23
+Discourse 3.0 is Here! 10
+
+Today, we’re excited to announce the release of Discourse 3.0! We are bringing our customers and users some major new capabilities to enable communities to have thoughtful, purposeful discussions online. This new release includes real-time chat and...
+
+Is this something that you would like to have? If yes, we could try it for a period of time and see how it goes.
+
+CC admins @certik @lkedward @awvwgk
+
+gnikit
+Leader
+Jan 11
+
+I think it has the potential to be very helpful for new members and/or in cases a user wants to ask something quick without wanting to put together a whole post. For example certain projects like fpm, vscode or lfortran might benefit from this type of quick interaction.
+
+Obviously, the community members that know how to answer will also need to participate in the chat, but yes, I think it could be useful.
+Carltoffel
+Regular
+Jan 12
+
+I second that. It lowers the inhibition threshold to ask or say something, especially for new people. If the question is too complex, we can encourage them to create a post.
+urbanjost
+Jan 12
+
+Something I find lacking in Discourse is a natural way to evolve FAQs and documentation from the discussions. I am concerned that Chat channels would move even further away from allowing for this as they are normally not retained; the description of the new feature appears to allow for longer retention and for moving information from Chats to Discussions so that concern may be misplaced. If there were a feature for moving a Discussion to a Document (which would require somone voluntarily editing the Discussion, admittedly) more like a Wiki I think a lot of valuable discussions scattered throught the discourses would be even more valuable and more easily accessible; perhaps the unique (to me) ability to edit the chats and move them to the Discussions might actually provide a mechanism along those lines, exactly the opposite of what I am worried about. So it seems like giving it a chance is a good idea (just reading the description really did not give me a complete picture of how it would work in practice). What initial retention period would be set?
+vmagnin
+Jan 12
+
+    So it seems like giving it a chance is a good idea
+
+I share the concerns of @urbanjost. There are advantages and drawbacks in adding that chat feature. There is the risk that it could change the nature of the Fortran Discourse, and interesting discussions could be lost for the community.
+
+Yes, give it a chance. We could decide to introduce it as an experimental feature for 30 days, discover how it really works, observe how it is used, then evaluate the situation at the end of this period.
+Aurelius_Nero
+Jan 12
+
+I would like this feature :+1:
+However, the people that would ideally prefer this feature are over on Discord .
+
+    Something I find lacking in Discourse is a natural way to evolve FAQs and documentation from the discussions.
+
+I can easily give you a good list of FAQ-ready questions if you so desire. This comes straight from beginners that join (some stay and some leave)
+
+    How do I install Fortran on windows (yes this is a question I receive)
+    Which IDE do I use for windows
+    Which IDE makes it easy and installs both compiler and everything
+    What is Fortran used for ?
+    How do I make a gui in Fortran
+    How do I use fpm
+    How do I use coarrays
+
+une
+Jan 12
+
+    …
+    Obviously, the community members that know how to answer will also need to participate in the chat, but yes, I think it could be useful.
+
+This. I believe that the development of fortran-langs’s projects would advance if there was an official chat channel. btw, we’re still in libera.chat - #fortran, #fpm. (unnoficial).
+mEm
+Jan 12
+
+    There is the risk that it could change the nature of the Fortran Discourse, and interesting discussions could be lost for the community.
+
+I agree on this. And this concerns specially sporadic users (like I am, to be clear). And with sporadic, I don’t mean people who don’t care (to be clear, twice).
+Though I recognise the utility of a chat, which some reasons have been already pointed out, I think there’s a very thin line between this tool being helpful, and displacing the most important discussions in a place where much less people would get into.
+Why? Many reasons. A chat, in order to be followed, requires you to be there. At THAT time. There might be some possibility to read it a-posteriori. But, chats are also a faster mean of communication. A quite long message gets split into many. And, who’d read hundreds of messages, which might also be overlapped ? Like, imagine, the same situation as for WhatsApp (or, whatever) groups. After you’ve missed a day (or worse, many) of conversation, who reads ALL the messages ?
+Sure, here is not for joking, but still, with discussions like these (not chat I mean), long answers, they remain like they are. And a quite long conversation would result much more readable that if it would have been the chat version of itself.
+That said, I think chat can be really helpful in some situations.
+
+    How do I make a gui in Fortran
+
+Before that, I’d then list: “How do I plot data in Fortran?”, since it is mostly used for scientific computations. Then, some options might need the (manual) creation of some windowing system for actually hosting the plot, to which linking the question: “How do I make a gui in Fortran?”.
+Carltoffel
+Regular
+Jan 13
+
+    A quite long message gets split into many
+
+Would it be possible to reduce the max length of messages and limit the number of messages?
+
+I think we can handle the problem of “lost conversation” by
+
+    Only answering quick questions and otherwise asking them to start a topic
+    Archiving every small question in some kind of FAQ/documentation, as @urbanjost proposed
+
+Edit: I didn’t think about general discussion, but I could imagine there are similar ways to handle them (e.g. encourage to open an issue on github, etc.)
+mEm
+Jan 13
+
+    Would it be possible to reduce the max length of messages and limit the number of messages?
+
+Possibly, depending on how it gets implemented in the backend. Though I’d say that these two conditions break the concept of a chat, specially for the second. So, I don’t see it coming. But, I might be proved wrong.
+gak
+Jan 14
+
+I’m sure there is a population here that would benefit. For me, no. There is too little incremental benefit over the channels that already exist.
+
+The Balkanization of attention-distracting technologies is counter-productive.
+
+If there is any expectation that everyone here will “follow” real-time Discourse, or be expected to consume any thread about any topic of depth, I won’t be there.
+
+I am not a deep contributor here, but I have more than enough channels of communication to follow, to the point that I am about to remove my attention from everything that does not require my official attention (J3, PL22, school work).
+
+I don’t believe Fortran needs more communication channels. It maybe needs to funnel people to existing forums for low-threshold communication, education and advocacy.
+
+But mostly, it needs people with the time, energy, and talent to contribute meaningfully to the language and its implementations.
+FortranFan
+Jan 14
+
+    … if there is any expectation that everyone here will “follow” real-time Discourse, or be expected to consume any thread about any topic of depth, I won’t be there.
+
+    I am not a deep contributor here, but I have more than enough channels of communication to follow, to the point that I am about to remove my attention from everything that does not require my official attention …
+
+@gak , thank you, that’s truly inspirational. I too should soon follow your lead and remove my attention from everything unofficial …
+
+I clearly will never be there in the real-time chat but in my particular circumstance though, that’s a very good, positive thing for others!
+FortranFan
+Jan 14
+
+By the way, is there a way to sign up chatGPT to real-time chat in Discourse 3.0 and perhaps the Fortran variant of it and let it lead and answer to the inquiries in all the chats? :stuck_out_tongue_winking_eye:
+
+Those who seek real-time help on something as simple as Fortran, as opposed to a unhurried, thought-out response by someone who may write from experience and put in a bit of effort to condense and shorten the answer, so that it doesn’t become pages-long, back and forth worse-than-fish-market chatter, again on - of all things - Fortran, not a first-world “crisis” every evening with the choice of a goddamn restaurant for dinner, might prefer chatGPT and the infinite number of AI bots that are soon going to proliferate…
+urbanjost
+Aurelius_Nero
+Jan 14
+
+I am looking for something that helps higher-level documentation emerge
+naturally from Discourse. Contributing documentation to fortran-lang
+requires embracing a lot of infrastructure and a different set of skills
+than Discourse. I have not seen much growth in the documentation there;
+and very little that has emerged there from Fortran Discourse; even though
+that seems like it should occur organically. I think at least a large reason why
+is their is no easy path from one to the other.
+
+A lot of information is dispersed thoughout this Discourse forum and
+comp.lang/fortran that is not particularly easy to locate or browse. Chat
+forums are even worse. The Fortran Wiki is perhaps the closest.
+
+There are documents
+
+o Index | Programming in Modern Fortran
+
+and lists
+
+o GitHub - urbanjost/index
+o Fortran-code-on-GitHub/README.md at main · Beliavsky/Fortran-code-on-GitHub · GitHub
+
+And repositories
+
+o Netlib at The Univ. of Tennessee and ORNL
+
+and various FAQ sites
+
+o index/index.md at main · urbanjost/index · GitHub
+o FAQ in Fortran Wiki
+o Fortran FAQ
+o FAQ — Fortran90 1.0 documentation
+o FORTRAN 90 FAQ: Compilation and Execution
+
+as well as the chat, Discourse, newsgroup and vendor forums and documents,
+but even the standard itself is somewhat encumbered.
+
+I see very few Fortran Discourse discussions evolving into contributions
+to these other resources, and it seems like they should.
+
+It has been a long-standing issue for me that the comp.lang newsgroup
+never lead to producing much general reference material, and that the same
+questions about comparing float values, what compilers are available,
+and many other questions appear over and over. Maybe chatGPF or some
+partnering with the Fortran Wiki could help. Discourse provides some type
+of rating by displaying likes and number of reads and contributors. The
+Wiki does not, so you are left to click though a lot of sites referenced
+there in some cases. Each forum has different rules for contributions
+or requires signing up for access, etc.
+
+If there were something on Discourse more wiki-like that could be
+community-edited, or upvoted as something that should appear in an FAQ as
+an alternative I would find that more useful than a chat-like interface
+myself. I think the suggestion that chatGPF et al. is the future for
+teaching, documentation, suggestions, and chatting hits the nail on the
+head though.
+
+Until something else emerges, some extra effort to contribute directly to the Fortran Wiki or at least help maintain it’s lists of lists seems warranted. Wouldn’t it be great if there were “one-stop shopping” for Fortran material?
+
+Remember the first time you went to the J3 site and expected to see many references and links?
+Not even close to what you expected, right?
+urbanjost
+Jan 14
+
+If chat is added, I think we should also add an FAQ category on Fortran Discourse. Is there a way to make Discourse entries community-editable like a Wiki entry? I did not see one.
+
+EDIT:
+
+See What is a Wiki Post? - users - Discourse Meta 1
+
+In the meantime, I added three items to the Fortran Wiki FAQ
+
+Anyone can feel free to edit them (or add your own!).
+
+o short-circuiting - FAQ in Fortran Wiki
+o row-column array construction - FAQ in Fortran Wiki
+o numbered filenames - FAQ in Fortran Wiki
+CRquantum
+Jan 15
+
+Perhaps why not giving it try and see how it goes?
+If good keep it, if not I guess people eventually will not use it anymore.
+
+You know, just like some software have beta version which is for testing purpose, we may test this chat feature. After all, this feature can be turned off right? Therefore, it is not a feature that if fails, the Fortran discourse will shut down :rofl:
+milancurcic
+Jan 15
+
+It looks like we will. The reason to ask first is to see if anybody would want it (otherwise why bother). These things have a maintenance cost for admins and moderators.
+milancurcic
+Jan 15
+
+I just enabled the chat plugin and created the #help channel. If you had Discourse open in a browser tab or as a progressive web app, you’ll need to refresh or close and re-open, respectively. There should be a chat bubble icon in the upper right next to the search icon.
+Help
+1 member
+milancurcic
+
+Let me know if you have issues accessing it.
+Aurelius_Nero
+Jan 16
+
+    If there were something on Discourse more wiki-like that could be
+    community-edited, or upvoted as something that should appear in an FAQ as
+    an alternative I would find that more useful than a chat-like interface
+    myself.
+
+This could also be very useful
