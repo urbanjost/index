@@ -8,7 +8,7 @@ then
    PROMPT=YES
    TTY=`tty`
 else
-   PROMPT=YES
+   PROMPT=NO
    TTY=/dev/null
 fi
 ls -d ${*:-*}|(while read paths

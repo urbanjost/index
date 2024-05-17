@@ -3,7 +3,7 @@
 # @(#) goo(1sh) - Google Quicksearch
 export STRING=$(echo "$*"|sed -e 's/ /%20/g')
 STRINGHTTP='http://www.google.com/search?q='"$STRING"
-STRINGHTTP='https://duckduckgo.com/search='"$STRING"
+#STRINGHTTP='https://duckduckgo.com/search='"$STRING"
 ################################################################################
 if [ "$*" = '' ]
 then
