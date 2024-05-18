@@ -33316,7 +33316,7 @@ help=[ CHARACTER(LEN=128) :: &
 '      GNU Lesser General Public License family        LGPL                        ',&
 '      GNU Lesser General Public License v2.1          LGPL-2.1                    ',&
 '      GNU Lesser General Public License v3.0          LGPL-3.0                    ',&
-'      Internet Software Consortime                    ISC                         ',&
+'      Internet Software Consortium                    ISC                         ',&
 '      LaTeX Project Public License v1.3c              LPPL-1.3c                   ',&
 '      Microsoft Public License                        MS-PL                       ',&
 '      Massachusetts Institute of Technology           MIT                         ',&
@@ -33343,7 +33343,7 @@ help=[ CHARACTER(LEN=128) :: &
 '                         @DAY@=>DD    # where DD is current day                   ',&
 '                                                                                  ',&
 '                       Strings are case-sensitive and all spaces are              ',&
-'                       significacnt except trailing space on the RHS.             ',&
+'                       significant except trailing space on the RHS.              ',&
 '                       Strings requiring editing often appear delimited           ',&
 '                       by an at sign (@), such as "@FULLNAME@". Lines             ',&
 '                       not containing "=>" are ignored.                           ',&
