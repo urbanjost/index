@@ -23183,6 +23183,7 @@ character(len=:), allocatable   :: spdx(:)
 character(len=:), allocatable   :: filename
 character(len=:), allocatable   :: config
 character(len=20)               :: cnum
+character(len=8)                :: date
 character(len=:), allocatable   :: help(:), version(:)
 integer :: i
 integer :: j
@@ -23192,12 +23193,19 @@ logical :: all
    call set_args(' --all F --fortran F --file " " --config "'//get_env("FPM_LICENSE_CONFIG")//'"', help, version)
    all = lget('all')
    filename=sget('file')
+
    config=sget('config')
    if(config.ne.'')then
       call fileread(config,configblock)
    else
       configblock=[character(len=0)::]
    endif
+   call date_and_time(date)
+   configblock=[character(len=max(12,len(configblock))):: configblock,&  ! add some predefined conversion strings
+      '@YEAR@=>'//date(1:4),&
+      '@MONTH@=>'//date(5:6),&
+      '@DAY@=>'//date(7:8)] ! widen file is neccessary
+
    if(specified('file'))then
       if(filename.eq.'')then
          call fileread(stdin,textblock)
@@ -33200,21 +33208,21 @@ end function show_one
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
 subroutine replaceit()
-   character(len=8) :: date
+   character(len=:),allocatable :: line
    integer :: i, j, k
-   call date_and_time(date)
    do i = 1, size(textblock)
       do j=1,size(configblock)
          k=index(configblock(j),'=>')
          if(k.ne.0)then
-            textblock(i) = replace(textblock(i),configblock(j)(1:k-1) , trim(configblock(j)(k+2:)))
+            line = replace(textblock(i),configblock(j)(1:k-1) , trim(configblock(j)(k+2:)))
+            ! ignorecase  whether to ignore ASCII case or not. Defaults to .false. .
+            ! ierr        error code. iF ier = -1 bad directive, >= 0 then count of changes made.
+            if(len(line).gt.len(textblock))then
+               textblock=[character(len=max(len(line),len(textblock))):: textblock] ! widen file is neccessary
+            endif
+            textblock(i) = line
          endif
       enddo
-      textblock(i) = replace(textblock(i), '@YEAR@', date(1:4))
-      textblock(i) = replace(textblock(i), '@MONTH@', date(5:6))
-      textblock(i) = replace(textblock(i), '@DAY@', date(7:8))
-      ! ignorecase  whether to ignore ASCII case or not. Defaults to .false. .
-      ! ierr        error code. iF ier = -1 bad directive, >= 0 then count of changes made.
    end do
 end subroutine replaceit
 !===================================================================================================================================
@@ -33349,6 +33357,9 @@ help=[ CHARACTER(LEN=128) :: &
 '                  exit successfully.                                              ',&
 '                                                                                  ',&
 'EXAMPLES                                                                          ',&
+'                                                                                  ',&
+'Sample commands:                                                                  ',&
+'                                                                                  ',&
 '     fpm-license  # display available license names                               ',&
 '                                                                                  ',&
 '     fpm-license mit > LICENSE.txt # create a specific license file               ',&
@@ -33357,11 +33368,11 @@ help=[ CHARACTER(LEN=128) :: &
 '                                                                                  ',&
 '     fpm-license --all  # display all supported license descriptions              ',&
 '                                                                                  ',&
-'     fpm-license --fortran --mit # write license as Fortran code                  ',&
+'     fpm-license --fortran mit # write license as Fortran code                    ',&
 '                                                                                  ',&
 '     # write a license file using specified string substitutions                  ',&
 '     # from configuration file                                                    ',&
-'     fpm-license --config $HOME/.local/config/fpm-license.txt mit                 ',&
+'     fpm-license cc0-1.0 --config $HOME/.local/config/fpm-license.txt mit         ',&
 '                                                                                  ',&
 'SEE ALSO                                                                          ',&
 '                                                                                  ',&
