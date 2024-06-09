@@ -1,4 +1,4 @@
-#define FPM_RELEASE_VERSION 0.10.1-jsu
+#define FPM_RELEASE_VERSION 0.10.1
 #define FPM_BOOTSTRAP
 #undef linux
 #undef unix
@@ -11388,7 +11388,7 @@ module fpm_release
         type(error_t), allocatable :: error
 ! Fallback to last known version in case of undefined macro
 #ifndef FPM_RELEASE_VERSION
-#  define FPM_RELEASE_VERSION 0.10.1-jsu
+#  define FPM_RELEASE_VERSION 0.10.1
 #endif
 ! Accept solution from https://stackoverflow.com/questions/31649691/stringify-macro-with-gnu-gfortran
 ! which provides the "easiest" way to pass a macro to a string in Fortran complying with both
