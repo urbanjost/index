@@ -1,4 +1,7 @@
+#define FPM_RELEASE_VERSION 0.10.1-jsu
 #define FPM_BOOTSTRAP
+#undef linux
+#undef unix
 !>>>>> ././src/fpm_strings.f90
 !> This module defines general procedures for **string operations** for both CHARACTER and
 !! TYPE(STRING_T) variables
@@ -11385,7 +11388,7 @@ module fpm_release
         type(error_t), allocatable :: error
 ! Fallback to last known version in case of undefined macro
 #ifndef FPM_RELEASE_VERSION
-#  define FPM_RELEASE_VERSION 0.10.1
+#  define FPM_RELEASE_VERSION 0.10.1-jsu
 #endif
 ! Accept solution from https://stackoverflow.com/questions/31649691/stringify-macro-with-gnu-gfortran
 ! which provides the "easiest" way to pass a macro to a string in Fortran complying with both
@@ -24933,19 +24936,17 @@ module fpm_manifest_profile
               & new_profile('release', &
                 & 'caf', &
                 & OS_ALL, &
-                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -funroll-loops ', &
+                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -funroll-loops', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'gfortran', &
                 & OS_ALL, &
-                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -funroll-loops &
-		& -fcoarray=single  ', &
+                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -funroll-loops -fcoarray=single', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'f95', &
                 & OS_ALL, &
-                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -ffast-math -funroll-loops &
-		&  ', &
+                & flags=' -O3 -Wimplicit-interface -fPIC -fmax-errors=1 -ffast-math -funroll-loops', &
                 & is_built_in=.true.), &
               & new_profile('release', &
                 & 'nvfortran', &
@@ -24989,22 +24990,19 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'caf', &
                 & OS_ALL, &
-                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds &
-		&  &
+                & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
                           & -fcheck=array-temps -fbacktrace', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'gfortran', &
                 & OS_ALL, &
                 & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
-		          &  &
                           & -fcheck=array-temps -fbacktrace -fcoarray=single', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'f95', &
                 & OS_ALL, &
                 & flags = ' -Wall -Wextra -Wimplicit-interface -fPIC -fmax-errors=1 -g -fcheck=bounds&
-		          & &
                           & -fcheck=array-temps -Wno-maybe-uninitialized -Wno-uninitialized -fbacktrace', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
@@ -25026,8 +25024,7 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_ALL, &
-                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -standard-semantics -traceback &
-		& -fsanitize=address -fsanitize=memory', &
+                & flags = ' -warn all -check all -error-limit 1 -O0 -g -assume byterecl -standard-semantics -traceback', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'ifx', &
@@ -25037,8 +25034,7 @@ module fpm_manifest_profile
               & new_profile('debug', &
                 & 'ifx', &
                 & OS_WINDOWS, &
-                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl /standard-semantics &
-		& -fsanitize=address -fsanitize=memory', &
+                & flags = ' /warn:all /check:all /error-limit:1 /Od /Z7 /assume:byterecl /standard-semantics', &
                 & is_built_in=.true.), &
               & new_profile('debug', &
                 & 'lfortran', &
@@ -25685,7 +25681,6 @@ module fpm_manifest_preprocess
       !> Properties
       procedure :: is_cpp
       procedure :: is_fypp
-      procedure :: is_prep
    end type preprocess_config_t
    character(*), parameter, private :: class_name = 'preprocess_config_t'
 contains
@@ -25897,11 +25892,6 @@ contains
        if (allocated(this%name)) is_cpp = this%name == "cpp"
     end function is_cpp
     ! Check cpp
-    logical function is_prep(this)
-       class(preprocess_config_t), intent(in) :: this
-       is_prep = .false.
-       if (allocated(this%name)) is_prep = this%name == "prep"
-    end function is_prep
     logical function is_fypp(this)
        class(preprocess_config_t), intent(in) :: this
        is_fypp = .false.
@@ -28756,7 +28746,7 @@ character(*), parameter :: &
     flag_lfortran_opt = " --fast", &
     flag_lfortran_openmp = " --openmp", &
     flag_lfortran_implicit_typing = " --implicit-typing", &
-    flag_lfortran_implicit_external = " --allow-implicit-interface", &
+    flag_lfortran_implicit_external = " --implicit-interface", &
     flag_lfortran_fixed_form = " --fixed-form"
 character(*), parameter :: &
     flag_cray_no_implicit_typing = " -dl", &
@@ -34138,6 +34128,8 @@ type build_target_t
     type(string_t), allocatable :: macros(:)
     !> Version number
     character(:), allocatable :: version
+    contains
+        procedure :: is_executable_target
 end type build_target_t
 contains
 !> Target type name
@@ -34783,7 +34775,7 @@ subroutine filter_executable_targets(targets, scope, list)
     call resize(list, n)
 end subroutine filter_executable_targets
 elemental function is_executable_target(target_ptr, scope) result(is_exe)
-    type(build_target_t), intent(in) :: target_ptr
+    class(build_target_t), intent(in) :: target_ptr
     integer, intent(in) :: scope
     logical :: is_exe
     is_exe = target_ptr%target_type == FPM_TARGET_EXECUTABLE .and. &
@@ -35923,14 +35915,13 @@ logical function should_be_run(settings,run_scope,exe_target)
     integer, intent(in) :: run_scope
     type(build_target_t), intent(in) :: exe_target
     integer :: j
-    if (exe_target%target_type == FPM_TARGET_EXECUTABLE .and. &
-        allocated(exe_target%dependencies)) then
+    if (exe_target%is_executable_target(run_scope)) then
         associate(exe_source => exe_target%dependencies(1)%ptr%source)
             if (exe_source%unit_scope/=run_scope) then
                 ! Other scope
                 should_be_run = .false.
-            elseif (size(settings%name) == 0 .or. .not.settings%list) then
-                ! No list of targets
+            elseif (size(settings%name) == 0 .or. settings%list) then
+                ! Run all or list all
                 should_be_run = .true.
             else
                 ! Is found in list
@@ -36144,21 +36135,20 @@ contains
     type(installer_t) :: installer
     type(string_t), allocatable :: list(:)
     logical :: installable
+    integer :: ntargets
     call get_package_data(package, "fpm.toml", error, apply_defaults=.true.)
     call handle_error(error)
     call build_model(model, settings, package, error)
     call handle_error(error)
     call targets_from_sources(targets, model, settings%prune, error)
     call handle_error(error)
+    call install_info(output_unit, settings%list, targets, ntargets)
+    if (settings%list) return
     installable = (allocated(package%library) .and. package%install%library) &
-      .or. allocated(package%executable)
+                   .or. allocated(package%executable) .or. ntargets>0
     if (.not.installable) then
       call fatal_error(error, "Project does not contain any installable targets")
       call handle_error(error)
-    end if
-    if (settings%list) then
-      call install_info(output_unit, targets)
-      return
     end if
     if (.not.settings%no_rebuild) then
       call build_package(targets,model,verbose=settings%verbose)
@@ -36176,15 +36166,17 @@ contains
         call handle_error(error)
       end if
     end if
-    if (allocated(package%executable)) then
+    if (allocated(package%executable) .or. ntargets>0) then
       call install_executables(installer, targets, error)
       call handle_error(error)
     end if
   end subroutine cmd_install
-  subroutine install_info(unit, targets)
+  subroutine install_info(unit, verbose, targets, ntargets)
     integer, intent(in) :: unit
+    logical, intent(in) :: verbose
     type(build_target_ptr), intent(in) :: targets(:)
-    integer :: ii, ntargets
+    integer, intent(out) :: ntargets
+    integer :: ii
     type(string_t), allocatable :: install_target(:), temp(:)
     allocate(install_target(0))
     call filter_library_targets(targets, temp)
@@ -36192,11 +36184,13 @@ contains
     call filter_executable_targets(targets, FPM_SCOPE_APP, temp)
     install_target = [install_target, temp]
     ntargets = size(install_target)
-    write(unit, '("#", *(1x, g0))') &
-      "total number of installable targets:", ntargets
-    do ii = 1, ntargets
-      write(unit, '("-", *(1x, g0))') install_target(ii)%s
-    end do
+    if (verbose) then
+        write(unit, '("#", *(1x, g0))') &
+          "total number of installable targets:", ntargets
+        do ii = 1, ntargets
+          write(unit, '("-", *(1x, g0))') install_target(ii)%s
+        end do
+    endif
   end subroutine install_info
   subroutine install_module_files(installer, targets, error)
     type(installer_t), intent(inout) :: installer
@@ -36217,26 +36211,17 @@ contains
     type(error_t), allocatable, intent(out) :: error
     integer :: ii
     do ii = 1, size(targets)
-      if (is_executable_target(targets(ii)%ptr)) then
+      if (targets(ii)%ptr%is_executable_target(FPM_SCOPE_APP)) then
         call installer%install_executable(targets(ii)%ptr%output_file, error)
         if (allocated(error)) exit
       end if
     end do
     if (allocated(error)) return
   end subroutine install_executables
-  elemental function is_executable_target(target_ptr) result(is_exe)
-    type(build_target_t), intent(in) :: target_ptr
-    logical :: is_exe
-    is_exe = target_ptr%target_type == FPM_TARGET_EXECUTABLE .and. &
-      allocated(target_ptr%dependencies)
-    if (is_exe) then
-      is_exe = target_ptr%dependencies(1)%ptr%source%unit_scope == FPM_SCOPE_APP
-    end if
-  end function is_executable_target
   subroutine handle_error(error)
     type(error_t), intent(in), optional :: error
     if (present(error)) then
-      call fpm_stop(1,error%message)
+      call fpm_stop(1,'*cmd_install* error: '//error%message)
     end if
   end subroutine handle_error
 end module fpm_cmd_install
