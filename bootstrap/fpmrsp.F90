@@ -1,4 +1,4 @@
-#define FPM_RELEASE_VERSION 0.10.1
+#define FPM_RELEASE_VERSION 0.10.999
 #define FPM_BOOTSTRAP
 #undef linux
 #undef unix
@@ -1466,7 +1466,7 @@ subroutine console_write_line(console,str,line,advance)
     if (present(line)) then
         line = console%n_line
     end if
-    
+
     write(stdout,'(A)',advance=trim(adv)) LINE_RESET//str
 
     if (adv=="yes") then
@@ -2547,19 +2547,32 @@ end subroutine check_commandline
 !!
 !!  They are case-sensitive names.
 !!
-!!  Note "@" is a special character in Powershell, and there requires being
+!!  Note "@" is a special character in Powershell, and therefore requires being
 !!  escaped with a grave character or placed in double-quotes if the name
 !!  is alphanumeric (using names like "a-b" or other non-alphanumeric
-!!  characters also prevents the "@" from being treated specially). To
-!!  accomodate this the "@" character may alternatively appear on the end
+!!  characters also prevents the "@" from being treated specially).
+!!
+!!   LEADING UNDERSCORE IS EQUIVALENT TO AT
+!!  Therefore, a leading underscore on a word is converted to an at ("@")
+!!  when response file mode is enabled. It will be converted to an "@"
+!!  before processing continues.
+!!
+!!   TRAILING AT IS EQUIVALENT TO LEADING AT
+!!  Alternatively To accomdate special handling of leading "@" characters
+!!  the "@" character may alternatively appear on the end
 !!  of the name instead of the beginning. It will be internally moved to
 !!  the beginning before processing commences.
 !!
+!!   CHANGING THE PREFIX IDENTIFIER
 !!  It is not recommended in general but the response name prefix may
 !!  be changed via the environment variable CLI_RESPONSE_PREFIX if in an
 !!  environment preventing the use of the "@" character. Typically "^" or
 !!  "%" or "_" are unused characters. In the very worst case an arbitrary
 !!  string is allowed such as "rsp_".
+!!
+!!  Currently this also means changing the prefix in the response files as
+!!  well. This may be changed so the @ character usage remains unchanged
+!!  in the file.
 !!
 !!   LOCATING RESPONSE FILES
 !!
@@ -3012,6 +3025,7 @@ integer                       :: iend
    do i = 1, command_argument_count()
       call get_command_argument(i, cmdarg)
       call move_from_end(cmdarg)
+      cmdarg=change_leading_underscore_to_prefix(cmdarg)
       if(scan(adjustl(cmdarg(1:len(G_RESPONSE_PREFIX))),G_RESPONSE_PREFIX)  ==  1)then
          call get_prototype(cmdarg,prototype)
          call split(prototype,array)
@@ -3054,6 +3068,22 @@ integer          :: iend
       string(:)= G_RESPONSE_PREFIX//string(1:iend-len(G_RESPONSE_PREFIX))
    endif
 end subroutine move_from_end
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
+!===================================================================================================================================
+function change_leading_underscore_to_prefix(string) result(newstring)
+character(len=*) :: string
+integer          :: iend
+character(len=:),allocatable :: newstring
+! @ is treated as a special character in powershell so allow the underscore to be a prefix
+   if(string.eq.'')then
+      newstring=string
+   elseif(string(1:1).eq.'_')then
+      newstring=G_RESPONSE_PREFIX//string(2:)
+   else
+      newstring=string
+   endif
+end function change_leading_underscore_to_prefix
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
@@ -7614,10 +7644,6 @@ end module M_CLI2
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
 !===================================================================================================================================
-!===================================================================================================================================
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
-!===================================================================================================================================
 !>>>>> build/dependencies/fortran-regex/src/regex.f90
 ! *************************************************************************************************
 !                                    ____  ___________________  __
@@ -11153,7 +11179,7 @@ module fpm_release
         type(error_t), allocatable :: error
 ! Fallback to last known version in case of undefined macro
 #ifndef FPM_RELEASE_VERSION
-#  define FPM_RELEASE_VERSION 0.10.1
+#  define FPM_RELEASE_VERSION 0.10.999
 #endif
 ! Accept solution from https://stackoverflow.com/questions/31649691/stringify-macro-with-gnu-gfortran
 ! which provides the "easiest" way to pass a macro to a string in Fortran complying with both
@@ -34640,7 +34666,7 @@ interface build_progress_t
 end interface build_progress_t
 
 contains
-    
+
     !> Initialise a new build progress object
     function new_build_progress(target_queue,plain_mode) result(progress)
         !> The queue of scheduled targets
@@ -34713,7 +34739,7 @@ contains
         character(100) :: output_string
         character(7) :: overall_progress
 
-        !$omp critical 
+        !$omp critical
         progress%n_complete = progress%n_complete + 1
         !$omp end critical
 
