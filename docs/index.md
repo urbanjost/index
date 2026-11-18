@@ -65,6 +65,7 @@ current and past standards is also available there.
 -   [JDoodle (compiler options)](https://www.jdoodle.com/execute-fortran-online/)
 -   [myCompiler.io](https://www.mycompiler.io/new/fortran)
 -   [onecompiler.com](https://onecompiler.com/fortran)
+-   [OnlineCompiler.io (gfortran 15, standard input, test cases)](https://onlinecompiler.io/fortran-online-compiler)
 -   [OnlineGDB](https://www.onlinegdb.com/online_fortran_compiler)
 -   [rextester.com](https://rextester.com/l/fortran_online_compiler)
 -   [techiedelight.com](https://techiedelight.com/compiler/fortran)
